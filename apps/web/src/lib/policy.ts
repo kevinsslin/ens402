@@ -4,7 +4,7 @@ import { createPublicClient, decodeEventLog, http } from 'viem';
 import { baseSepolia } from 'viem/chains';
 import { z } from 'zod';
 import {
-  BASE_SEPOLIA_NETWORK, BASE_SEPOLIA_USDC, createEnsClient,
+  APPROVAL_WINDOW_MS, BASE_SEPOLIA_NETWORK, BASE_SEPOLIA_USDC, PAYMENT_INTENT_MAX_AGE_MS, createEnsClient,
   paymentIntentMessage, resolveServiceAuthority, verifyPayment,
   type SignedPaymentIntent,
 } from '@hufu402/sdk';
@@ -34,9 +34,10 @@ function policyOrigin(): string {
   if (!origin) throw new Error('POLICY_ORIGIN is required');
   return new URL(origin).origin;
 }
-async function validateSignature(intent: SignedPaymentIntent, signature: `0x${string}`, maxAgeMs = 10 * 60 * 1000): Promise<void> {
+async function validateSignature(intent: SignedPaymentIntent, signature: `0x${string}`, maxAgeMs = PAYMENT_INTENT_MAX_AGE_MS): Promise<void> {
   if (intent.policyOrigin !== policyOrigin()) throw new Error('Policy origin mismatch');
-  if (Math.abs(Date.now() - intent.issuedAt) > maxAgeMs) throw new Error('Payment intent expired');
+  const ageMs = Date.now() - intent.issuedAt;
+  if (ageMs < -30_000 || ageMs > maxAgeMs) throw new Error('Payment intent expired');
   const valid = await verifyMessage({ address: getAddress(intent.payer), message: paymentIntentMessage(intent), signature });
   if (!valid) throw new Error('Invalid payer signature');
 }
@@ -120,9 +121,10 @@ export async function authorizePayment(raw: unknown): Promise<AuthorizationResul
       const requiresSecondPerson = !currentGrant && verified.amountAtomic >= largeThreshold;
       await db.query(
         `INSERT INTO approvals (id,owner_id,agent_wallet,service_name,resource_url,network,pay_to,amount_atomic,daily_cap_atomic,status,requires_second_person,expires_at,attempt_id,intent_hash)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'pending',$10,now()+interval '5 minutes',$11,$12)`,
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'pending',$10,$11,$12,$13)`,
         [approvalId, ownerId, wallet, authority.name, intent.resourceUrl, BASE_SEPOLIA_NETWORK, authority.payTo.toLowerCase(),
-          verified.amountAtomic.toString(), dailyCap.toString(), requiresSecondPerson, intent.attemptId, intentHash],
+          verified.amountAtomic.toString(), dailyCap.toString(), requiresSecondPerson,
+          new Date(Date.now() + APPROVAL_WINDOW_MS), intent.attemptId, intentHash],
       );
       return { allowed: false, reason: risk.tier === 'medium' ? 'Medium risk requires approval' : 'New or rotated payee requires approval',
         approvalUrl: `${policyOrigin()}/approve/${approvalId}`, risk: risk.tier };
@@ -173,7 +175,7 @@ export async function verifySettlement(intent: Pick<SignedPaymentIntent, 'payer'
 
 export async function recordSettlement(raw: unknown): Promise<{ status: 'settled' | 'uncertain' }> {
   const { intent, signature, reservationId, outcome, transaction: hash } = settleSchema.parse(raw);
-  await validateSignature(intent, signature as `0x${string}`, 30 * 60 * 1000);
+  await validateSignature(intent, signature as `0x${string}`, 45 * 60 * 1000);
   const intentHash = createHash('sha256').update(paymentIntentMessage(intent)).digest('hex');
   const verified = outcome === 'settled' && hash ? await verifySettlement(intent, hash as `0x${string}`).catch(() => false) : false;
   const status = verified ? 'settled' : 'uncertain';

@@ -1,9 +1,12 @@
 import { createX402Server } from '@coinbase/cdp-sdk/x402';
 import { paymentMiddlewareFromHTTPServer } from '@x402/express';
+import { config } from 'dotenv';
 import express from 'express';
+import { fileURLToPath } from 'node:url';
 import { getAddress, isAddress } from 'viem';
 import { corpusSize, searchKnowledge } from './search.js';
 
+config({ path: process.env.HUFU_ENV_FILE ?? fileURLToPath(new URL('../../../.env.local', import.meta.url)), quiet: true });
 const payTo = process.env.X402_PAY_TO;
 const price = process.env.X402_PRICE_USD ?? '$0.05';
 const ensName = process.env.SERVICE_ENS_NAME ?? 'search.hufu402.eth';

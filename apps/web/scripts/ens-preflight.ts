@@ -63,3 +63,4 @@ process.stdout.write(JSON.stringify({
   deployments: Object.fromEntries(names.map(name => [name, deployments[name]!.address])),
   verifiedSignatures: expected.map(([, , value]) => value),
 }, null, 2) + '\n');
+import '../load-env';

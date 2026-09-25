@@ -1,8 +1,9 @@
 import { config } from 'dotenv';
+import { fileURLToPath } from 'node:url';
 import { privateKeyToAccount } from 'viem/accounts';
-import { createEnsClient, createHttpPolicyGateway, discoverVerifiedServices, payForService } from '@hufu402/sdk';
+import { APPROVAL_WINDOW_MS, createEnsClient, createHttpPolicyGateway, discoverVerifiedServices, payForService } from '@hufu402/sdk';
 
-config({ path: process.env.HUFU_ENV_FILE ?? '../../.env', quiet: true });
+config({ path: process.env.HUFU_ENV_FILE ?? fileURLToPath(new URL('../../../.env.local', import.meta.url)), quiet: true });
 
 const key = process.env.PAYER_PRIVATE_KEY;
 let serviceName = process.env.SERVICE_ENS_NAME;
@@ -37,8 +38,8 @@ async function waitForWorldApproval(approvalUrl: string): Promise<void> {
   }
   const id = url.pathname.split('/').at(-1);
   const statusUrl = new URL(`/api/approvals/${id}`, configuredPolicyOrigin);
-  const deadline = Date.now() + 5 * 60 * 1000;
-  process.stdout.write(`Open this World approval link: ${url.href}\nWaiting up to five minutes for approval...\n`);
+  const deadline = Date.now() + APPROVAL_WINDOW_MS;
+  process.stdout.write(`Open this World approval link: ${url.href}\nWaiting up to 30 minutes for approval...\n`);
   while (Date.now() < deadline) {
     const response = await fetch(statusUrl, { cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(10000) });
     if (!response.ok) throw new Error(`World approval status failed with HTTP ${response.status}`);

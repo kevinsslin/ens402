@@ -32,3 +32,4 @@ describe.skipIf(!process.env.DATABASE_URL)('risk cache with PostgreSQL', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });
+import '../load-env';

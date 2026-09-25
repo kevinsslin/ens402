@@ -119,11 +119,12 @@ describe.skipIf(!process.env.DATABASE_URL)('World OIDC database flow', () => {
 
   it('requires a second enrolled World subject for a large new payee', async () => {
     expect(ownerId).toBeTruthy();
-    const enrollment = await beginEnrollment(secondWallet.address);
+    const returnPath = `/approve/${randomUUID()}?invite=${randomUUID()}`;
+    const enrollment = await beginEnrollment(secondWallet.address, returnPath);
     const signature = await secondWallet.signMessage({ message: enrollment.message });
     const enrollUrl = new URL(await confirmEnrollment(enrollment.state, signature));
     tokens.set('enroll-second', await token(secondSubject, enrollUrl.searchParams.get('nonce')!));
-    expect(await finishWorldFlow(enrollment.state, 'enroll-second')).toBe('/enroll/done');
+    expect(await finishWorldFlow(enrollment.state, 'enroll-second')).toBe(returnPath);
     const enrolled = await database().query<{ owner_id: string }>('SELECT owner_id FROM agents WHERE wallet=$1', [secondWallet.address.toLowerCase()]);
     secondOwnerId = enrolled.rows[0]?.owner_id;
     expect(secondOwnerId).toBeTruthy();
@@ -157,3 +158,4 @@ describe.skipIf(!process.env.DATABASE_URL)('World OIDC database flow', () => {
     expect(grantsAfterSecond.rows[0]?.count).toBe('1');
   });
 });
+import '../load-env';

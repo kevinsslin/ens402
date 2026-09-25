@@ -1,3 +1,4 @@
+import '../load-env';
 import { Pool } from 'pg';
 import { verifySettlement } from '../src/lib/policy.js';
 

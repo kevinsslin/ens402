@@ -40,16 +40,25 @@ export function enrollmentMessage(state: string, wallet: string): string {
   return `HuFu agent enrollment v1\nPolicy origin: ${origin()}\nWallet: ${getAddress(wallet as `0x${string}`).toLowerCase()}\nState: ${state}`;
 }
 
-export async function beginEnrollment(wallet: string): Promise<{ state: string; message: string }> {
+export function enrollmentRedirectPath(returnTo?: string): string {
+  if (!returnTo) return '/enroll/done';
+  if (!/^\/approve\/[0-9a-f-]{36}\?invite=[0-9a-f-]{36}$/i.test(returnTo)) {
+    throw new Error('Invalid enrollment return path');
+  }
+  return returnTo;
+}
+
+export async function beginEnrollment(wallet: string, returnTo?: string): Promise<{ state: string; message: string }> {
   if (!isAddress(wallet)) throw new Error('Invalid wallet address');
+  const redirectPath = enrollmentRedirectPath(returnTo);
   const state = randomUUID();
   const verifier = randomSecret();
   const nonce = digest(`${state}:${wallet.toLowerCase()}:${randomSecret()}`);
   const message = enrollmentMessage(state, wallet);
   await database().query(
     `INSERT INTO world_flows (state,kind,agent_wallet,challenge,pkce_verifier,nonce,redirect_path,expires_at)
-     VALUES ($1,'enroll',$2,$3,$4,$5,'/enroll/done',now()+interval '10 minutes')`,
-    [state, wallet.toLowerCase(), message, verifier, nonce],
+     VALUES ($1,'enroll',$2,$3,$4,$5,$6,now()+interval '10 minutes')`,
+    [state, wallet.toLowerCase(), message, verifier, nonce, redirectPath],
   );
   return { state, message };
 }

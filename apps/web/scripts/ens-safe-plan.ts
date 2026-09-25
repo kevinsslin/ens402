@@ -198,3 +198,4 @@ process.stdout.write(JSON.stringify({
   note: 'Submit each step through the Treasury Safe after checking its live code, balances, roles, and simulation. Register the parent .eth name with its predicted resolver and subregistry between phases. Rerun this plan after registration to include the subname registration call.',
   deployment, parentRegistration, afterParentRegistration,
 }, null, 2) + '\n');
+import '../load-env';

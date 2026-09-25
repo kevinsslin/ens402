@@ -51,6 +51,9 @@ importers:
       '@x402/svm':
         specifier: ^2.27.0
         version: 2.27.0(@solana/kit@5.5.1(typescript@5.9.3))(@solana/sysvars@5.5.1(typescript@5.9.3))
+      dotenv:
+        specifier: ^17.2.3
+        version: 17.4.2
       express:
         specifier: ^5.1.0
         version: 5.2.1
@@ -79,6 +82,9 @@ importers:
       cn:
         specifier: ^0.4.0
         version: 0.4.0
+      dotenv:
+        specifier: ^17.2.3
+        version: 17.4.2
       jose:
         specifier: ^6.2.12
         version: 6.2.12

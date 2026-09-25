@@ -87,11 +87,13 @@ describe.skipIf(!process.env.DATABASE_URL)('policy database idempotency', () => 
     expect((await authorizePayment(payment)).reason).toMatch(/already uncertain/);
   });
 
-  it('accepts the original signed intent after a five-minute approval flow but rejects an older intent', async () => {
-    const recent = await signed({ ...intent(), issuedAt: Date.now() - 6 * 60 * 1000 });
+  it('accepts the original signed intent through a two-person approval window but rejects stale or future intents', async () => {
+    const recent = await signed({ ...intent(), issuedAt: Date.now() - 31 * 60 * 1000 });
     expect((await authorizePayment(recent)).allowed).toBe(true);
-    const stale = await signed({ ...intent(), issuedAt: Date.now() - 11 * 60 * 1000 });
+    const stale = await signed({ ...intent(), issuedAt: Date.now() - 36 * 60 * 1000 });
     await expect(authorizePayment(stale)).rejects.toThrow('Payment intent expired');
+    const future = await signed({ ...intent(), issuedAt: Date.now() + 60 * 1000 });
+    await expect(authorizePayment(future)).rejects.toThrow('Payment intent expired');
   });
 
   it('allows one approved medium-risk attempt and requires review for the next', async () => {
@@ -180,3 +182,4 @@ describe.skipIf(!process.env.DATABASE_URL)('policy database idempotency', () => 
     expect(rows.rowCount).toBe(1);
   });
 });
+import '../load-env';

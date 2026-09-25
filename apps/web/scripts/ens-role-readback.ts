@@ -192,3 +192,4 @@ process.stdout.write(JSON.stringify({
   serviceRegistryRoleBitmap: serviceRegistryRoles.toString(),
   verified: true,
 }, null, 2) + '\n');
+import '../load-env';

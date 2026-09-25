@@ -1,3 +1,4 @@
+import '../load-env';
 import { readFile } from 'node:fs/promises';
 import { Pool } from 'pg';
 
