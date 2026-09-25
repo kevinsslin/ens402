@@ -234,6 +234,7 @@ export async function verifySettlement(intent: Pick<SignedPaymentIntent, 'payer'
   const rpc = process.env.BASE_SEPOLIA_RPC_URL;
   if (!rpc) throw new Error('BASE_SEPOLIA_RPC_URL is required');
   const client = createPublicClient({ chain: baseSepolia, transport: http(rpc) });
+  if (await client.getChainId() !== baseSepolia.id) return false;
   const receipt = await client.getTransactionReceipt({ hash });
   if (receipt.status !== 'success') return false;
   return hasExactUsdcTransfer(intent, receipt.logs);
