@@ -21,7 +21,7 @@ Planning docs live in `docs/` and are kept out of git (see `.gitignore`).
 | `docs/IDEA.md` | The full proposal: name origin, status quo, pain points, solution, architecture, feasibility, to-dos, demo, sponsors, red flags |
 | `docs/research/world-id-for-agents.md` | World ID for Agents (Human Continuity IdP) research and prior art |
 | `docs/research/ensv2-capabilities.md` | ENSv2 capabilities, including per-name and per-key resolver roles |
-| `docs/reference/` | Snapshots of provider docs (x402, Intercepta, World IdP, ENSv2) and the Tokyo prize text |
+| `docs/reference/` | Snapshots of provider docs (x402, Intercepta, World IdP, ENSv2, Envio) and the Tokyo prize text |
 
 ## Status
 
