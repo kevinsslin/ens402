@@ -104,3 +104,20 @@ CREATE UNIQUE INDEX IF NOT EXISTS approvals_attempt_unique ON approvals(attempt_
 ALTER TABLE reservations ADD COLUMN IF NOT EXISTS intent_hash text;
 CREATE UNIQUE INDEX IF NOT EXISTS reservations_settled_transaction_unique ON reservations(transaction_hash)
   WHERE transaction_hash IS NOT NULL AND status='settled';
+CREATE TABLE IF NOT EXISTS decision_receipts (
+  attempt_id uuid PRIMARY KEY,
+  intent_hash text NOT NULL,
+  signed_intent jsonb NOT NULL,
+  intent_signature text NOT NULL,
+  status text NOT NULL CHECK (status IN ('checking','refused','paused','approval_required','reserved')),
+  reason text,
+  authority jsonb,
+  risk jsonb,
+  per_payment_cap_atomic numeric(78,0),
+  daily_cap_atomic numeric(78,0),
+  spent_before_atomic numeric(78,0),
+  approval_id uuid,
+  reservation_id uuid,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);

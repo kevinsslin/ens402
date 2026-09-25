@@ -18,6 +18,7 @@ export interface RiskResult {
   reasons: string[];
   scannedAt: string;
   expiresAt: string;
+  source: 'cache' | 'live';
 }
 
 export function interpretRisk(raw: z.infer<typeof riskResponse>): Pick<RiskResult, 'tier' | 'score' | 'reasons'> {
@@ -35,7 +36,7 @@ export async function getRisk(address: Address): Promise<RiskResult> {
   }>('SELECT tier, toxic_score, reasons, scanned_at, expires_at FROM risk_results WHERE address=$1 AND expires_at > now() AND interpretation_version=1', [normalized]);
   if (existing.rows[0]) {
     const row = existing.rows[0];
-    return { tier: row.tier, score: Number(row.toxic_score), reasons: row.reasons, scannedAt: row.scanned_at.toISOString(), expiresAt: row.expires_at.toISOString() };
+    return { tier: row.tier, score: Number(row.toxic_score), reasons: row.reasons, scannedAt: row.scanned_at.toISOString(), expiresAt: row.expires_at.toISOString(), source: 'cache' };
   }
   return transaction(async db => {
     await db.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [normalized]);
@@ -45,7 +46,7 @@ export async function getRisk(address: Address): Promise<RiskResult> {
     if (fresh.rows[0]) {
       const row = fresh.rows[0];
       return { tier: row.tier, score: Number(row.toxic_score), reasons: row.reasons,
-        scannedAt: row.scanned_at.toISOString(), expiresAt: row.expires_at.toISOString() };
+        scannedAt: row.scanned_at.toISOString(), expiresAt: row.expires_at.toISOString(), source: 'cache' };
     }
     const apiKey = process.env.INTERCEPTA_API_KEY;
     if (!apiKey) throw new Error('Intercepta API key is not configured');
@@ -64,6 +65,6 @@ export async function getRisk(address: Address): Promise<RiskResult> {
          raw=EXCLUDED.raw, interpretation_version=1, scanned_at=EXCLUDED.scanned_at, expires_at=EXCLUDED.expires_at`,
       [normalized, interpreted.tier, interpreted.score, interpreted.reasons, JSON.stringify(raw), scannedAt, expiresAt],
     );
-    return { ...interpreted, scannedAt: scannedAt.toISOString(), expiresAt: expiresAt.toISOString() };
+    return { ...interpreted, scannedAt: scannedAt.toISOString(), expiresAt: expiresAt.toISOString(), source: 'live' };
   });
 }

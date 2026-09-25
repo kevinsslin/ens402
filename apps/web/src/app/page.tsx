@@ -15,11 +15,12 @@ export default function Home() {
     <section className="mx-auto grid max-w-7xl items-center gap-12 px-6 pb-20 pt-20 lg:min-h-[680px] lg:grid-cols-[minmax(0,1.1fr)_minmax(380px,.9fr)] lg:gap-16 lg:pb-24 lg:pt-16">
       <div>
         <Badge variant="outline" className="border-primary/35 bg-primary/5 text-primary">PAYMENT AUTHORITY FOR AUTONOMOUS AGENTS</Badge>
-        <h1 className="mt-7 max-w-3xl text-[clamp(3.5rem,6.5vw,6.5rem)] font-semibold leading-[1.02] tracking-[-0.065em]">Before an agent pays, <span className="text-primary">match the other half.</span></h1>
-        <p className="mt-7 max-w-xl text-lg leading-relaxed text-muted-foreground">Agents can discover services on their own. HuFu lets them check who is authorized to receive payment before they sign.</p>
+        <h1 className="mt-7 max-w-3xl text-[clamp(3.5rem,6.5vw,6.5rem)] font-semibold leading-[1.02] tracking-[-0.065em]">Agents choose services. <span className="text-primary">HuFu decides when they can pay.</span></h1>
+        <p className="mt-7 max-w-xl text-lg leading-relaxed text-muted-foreground">HuFu turns an x402 candidate into an authorized payment decision. It checks merchant authority, payee risk, spending policy, and human approval before an agent signs.</p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Button asChild size="lg"><Link href="/discover">Explore Bazaar <ArrowRight/></Link></Button>
           <Button asChild variant="outline" size="lg"><Link href="/lookup">Verify an ENS service</Link></Button>
+          <Button asChild variant="outline" size="lg"><Link href="/decisions">Inspect a decision</Link></Button>
         </div>
         <p className="mt-8 flex items-center gap-2 text-sm text-muted-foreground"><span className="size-1.5 shrink-0 rounded-full bg-primary"/>No match, no payment. Ask a human only when authority expands.</p>
       </div>

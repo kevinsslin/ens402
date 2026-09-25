@@ -7,6 +7,11 @@ export interface SignedPaymentIntent {
   amountAtomic: string;
   issuedAt: number;
   policyOrigin: string;
+  candidateSource?: 'configured' | 'bazaar';
+  catalogAmountAtomic?: string;
+  purpose?: 'preflight_refusal';
+  preflightReason?: string;
+  observedResourceUrl?: string;
 }
 
 export function paymentIntentMessage(intent: SignedPaymentIntent): string {
@@ -20,5 +25,10 @@ export function paymentIntentMessage(intent: SignedPaymentIntent): string {
     `Payee: ${intent.payTo.toLowerCase()}`,
     `USDC atomic amount: ${intent.amountAtomic}`,
     `Issued at: ${intent.issuedAt}`,
+    ...(intent.candidateSource ? [`Candidate source: ${intent.candidateSource}`] : []),
+    ...(intent.catalogAmountAtomic ? [`Catalog USDC atomic amount: ${intent.catalogAmountAtomic}`] : []),
+    ...(intent.purpose ? [`Purpose: ${intent.purpose}`] : []),
+    ...(intent.preflightReason ? [`SDK preflight reason: ${intent.preflightReason}`] : []),
+    ...(intent.observedResourceUrl ? [`Observed 402 resource: ${intent.observedResourceUrl}`] : []),
   ].join('\n');
 }

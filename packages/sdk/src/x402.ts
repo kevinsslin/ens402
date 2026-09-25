@@ -2,6 +2,7 @@ import { x402Client } from '@x402/core/client';
 import { ExactEvmScheme } from '@x402/evm/exact/client';
 import type { ClientEvmSigner } from '@x402/evm';
 import { wrapFetchWithPayment } from '@x402/fetch';
+import { isAddress } from 'viem';
 import type { ServiceAuthority } from './ens.js';
 import { canonicalResourceUrl, resolveServiceAuthority } from './ens.js';
 import {
@@ -18,6 +19,7 @@ export interface PolicyAuthorization {
   reason?: string;
   reservationId?: string;
   approvalUrl?: string;
+  receiptUrl?: string;
 }
 
 export interface PolicyGateway {
@@ -36,6 +38,8 @@ export interface ProtectedPaymentOptions {
   policyOrigin: string;
   policy: PolicyGateway;
   expectedAmountAtomic?: bigint;
+  candidateSource?: 'configured' | 'bazaar';
+  onDecisionReceipt?: (receiptUrl: string) => void;
   onApprovalRequired?: (approvalUrl: string) => Promise<void>;
   fetch?: typeof fetch;
   headers?: HeadersInit;
@@ -82,11 +86,14 @@ export async function payForService(options: ProtectedPaymentOptions): Promise<R
         serviceName: authority.name, resourceUrl, payTo: authority.payTo,
         amountAtomic: verified.amountAtomic.toString(), issuedAt: Date.now(),
         policyOrigin: new URL(options.policyOrigin).origin,
+        candidateSource: options.candidateSource ?? 'configured',
+        ...(options.expectedAmountAtomic === undefined ? {} : { catalogAmountAtomic: options.expectedAmountAtomic.toString() }),
       };
       const signature = await options.signer.signMessage({ message: paymentIntentMessage(intent) });
       signedIntent = intent;
       intentSignature = signature;
       let decision = await options.policy.authorize({ intent, signature });
+      if (decision.receiptUrl) options.onDecisionReceipt?.(decision.receiptUrl);
       if (!decision.allowed && decision.approvalUrl && options.onApprovalRequired) {
         const approvalUrl = new URL(decision.approvalUrl);
         const expectedOrigin = new URL(options.policyOrigin).origin;
@@ -96,11 +103,31 @@ export async function payForService(options: ProtectedPaymentOptions): Promise<R
         }
       }
       if (!decision.allowed || !decision.reservationId) {
-        return { abort: true, reason: [decision.reason ?? 'Payment requires approval', decision.approvalUrl].filter(Boolean).join(' ')};
+        return { abort: true, reason: [decision.reason ?? 'Payment requires approval', decision.approvalUrl, decision.receiptUrl].filter(Boolean).join(' ')};
       }
       reservationId = decision.reservationId;
     } catch (error) {
-      return { abort: true, reason: error instanceof Error ? error.message : 'Verification failed' };
+      const reason = error instanceof Error ? error.message : 'Verification failed';
+      let receiptUrl: string | undefined;
+      if (!signedIntent && isAddress(selectedRequirements.payTo) && /^[1-9][0-9]*$/.test(selectedRequirements.amount)) {
+        try {
+          const refusalIntent: SignedPaymentIntent = {
+            attemptId: crypto.randomUUID(), payer: options.signer.address,
+            serviceName: options.serviceName, resourceUrl, payTo: selectedRequirements.payTo,
+            amountAtomic: selectedRequirements.amount, issuedAt: Date.now(),
+            policyOrigin: new URL(options.policyOrigin).origin,
+            candidateSource: options.candidateSource ?? 'configured',
+            ...(options.expectedAmountAtomic === undefined ? {} : { catalogAmountAtomic: options.expectedAmountAtomic.toString() }),
+            purpose: 'preflight_refusal', preflightReason: reason.slice(0, 200),
+            observedResourceUrl: paymentRequired.resource.url.slice(0, 2048),
+          };
+          const signature = await options.signer.signMessage({ message: paymentIntentMessage(refusalIntent) });
+          const report = await options.policy.authorize({ intent: refusalIntent, signature });
+          receiptUrl = report.receiptUrl;
+          if (receiptUrl) options.onDecisionReceipt?.(receiptUrl);
+        } catch { /* A receipt is optional; a failed report never permits payment. */ }
+      }
+      return { abort: true, reason: [reason, receiptUrl].filter(Boolean).join(' ') };
     }
   });
   client.onPaymentCreationFailure(async () => {

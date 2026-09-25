@@ -31,6 +31,7 @@ if (discoverIndex >= 0) {
 }
 if (!serviceName || !resourceUrl) throw new Error('SERVICE_ENS_NAME and MERCHANT_RESOURCE_URL are required without --discover');
 const account = privateKeyToAccount(key as `0x${string}`);
+const printedReceipts = new Set<string>();
 async function waitForWorldApproval(approvalUrl: string): Promise<void> {
   const url = new URL(approvalUrl);
   if (url.origin !== new URL(configuredPolicyOrigin).origin || !/^\/approve\/[0-9a-f-]{36}$/i.test(url.pathname)) {
@@ -57,6 +58,12 @@ async function waitForWorldApproval(approvalUrl: string): Promise<void> {
 const response = await payForService({
   serviceName, resourceUrl, policyOrigin, signer: account,
   expectedAmountAtomic,
+  candidateSource: discoverIndex >= 0 ? 'bazaar' : 'configured',
+  onDecisionReceipt: url => {
+    if (printedReceipts.has(url)) return;
+    printedReceipts.add(url);
+    process.stdout.write(`Decision receipt: ${url}\n`);
+  },
   ensClient, policy: createHttpPolicyGateway(policyOrigin),
   onApprovalRequired: process.argv.includes('--no-wait') ? undefined : waitForWorldApproval,
   headers: process.argv.includes('--hijack') ? { 'X-HuFu-Demo': 'hijack' } : undefined,

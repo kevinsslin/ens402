@@ -9,8 +9,8 @@ import './globals.css';
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-geist-sans' });
 export const metadata: Metadata = {
-  title: 'HuFu | Payee verification for x402 agents',
-  description: 'Independent payment authority for autonomous x402 service discovery.',
+  title: 'HuFu | Payment authorization for x402 agents',
+  description: 'Verify merchant authority, payee risk, and owner policy before an autonomous agent signs an x402 payment.',
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -22,6 +22,6 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <Badge variant="outline" className="hidden border-primary/40 text-primary sm:inline-flex"><span className="mr-1 size-1.5 rounded-full bg-primary"/>Testnet</Badge>
     </div></header>
     <main id="main-content" className="min-h-[calc(100vh-9rem)]">{children}</main>
-    <Separator/><footer className="mx-auto flex max-w-7xl flex-col justify-between gap-3 px-6 py-7 text-xs text-muted-foreground sm:flex-row"><span>HuFu verifies payees for SDK-mediated x402 payments.</span><span>Base Sepolia payments · ENSv2 Sepolia · World sandbox</span></footer>
+    <Separator/><footer className="mx-auto flex max-w-7xl flex-col justify-between gap-3 px-6 py-7 text-xs text-muted-foreground sm:flex-row"><span>HuFu authorizes SDK-mediated x402 payments.</span><span>Base Sepolia payments · ENSv2 Sepolia · World sandbox</span></footer>
   </body></html>;
 }

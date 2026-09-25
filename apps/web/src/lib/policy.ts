@@ -4,11 +4,13 @@ import { createPublicClient, decodeEventLog, http } from 'viem';
 import { baseSepolia } from 'viem/chains';
 import { z } from 'zod';
 import {
-  APPROVAL_WINDOW_MS, BASE_SEPOLIA_NETWORK, BASE_SEPOLIA_USDC, PAYMENT_INTENT_MAX_AGE_MS, createEnsClient,
-  paymentIntentMessage, resolveServiceAuthority, verifyPayment,
+  APPROVAL_WINDOW_MS, BASE_SEPOLIA_NETWORK, BASE_SEPOLIA_USDC, PAYMENT_INTENT_MAX_AGE_MS,
+  SETTLEMENT_REPORT_MAX_AGE_MS, createEnsClient,
+  canonicalResourceUrl, paymentIntentMessage, resolveServiceAuthority, verifyPayment,
   type SignedPaymentIntent,
 } from '@hufu402/sdk';
 import { database, transaction } from './db';
+import { decisionReceiptUrl, startDecisionReceipt, updateDecisionReceipt } from './decision';
 import { getRisk } from './risk';
 
 const address = z.string().refine(isAddress);
@@ -17,6 +19,11 @@ const intentSchema = z.object({
   resourceUrl: z.url(), payTo: address,
   amountAtomic: z.string().regex(/^[1-9][0-9]*$/),
   issuedAt: z.number().int(), policyOrigin: z.url(),
+  candidateSource: z.enum(['configured', 'bazaar']).optional(),
+  catalogAmountAtomic: z.string().regex(/^[1-9][0-9]*$/).optional(),
+  purpose: z.literal('preflight_refusal').optional(),
+  preflightReason: z.string().max(200).optional(),
+  observedResourceUrl: z.string().max(2048).optional(),
 });
 export const authorizeSchema = z.object({ intent: intentSchema, signature: z.string().regex(/^0x[0-9a-fA-F]+$/) });
 export const settleSchema = authorizeSchema.extend({
@@ -42,28 +49,78 @@ async function validateSignature(intent: SignedPaymentIntent, signature: `0x${st
   if (!valid) throw new Error('Invalid payer signature');
 }
 
-export interface AuthorizationResult { allowed: boolean; reason?: string; reservationId?: string; approvalUrl?: string; risk?: string }
+export interface AuthorizationResult { allowed: boolean; reason?: string; reservationId?: string; approvalUrl?: string; receiptUrl?: string; risk?: string }
 
 export async function authorizePayment(raw: unknown): Promise<AuthorizationResult> {
   const { intent, signature } = authorizeSchema.parse(raw);
   await validateSignature(intent, signature as `0x${string}`);
   const intentHash = createHash('sha256').update(paymentIntentMessage(intent)).digest('hex');
+  const receiptUrl = decisionReceiptUrl(intent.attemptId, policyOrigin());
+  if (!await startDecisionReceipt(intent, signature, intentHash)) {
+    return { allowed: false, reason: 'Attempt ID was reused for a different payment' };
+  }
   const ensRpc = process.env.SEPOLIA_RPC_URL;
   if (!ensRpc) throw new Error('SEPOLIA_RPC_URL is required');
-  const authority = await resolveServiceAuthority(createEnsClient(ensRpc), intent.serviceName);
-  const verified = verifyPayment({
-    serviceName: authority.name, resourceUrl: intent.resourceUrl, payer: getAddress(intent.payer),
-    requirement: { scheme: 'exact', network: BASE_SEPOLIA_NETWORK,
-      asset: BASE_SEPOLIA_USDC, amount: intent.amountAtomic, payTo: intent.payTo },
-  }, authority);
+  let authority;
+  try {
+    authority = await resolveServiceAuthority(createEnsClient(ensRpc), intent.serviceName);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'ENS authority unavailable';
+    await updateDecisionReceipt(intent.attemptId, 'paused', reason);
+    return { allowed: false, reason, receiptUrl };
+  }
+  if (intent.purpose === 'preflight_refusal' && intent.observedResourceUrl) {
+    let observedMatches = false;
+    try { observedMatches = canonicalResourceUrl(intent.observedResourceUrl) === intent.resourceUrl; }
+    catch { /* An invalid 402 resource URL cannot match the selected service. */ }
+    if (!observedMatches) {
+      const reason = '402 resource URL does not match the selected service';
+      await updateDecisionReceipt(intent.attemptId, 'refused', reason, { authority });
+      return { allowed: false, reason, receiptUrl };
+    }
+  }
+  let verified;
+  try {
+    verified = verifyPayment({
+      serviceName: authority.name, resourceUrl: intent.resourceUrl, payer: getAddress(intent.payer),
+      requirement: { scheme: 'exact', network: BASE_SEPOLIA_NETWORK,
+        asset: BASE_SEPOLIA_USDC, amount: intent.amountAtomic, payTo: intent.payTo },
+    }, authority);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'Payment authority mismatch';
+    await updateDecisionReceipt(intent.attemptId, 'refused', reason, { authority });
+    return { allowed: false, reason, receiptUrl };
+  }
+  if (intent.purpose === 'preflight_refusal') {
+    const reason = `SDK preflight refused: ${intent.preflightReason ?? 'unsupported 402 terms'}`;
+    await updateDecisionReceipt(intent.attemptId, 'refused', reason, { authority });
+    return { allowed: false, reason, receiptUrl };
+  }
   const perPaymentCap = configuredAtomic('HUFU_PER_PAYMENT_CAP_ATOMIC');
   const dailyCap = configuredAtomic('HUFU_DAILY_CAP_ATOMIC');
   const largeThreshold = configuredAtomic('HUFU_LARGE_PAYEE_ATOMIC');
-  if (verified.amountAtomic > perPaymentCap) return { allowed: false, reason: 'Per-payment cap exceeded' };
-  if (verified.amountAtomic > dailyCap) return { allowed: false, reason: 'Daily cap exceeded' };
-  const risk = await getRisk(authority.payTo);
-  if (risk.tier === 'high') return { allowed: false, reason: `High risk payee: ${risk.reasons.join(', ')}`, risk: risk.tier };
-  return transaction(async db => {
+  const evidence = { authority, perPaymentCapAtomic: perPaymentCap, dailyCapAtomic: dailyCap };
+  if (verified.amountAtomic > perPaymentCap) {
+    await updateDecisionReceipt(intent.attemptId, 'refused', 'Per-payment cap exceeded', evidence);
+    return { allowed: false, reason: 'Per-payment cap exceeded', receiptUrl };
+  }
+  if (verified.amountAtomic > dailyCap) {
+    await updateDecisionReceipt(intent.attemptId, 'refused', 'Daily cap exceeded', evidence);
+    return { allowed: false, reason: 'Daily cap exceeded', receiptUrl };
+  }
+  let risk;
+  try { risk = await getRisk(authority.payTo); }
+  catch {
+    await updateDecisionReceipt(intent.attemptId, 'paused', 'Risk scan unavailable', evidence);
+    return { allowed: false, reason: 'Risk scan unavailable', receiptUrl };
+  }
+  if (risk.tier === 'high') {
+    const reason = `High risk payee: ${risk.reasons.join(', ')}`;
+    await updateDecisionReceipt(intent.attemptId, 'refused', reason, { ...evidence, risk });
+    return { allowed: false, reason, risk: risk.tier, receiptUrl };
+  }
+  let spentBeforeAtomic: bigint | undefined;
+  const decision = await transaction(async db => {
     const wallet = intent.payer.toLowerCase();
     const agent = await db.query<{ owner_id: string }>('SELECT owner_id FROM agents WHERE wallet=$1', [wallet]);
     const ownerId = agent.rows[0]?.owner_id;
@@ -77,7 +134,7 @@ export async function authorizePayment(raw: unknown): Promise<AuthorizationResul
       if (row.owner_id !== ownerId || row.intent_hash !== intentHash) return { allowed: false, reason: 'Attempt ID was reused for a different payment' };
       // A second successful response could authorize another EIP-3009 nonce
       // against the same daily-spend reservation.
-      return { allowed: false, reason: `Payment attempt is already ${row.status}`, risk: risk.tier };
+      return { allowed: false, reason: `Payment attempt is already ${row.status}`, reservationId: row.id, risk: risk.tier };
     }
     const existingApproval = await db.query<{
       id: string; owner_id: string; intent_hash: string | null; status: string; expires_at: Date;
@@ -134,7 +191,8 @@ export async function authorizePayment(raw: unknown): Promise<AuthorizationResul
       `SELECT COALESCE(sum(amount_atomic),0)::text AS total FROM reservations
        WHERE owner_id=$1 AND spend_day=(now() AT TIME ZONE 'UTC')::date AND status IN ('reserved','settled','uncertain')`, [ownerId],
     );
-    if (BigInt(spent.rows[0]?.total ?? '0') + verified.amountAtomic > effectiveDailyCap) {
+    spentBeforeAtomic = BigInt(spent.rows[0]?.total ?? '0');
+    if (spentBeforeAtomic + verified.amountAtomic > effectiveDailyCap) {
       return { allowed: false, reason: 'Daily cap exceeded', risk: risk.tier };
     }
     const reservationId = randomUUID();
@@ -145,6 +203,14 @@ export async function authorizePayment(raw: unknown): Promise<AuthorizationResul
     );
     return { allowed: true, reservationId, risk: risk.tier };
   });
+  if (decision.reason?.startsWith('Payment attempt is already ')) {
+    return { ...decision, receiptUrl };
+  }
+  const approvalId = decision.approvalUrl?.split('/').at(-1);
+  await updateDecisionReceipt(intent.attemptId,
+    decision.allowed ? 'reserved' : approvalId ? 'approval_required' : 'refused', decision.reason ?? null,
+    { ...evidence, risk, spentBeforeAtomic, approvalId, reservationId: decision.reservationId });
+  return { ...decision, receiptUrl };
 }
 
 const transferEvent = parseAbiItem('event Transfer(address indexed from, address indexed to, uint256 value)');
@@ -175,7 +241,7 @@ export async function verifySettlement(intent: Pick<SignedPaymentIntent, 'payer'
 
 export async function recordSettlement(raw: unknown): Promise<{ status: 'settled' | 'uncertain' }> {
   const { intent, signature, reservationId, outcome, transaction: hash } = settleSchema.parse(raw);
-  await validateSignature(intent, signature as `0x${string}`, 45 * 60 * 1000);
+  await validateSignature(intent, signature as `0x${string}`, SETTLEMENT_REPORT_MAX_AGE_MS);
   const intentHash = createHash('sha256').update(paymentIntentMessage(intent)).digest('hex');
   const verified = outcome === 'settled' && hash ? await verifySettlement(intent, hash as `0x${string}`).catch(() => false) : false;
   const status = verified ? 'settled' : 'uncertain';

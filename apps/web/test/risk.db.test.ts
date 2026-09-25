@@ -24,7 +24,9 @@ describe.skipIf(!process.env.DATABASE_URL)('risk cache with PostgreSQL', () => {
     const results = await Promise.all(Array.from({ length: 10 }, () => getRisk(address)));
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(results.every(result => result.tier === 'low' && result.expiresAt === results[0]?.expiresAt)).toBe(true);
+    expect(results.filter(result => result.source === 'live')).toHaveLength(1);
     const cached = await getRisk(address);
+    expect(cached.source).toBe('cache');
     expect(cached.expiresAt).toBe(results[0]?.expiresAt);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     await database().query("UPDATE risk_results SET expires_at=now()-interval '1 second' WHERE address=$1", [address.toLowerCase()]);

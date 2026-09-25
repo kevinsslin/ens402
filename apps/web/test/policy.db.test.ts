@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { privateKeyToAccount } from 'viem/accounts';
 
@@ -16,11 +16,13 @@ vi.mock('@hufu402/sdk', async importOriginal => {
   return { ...sdk, createEnsClient: () => ({}), resolveServiceAuthority: async () => authority };
 });
 vi.mock('../src/lib/risk', () => ({
-  getRisk: async () => ({ tier: risk.tier, score: 0, reasons: [], scannedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 86400000).toISOString() }),
+  getRisk: async () => ({ tier: risk.tier, score: 0, reasons: [], scannedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 86400000).toISOString(), source: 'live' }),
 }));
 
-import { paymentIntentMessage } from '@hufu402/sdk';
+import { BASE_SEPOLIA_USDC, ENS_V2_PERMISSIONED_RESOLVER_IMPL, payForService,
+  paymentIntentMessage, type SignedPaymentIntent, type createEnsClient } from '@hufu402/sdk';
 import { authorizePayment, recordSettlement } from '../src/lib/policy';
+import { getDecisionReceipt } from '../src/lib/decision';
 import { beginApproval } from '../src/lib/world';
 import { database } from '../src/lib/db';
 
@@ -36,7 +38,7 @@ function intent(attemptId = randomUUID(), amountAtomic = '100') {
     issuedAt: Date.now(), policyOrigin,
   };
 }
-async function signed(payment: ReturnType<typeof intent>) {
+async function signed(payment: SignedPaymentIntent) {
   return { intent: payment, signature: await account.signMessage({ message: paymentIntentMessage(payment) }) };
 }
 
@@ -53,6 +55,7 @@ describe.skipIf(!process.env.DATABASE_URL)('policy database idempotency', () => 
   });
   afterAll(async () => {
     if (!process.env.DATABASE_URL) return;
+    await database().query("DELETE FROM decision_receipts WHERE signed_intent->>'payer'=$1", [account.address]);
     await database().query('DELETE FROM reservations WHERE owner_id=$1', [ownerId]);
     await database().query('DELETE FROM world_flows WHERE owner_id=$1', [ownerId]);
     await database().query('DELETE FROM approvals WHERE owner_id=$1', [ownerId]);
@@ -69,6 +72,11 @@ describe.skipIf(!process.env.DATABASE_URL)('policy database idempotency', () => 
     const retry = await authorizePayment(payment);
     expect(first.allowed).toBe(false);
     expect(retry.approvalUrl).toBe(first.approvalUrl);
+    const pendingReceipt = await getDecisionReceipt(payment.intent.attemptId);
+    expect(pendingReceipt).toMatchObject({ status: 'approval_required', signatureVerified: true });
+    expect(pendingReceipt?.intentSignature).toBeNull();
+    expect(pendingReceipt?.risk?.source).toBe('live');
+    expect(pendingReceipt?.authority?.payTo).toBe(payTo);
     const approvalId = first.approvalUrl?.split('/').at(-1);
     expect(approvalId).toBeTruthy();
     await database().query("UPDATE approvals SET status='approved' WHERE id=$1", [approvalId]);
@@ -77,7 +85,9 @@ describe.skipIf(!process.env.DATABASE_URL)('policy database idempotency', () => 
        VALUES ($1,$2,$3,$4,'eip155:84532',$5,10000,now()+interval '30 days','test-issuer',$6)`,
       [randomUUID(),ownerId,account.address.toLowerCase(),authority.name,payTo.toLowerCase(),ownerId],
     );
+    expect((await getDecisionReceipt(payment.intent.attemptId))?.status).toBe('approved_waiting_for_agent');
     const allowed = await authorizePayment(payment);
+    expect((await getDecisionReceipt(payment.intent.attemptId))?.status).toBe('reserved');
     const allowedRetry = await authorizePayment(payment);
     expect(allowed.allowed).toBe(true);
     expect(allowedRetry).toMatchObject({ allowed: false, reason: 'Payment attempt is already reserved' });
@@ -85,6 +95,75 @@ describe.skipIf(!process.env.DATABASE_URL)('policy database idempotency', () => 
     expect((await authorizePayment(changed)).reason).toMatch(/Attempt ID was reused/);
     expect((await recordSettlement({ ...payment, reservationId: allowed.reservationId, outcome: 'uncertain' })).status).toBe('uncertain');
     expect((await authorizePayment(payment)).reason).toMatch(/already uncertain/);
+    expect((await getDecisionReceipt(payment.intent.attemptId))?.status).toBe('uncertain');
+  });
+
+  it('records an ENS payee mismatch without risk scanning or payment authorization', async () => {
+    const payment = await signed({ ...intent(), payTo: '0x5555555555555555555555555555555555555555' as const });
+    const result = await authorizePayment(payment);
+    expect(result).toMatchObject({ allowed: false, reason: 'Payment payTo does not match ENS' });
+    expect(result.receiptUrl).toContain(payment.intent.attemptId);
+    const receipt = await getDecisionReceipt(payment.intent.attemptId);
+    expect(receipt).toMatchObject({ status: 'refused', signatureVerified: true });
+    expect(receipt?.risk).toBeNull();
+    expect(receipt?.authority?.payTo).toBe(payTo);
+  });
+
+  it('never authorizes a signed preflight refusal even if its payee matches ENS', async () => {
+    const payment = await signed({ ...intent(), purpose: 'preflight_refusal',
+      preflightReason: 'Unsupported USDC signing domain', observedResourceUrl: authority.endpoint });
+    const result = await authorizePayment(payment);
+    expect(result).toMatchObject({ allowed: false, reason: 'SDK preflight refused: Unsupported USDC signing domain' });
+    expect((await getDecisionReceipt(payment.intent.attemptId))?.status).toBe('refused');
+    const reservation = await database().query('SELECT id FROM reservations WHERE attempt_id=$1', [payment.intent.attemptId]);
+    expect(reservation.rowCount).toBe(0);
+  });
+
+  it('records an SDK payee-swap refusal without creating a payment signature', async () => {
+    const payee = '0x5555555555555555555555555555555555555555';
+    const requirement = { scheme: 'exact', network: 'eip155:84532', asset: BASE_SEPOLIA_USDC,
+      amount: '100', payTo: payee, maxTimeoutSeconds: 60, extra: { name: 'USDC', version: '2' } };
+    const required = { x402Version: 2,
+      resource: { url: authority.endpoint, description: 'Search', mimeType: 'application/json' },
+      accepts: [requirement] };
+    const signer = privateKeyToAccount(`0x${'99'.repeat(32)}`);
+    const paymentSignature = vi.spyOn(signer, 'signTypedData');
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 402,
+      headers: { 'PAYMENT-REQUIRED': Buffer.from(JSON.stringify(required)).toString('base64') } }));
+    const ensClient = {
+      getEnsText: vi.fn().mockResolvedValue(authority.endpoint),
+      getEnsAddress: vi.fn().mockResolvedValue(authority.payTo),
+      getEnsResolver: vi.fn().mockResolvedValue(authority.resolver),
+      readContract: vi.fn().mockResolvedValue(ENS_V2_PERMISSIONED_RESOLVER_IMPL),
+    } as unknown as ReturnType<typeof createEnsClient>;
+    let receiptUrl: string | undefined;
+    await expect(payForService({ serviceName: authority.name, resourceUrl: authority.endpoint,
+      ensClient, signer, policyOrigin, policy: { authorize: authorizePayment, settle: vi.fn() },
+      fetch: fetchMock, onDecisionReceipt: url => { receiptUrl = url; },
+    })).rejects.toThrow('Payment payTo does not match ENS');
+    expect(paymentSignature).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(receiptUrl).toMatch(/^https:\/\/policy\.example\/decisions\/[0-9a-f-]{36}$/);
+    const receiptId = receiptUrl!.split('/').at(-1)!;
+    const receipt = await getDecisionReceipt(receiptId);
+    expect(receipt).toMatchObject({ status: 'refused', signatureVerified: true,
+      signedIntent: { purpose: 'preflight_refusal', payTo: payee } });
+    await database().query('DELETE FROM decision_receipts WHERE attempt_id=$1', [receiptId]);
+    paymentSignature.mockRestore();
+  });
+
+  it('discloses a receipt signature only after it cannot authorize or report settlement', async () => {
+    const old = await signed({ ...intent(), issuedAt: Date.now() - 46 * 60 * 1000 });
+    const hash = createHash('sha256').update(paymentIntentMessage(old.intent)).digest('hex');
+    await database().query(
+      `INSERT INTO decision_receipts (attempt_id,intent_hash,signed_intent,intent_signature,status,reason)
+       VALUES ($1,$2,$3,$4,'refused','Test refusal')`,
+      [old.intent.attemptId, hash, JSON.stringify(old.intent), old.signature],
+    );
+    const receipt = await getDecisionReceipt(old.intent.attemptId);
+    expect(receipt?.signatureVerified).toBe(true);
+    expect(receipt?.intentSignature).toBe(old.signature);
+    await expect(authorizePayment(old)).rejects.toThrow('Payment intent expired');
   });
 
   it('accepts the original signed intent through a two-person approval window but rejects stale or future intents', async () => {

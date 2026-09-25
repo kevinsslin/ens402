@@ -42,8 +42,10 @@ describe('x402 signing gate', () => {
       fetch: fetchMock,
     })).rejects.toThrow();
     expect(signTypedData).not.toHaveBeenCalled();
-    expect(signMessage).not.toHaveBeenCalled();
-    expect(authorize).not.toHaveBeenCalled();
+    expect(signMessage).toHaveBeenCalledOnce();
+    expect(authorize).toHaveBeenCalledWith(expect.objectContaining({
+      intent: expect.objectContaining({ purpose: 'preflight_refusal', payTo: attacker }),
+    }));
   });
   it('refuses a price change from a selected Bazaar candidate before signing', async () => {
     const signTypedData = vi.fn();
@@ -57,8 +59,10 @@ describe('x402 signing gate', () => {
       fetch: vi.fn().mockResolvedValue(requiredResponse(payee)),
     })).rejects.toThrow();
     expect(signTypedData).not.toHaveBeenCalled();
-    expect(signMessage).not.toHaveBeenCalled();
-    expect(authorize).not.toHaveBeenCalled();
+    expect(signMessage).toHaveBeenCalledOnce();
+    expect(authorize).toHaveBeenCalledWith(expect.objectContaining({
+      intent: expect.objectContaining({ purpose: 'preflight_refusal', catalogAmountAtomic: '999' }),
+    }));
   });
   it.each([
     [{ name: 'USDC', version: '2', assetTransferMethod: 'permit2' }, 60, 'EIP-3009'],
@@ -76,8 +80,10 @@ describe('x402 signing gate', () => {
       fetch: vi.fn().mockResolvedValue(requiredResponse(payee, { extra, maxTimeoutSeconds })),
     })).rejects.toThrow(message);
     expect(signTypedData).not.toHaveBeenCalled();
-    expect(signMessage).not.toHaveBeenCalled();
-    expect(authorize).not.toHaveBeenCalled();
+    expect(signMessage).toHaveBeenCalledOnce();
+    expect(authorize).toHaveBeenCalledWith(expect.objectContaining({
+      intent: expect.objectContaining({ purpose: 'preflight_refusal' }),
+    }));
   });
   it('signs a verified EIP-3009 payment and records its settlement', async () => {
     const signer = privateKeyToAccount(`0x${'77'.repeat(32)}`);

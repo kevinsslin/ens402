@@ -1,4 +1,5 @@
 import { AlertTriangle, ArrowRight, Fingerprint, ShieldCheck } from 'lucide-react';
+import Link from 'next/link';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,7 +13,7 @@ export const dynamic = 'force-dynamic';
 type Approval = {
   agent_wallet: string; service_name: string; resource_url: string; pay_to: string;
   amount_atomic: string; daily_cap_atomic: string; status: string;
-  requires_second_person: boolean; first_subject: string | null; expires_at: Date;
+  requires_second_person: boolean; first_subject: string | null; expires_at: Date; attempt_id: string | null;
 };
 
 function formatUsdcAtomic(value: string): string {
@@ -33,7 +34,7 @@ export default async function ApprovalPage({ params, searchParams }: {
   try {
     const result = await database().query<Approval>(
       `SELECT agent_wallet,service_name,resource_url,pay_to,amount_atomic::text,daily_cap_atomic::text,status,
-        requires_second_person,first_subject,expires_at FROM approvals WHERE id=$1`, [id],
+        requires_second_person,first_subject,expires_at,attempt_id FROM approvals WHERE id=$1`, [id],
     );
     item = result.rows[0];
   } catch { return <ApprovalUnavailable reason="The approval service is not ready. Ask the agent operator to check its policy database."/>; }
@@ -48,6 +49,7 @@ export default async function ApprovalPage({ params, searchParams }: {
   return <div className="mx-auto max-w-6xl px-6 py-16 sm:py-20">
     <PageHeading label="WORLD ID FOR AGENTS" title="Review this payment." description="Confirm the exact payment and the standing authorization it creates. World verifies the human approver, while HuFu checks the payee separately."/>
     <Alert variant={status === 'denied' || status === 'expired' ? 'destructive' : 'default'} className={status === 'denied' || status === 'expired' ? 'mb-5' : 'mb-5 border-primary/30 bg-primary/5'}><Fingerprint className="size-4"/><AlertDescription className="flex flex-wrap items-center gap-2"><strong className="font-semibold">Approval status</strong><Badge variant="outline" className="capitalize">{status}</Badge>{secondPersonPending && <span>Waiting for a second enrolled person.</span>}</AlertDescription></Alert>
+    {item.attempt_id && <Button asChild variant="outline" size="sm" className="mb-5"><Link href={`/decisions/${item.attempt_id}`}>Inspect payment decision <ArrowRight/></Link></Button>}
     <div className="grid gap-4 md:grid-cols-2">
       <Card className="border-border/70 bg-card/80"><CardHeader><div className="flex items-center justify-between gap-3"><CardTitle>Payment now</CardTitle><Badge variant="secondary">Exact payment</Badge></div><CardDescription>Only this payment request and amount are approved.</CardDescription></CardHeader><CardContent className="grid gap-4"><DataRow label="Amount" value={<span className="text-xl text-primary">{formatUsdcAtomic(item.amount_atomic)}</span>}/><DataRow label="Agent wallet" value={item.agent_wallet} mono/><DataRow label="ENS service" value={item.service_name}/><DataRow label="Endpoint" value={item.resource_url}/><DataRow label="Payee" value={item.pay_to} mono/></CardContent></Card>
       <Card className="border-border/70 bg-card/80"><CardHeader><div className="flex items-center justify-between gap-3"><CardTitle>Standing authorization</CardTitle><Badge variant="outline">30 days</Badge></div><CardDescription>Future payments must keep the same owner, agent, ENS service, Base Sepolia network, and payee. A payee change needs fresh approval.</CardDescription></CardHeader><CardContent className="grid gap-4"><DataRow label="Authorized service" value={item.service_name}/><DataRow label="Authorized payee" value={item.pay_to} mono/><DataRow label="Owner daily cap" value={formatUsdcAtomic(item.daily_cap_atomic)}/><DataRow label="Daily reset" value="00:00 UTC"/><DataRow label="This request expires" value={item.expires_at.toISOString()}/></CardContent></Card>
