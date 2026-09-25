@@ -11,7 +11,7 @@ let resourceUrl = process.env.MERCHANT_RESOURCE_URL;
 let expectedAmountAtomic: bigint | undefined;
 const policyOrigin = process.env.POLICY_ORIGIN;
 const sepoliaRpc = process.env.SEPOLIA_RPC_URL;
-if (!key || !/^0x[0-9a-fA-F]{64}$/.test(key)) throw new Error('PAYER_PRIVATE_KEY is required in .env');
+if (!key || !/^0x[0-9a-fA-F]{64}$/.test(key)) throw new Error('PAYER_PRIVATE_KEY is required in .env.local');
 if (!policyOrigin || !sepoliaRpc) {
   throw new Error('POLICY_ORIGIN and SEPOLIA_RPC_URL are required');
 }
