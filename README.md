@@ -1,10 +1,10 @@
 # HuFu
 
-**Payee verification for x402 agents.** No match, no payment. Ask a human only when authority expands.
+**Payment authorization for x402 agents.** No match, no payment. Ask a human only when authority expands.
 
 Policy site: [hufu402.vercel.app](https://hufu402.vercel.app). The payment and approval integrations are still being connected.
 
-HuFu is an SDK-mediated payment authorization layer for x402 agents. It compares each x402 `payTo` with a merchant-controlled ENSv2 record before an agent creates a payment signature. ENSv2 separates permission to update a service endpoint from permission to change its payment address. Intercepta screens the address; World ID for Agents authorizes new payees and larger payments. Each signed policy decision has a receipt at `/decisions/<attempt-id>` with the authority, risk, limits, approval, and settlement state.
+HuFu is an SDK-mediated payment authorization layer for agent developers. An agent may discover a service through CDP Bazaar or select one from configuration; HuFu then compares the service URL and x402 `payTo` with independently controlled ENSv2 records before a payment signature is created. ENSv2 separates permission to update a service endpoint from permission to change its payment address. Intercepta screens the payee, owner policy limits spending, and World ID for Agents authorizes a new payee or a larger payment. Each signed policy attempt has an inspectable receipt at `/decisions/<attempt-id>` with the candidate source, authority check, risk result, limits, approval, and settlement state.
 
 ETHGlobal Tokyo 2026. Testnets and World sandbox only. This checkout contains pre-kickoff implementation authorized by the project owner; Classic eligibility needs organizer confirmation.
 
