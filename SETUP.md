@@ -129,3 +129,13 @@ pnpm build
 - Credential-dependent live tests and a real funded settlement remain separate evidence gates.
 
 The full completion checklist is in `IMPLEMENTATION.md`.
+
+## 8. Full local Anvil rehearsal
+
+```sh
+pnpm test:anvil
+```
+
+This starts disposable Sepolia and Base Sepolia Anvil forks plus a temporary PostgreSQL cluster. It registers names through native ENS contracts, funds a local payer through the deployed USDC minter, executes actual EIP-3009 transfers through a local HTTP merchant, and verifies balances, nonce replay protection, ledger idempotency, recipient changes, screening holds, lost responses, reconciliation, delivery errors and budget/revocation behavior. No transaction is sent to a public network. Temporary processes/data are cleaned up.
+
+Set `ENS_FORK_RPC_URL` or `BASE_SEPOLIA_RPC_URL` if public RPCs are unreliable. `BASE_FORK_BLOCK` optionally pins the payment fork; the report records the block used. The harness uses a public fixture key and deterministic screening responses, not Privy or Intercepta credentials. Production HTTPS transport is unchanged; only the test injects a loopback HTTP bridge. The local merchant/relayer is a test adapter rather than the deployed merchant or public facilitator. Their orchestration is covered separately by server integration tests. Provider enforcement and real deployment credentials remain separate live gates.

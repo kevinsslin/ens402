@@ -1,0 +1,4 @@
+{
+  "extends": "./tsconfig.base.json",
+  "include": ["scripts/anvil-payment.ts", "scripts/ens-fork.ts"]
+}

@@ -79,13 +79,26 @@ try {
   await assert.rejects(() => simulateEnsTransaction(client, ops, moved));
   assert.equal((await read()).endpoint, after.endpoint);
   checks.push('Revocation rejects later writes while retaining the published record');
+  let payments;
+  if (process.argv.includes('--payments')) {
+    const currentTime = Math.floor(Date.now() / 1000);
+    if (Number((await client.getBlock()).timestamp) < currentTime) {
+      await client.request({ method: 'evm_setNextBlockTimestamp' as never, params: [currentTime] as never });
+      await client.request({ method: 'evm_mine' as never, params: [] as never });
+    }
+    const { testAnvilPayments } = await import('./anvil-payment');
+    payments = await testAnvilPayments(read, async payTo => {
+      const update = prepareRecordUpdate(await read(), 'ens402.payment', JSON.stringify({ version: 1, scheme: 'exact', network: NETWORK, asset: USDC, payTo }));
+      await send(update.to, update.data);
+    });
+  }
   const aliasAbi = parseAbi(['function setAlias(bytes fromName,bytes toName)']);
   const { packetToBytes } = await import('viem/ens'); const { bytesToHex } = await import('viem');
   await send(resolver, encodeFunctionData({ abi: aliasAbi, functionName: 'setAlias', args: [bytesToHex(packetToBytes(name)), bytesToHex(packetToBytes('other.ens402fork'))] }));
   await assert.rejects(read, /Aliased services/);
   checks.push('SDK rejects aliased service identity');
-  const report = { checkedAt: new Date().toISOString(), sourceBlock: 11778629, scope: 'Disposable Sepolia fork only; all registrations and transactions are local', checks };
+  const report = { checkedAt: new Date().toISOString(), sourceBlock: 11778629, scope: 'Disposable forks only; all registrations and transactions are local', checks, payments };
   await mkdir('docs/validation', { recursive: true });
-  await writeFile('docs/validation/ens402-sdk-fork.json', JSON.stringify(report, null, 2));
+  await writeFile(payments ? 'docs/validation/ens402-anvil-e2e.json' : 'docs/validation/ens402-sdk-fork.json', JSON.stringify(report, null, 2));
   console.log(JSON.stringify(report, null, 2));
 } finally { node.kill('SIGTERM'); }

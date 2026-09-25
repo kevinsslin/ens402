@@ -16,7 +16,8 @@
     "test:integration": "vitest run packages/server/test/store.test.ts packages/server/test/workflow.test.ts",
     "setup:check": "tsx scripts/check-setup.ts",
     "ens:plan": "tsx scripts/ens-plan.ts",
-    "db:local": "tsx scripts/db-local.ts"
+    "db:local": "tsx scripts/db-local.ts",
+    "test:anvil": "pnpm exec tsc -p tsconfig.anvil.json --noEmit && pnpm test:contracts && tsx scripts/ens-fork.ts --payments && pnpm test:integration"
   },
   "devDependencies": {
     "@privy-io/node": "0.35.0",

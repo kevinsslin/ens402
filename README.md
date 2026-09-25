@@ -47,6 +47,7 @@ pnpm test
 pnpm test:integration
 pnpm test:contracts
 pnpm test:ens:fork
+pnpm test:anvil
 pnpm typecheck
 pnpm build
 pnpm test:intercepta:live

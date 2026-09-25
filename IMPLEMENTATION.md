@@ -43,3 +43,9 @@ Implementation commit `8147b52` passed both GitHub Actions jobs and deployed suc
 Browser login, service inspection, approval, paid-receipt display and revocation were exercised. Inspection/approval/payment UI used explicitly injected browser fixtures, not live provider calls. The real local login used PostgreSQL. At 390 CSS pixels, console and architecture have no page-level horizontal overflow. Screenshot capture timed out, so visual screenshot acceptance remains unverified.
 
 The historical Vercel project `hufu402-merchant` still points to removed `apps/merchant` and has a failing deployment status. The current merchant routes are inside the successful ENS402 deployment. The old project was preserved.
+
+## Dual-Anvil payment evidence
+
+The native Sepolia ENS fork was joined to a Base Sepolia USDC fork (block `47301025`) and a temporary PostgreSQL ledger. Actual token transfers, balances, AuthorizationUsed nonces and replay reverts passed. Recipient mismatch, native Treasury rotation and screening holds prevented signing. A lost HTTP response after payment retained the budget and reconciled only against the original nonce; delivery failure remained spent; daily limits and revocation prevented further payments.
+
+Run `pnpm test:anvil`. The local signer, screening response and merchant/relayer are test adapters. This proves actual local contract execution and SDK/ledger integration, not live Privy, Intercepta or public facilitator behavior. Production server orchestration is covered separately by the existing integration suite. No transaction was sent to a public network.
