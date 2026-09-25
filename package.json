@@ -1,0 +1,16 @@
+{
+  "name": "hufu402",
+  "private": true,
+  "packageManager": "pnpm@9.12.3",
+  "scripts": {
+    "build": "pnpm --filter @hufu402/sdk build && pnpm --filter @hufu402/web build && pnpm --filter @hufu402/merchant build && pnpm --filter @hufu402/agent build",
+    "typecheck": "pnpm --filter @hufu402/sdk typecheck && pnpm --filter @hufu402/web typecheck && pnpm --filter @hufu402/merchant typecheck && pnpm --filter @hufu402/agent typecheck",
+    "test": "pnpm --filter @hufu402/sdk test && pnpm --filter @hufu402/web test",
+    "test:db": "pnpm --filter @hufu402/web test:db",
+    "dev": "pnpm --filter @hufu402/web dev"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}
