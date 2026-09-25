@@ -11,11 +11,10 @@ const links = [
 
 export function SiteNav() {
   const pathname = usePathname();
-  return <nav aria-label="Main navigation" className="ml-auto flex h-full items-center gap-3 text-xs sm:gap-5 sm:text-sm">{links.map(link => {
+  return <nav aria-label="Main navigation" className="ml-auto flex h-full items-center gap-2 text-xs sm:gap-5 sm:text-sm">{links.map(link => {
     const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
     return <Link key={link.href} href={link.href} aria-current={active ? 'page' : undefined}
       className={cn('flex h-full items-center border-b-2 transition-colors hover:text-foreground focus-visible:text-foreground',
-        active ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground',
-        link.href === '/enroll' && 'max-[359px]:hidden')}>{link.label}</Link>;
+        active ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground')}>{link.label}</Link>;
   })}</nav>;
 }
