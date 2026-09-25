@@ -1,27 +1,35 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Geist } from 'next/font/google';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { SiteNav } from '@/components/site-nav';
-import { cn } from '@/lib/utils';
+import { Geist, Geist_Mono } from 'next/font/google';
+import { ArrowUpRight, Layers3 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import './globals.css';
 
-const geist = Geist({ subsets: ['latin'], variable: '--font-geist-sans' });
+const sans = Geist({ subsets: ['latin'], variable: '--font-geist-sans' });
+const mono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' });
+
 export const metadata: Metadata = {
-  title: 'HuFu | Payment authorization for x402 agents',
-  description: 'Verify merchant authority, payee risk, and owner policy before an autonomous agent signs an x402 payment.',
+  title: 'ENS402 | Resolve. Verify. Screen.',
+  description: 'An ENS-based service configuration and payment verification stack for x402. Resolve endpoints, verify payment requirements, screen risk, and use your own wallet.',
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en" className={cn('dark font-sans', geist.variable)}><body className="min-h-screen antialiased">
-    <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground">Skip to content</a>
-    <header className="sticky top-0 z-40 border-b border-border/70 bg-background/90 backdrop-blur-md"><div className="mx-auto flex h-18 max-w-7xl items-center gap-3 px-3 sm:gap-7 sm:px-6">
-      <Link href="/" className="flex items-center gap-2 font-bold tracking-tight" aria-label="HuFu home"><span className="flex size-9 items-center justify-center rounded-lg bg-primary text-xl text-primary-foreground">虎</span><span className="text-xl">HuFu</span><sup className="-ml-1 self-start pt-1 text-xs text-primary">402</sup></Link>
-      <SiteNav/>
-      <Badge variant="outline" className="hidden border-primary/40 text-primary sm:inline-flex"><span className="mr-1 size-1.5 rounded-full bg-primary"/>Testnet</Badge>
-    </div></header>
-    <main id="main-content" className="min-h-[calc(100vh-9rem)]">{children}</main>
-    <Separator/><footer className="mx-auto flex max-w-7xl flex-col justify-between gap-3 px-6 py-7 text-xs text-muted-foreground sm:flex-row"><span>HuFu authorizes SDK-mediated x402 payments.</span><span>Base Sepolia payments · ENSv2 Sepolia · World sandbox</span></footer>
+  return <html lang="en" className={`dark ${sans.variable} ${mono.variable}`}><body className="min-h-screen antialiased">
+    <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-primary focus:p-3 focus:text-primary-foreground">Skip to content</a>
+    <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur-sm">
+      <div className="section-shell flex min-h-20 flex-wrap items-center justify-between gap-x-6 gap-y-3 py-4">
+        <Link href="/" aria-label="ENS402 home" className="flex items-center gap-2.5 text-xl font-semibold tracking-tight"><Layers3 className="size-6 text-primary" aria-hidden="true"/>ENS<span className="-ml-2 text-primary">402</span></Link>
+        <nav aria-label="Main navigation" className="flex items-center gap-5 text-sm text-muted-foreground sm:gap-7">
+          <Link href="/#stack" className="hover:text-foreground">The stack</Link>
+          <Link href="/#integrate" className="hover:text-foreground">Integrate</Link>
+          <Button asChild variant="outline" className="hidden sm:inline-flex"><Link href="/architecture">Architecture <ArrowUpRight aria-hidden="true"/></Link></Button>
+        </nav>
+      </div>
+    </header>
+    <main id="main-content">{children}</main>
+    <footer className="border-t"><div className="section-shell flex flex-col justify-between gap-5 py-9 text-xs leading-relaxed text-muted-foreground sm:flex-row">
+      <div><p className="font-medium text-foreground">ENS402</p><p className="mt-1">An independent project built on ENSv2 and x402.</p></div>
+      <div className="sm:text-right"><p>Prototype · ETHGlobal Tokyo 2026</p><p className="mt-1">ENS Sepolia / payments on Base Sepolia</p><Link href="/architecture" className="mt-2 inline-block underline underline-offset-4">Design, sources & implementation status</Link></div>
+    </div></footer>
   </body></html>;
 }

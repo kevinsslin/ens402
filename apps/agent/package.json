@@ -1,9 +1,0 @@
-{
-  "name": "@hufu402/agent",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "scripts": {"dev": "tsx src/pay.ts", "typecheck": "tsc --noEmit", "build": "tsc -p tsconfig.json"},
-  "dependencies": {"@hufu402/sdk": "workspace:*", "dotenv": "^17.2.3", "viem": "^2.56.8"},
-  "devDependencies": {"@types/node": "^24.5.2", "tsx": "^4.20.5"}
-}

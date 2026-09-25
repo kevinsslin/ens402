@@ -1,25 +1,31 @@
-# HuFu
+# ENS402
 
-**Payment authorization for x402 agents.** No match, no payment. Ask a human only when authority expands.
+**A name to resolve. A payment to verify.**
 
-Policy site: [hufu402.vercel.app](https://hufu402.vercel.app). The payment and approval integrations are still being connected.
+An ENS-based public service configuration and payment verification stack for x402. Resolve current endpoints, verify actual payment requirements, screen risk, and hand off to the integrator's own policy and wallet.
 
-HuFu is an SDK-mediated payment authorization layer for agent developers. An agent may discover a service through CDP Bazaar or select one from configuration; HuFu then compares the service URL and x402 `payTo` with independently controlled ENSv2 records before a payment signature is created. ENSv2 separates permission to update a service endpoint from permission to change its payment address. Intercepta screens the payee, owner policy limits spending, and World ID for Agents authorizes a new payee or a larger payment. Each signed policy attempt has an inspectable receipt at `/decisions/<attempt-id>` with the candidate source, authority check, risk result, limits, approval, and settlement state.
+## Current implementation
 
-ETHGlobal Tokyo 2026. Testnets and World sandbox only. This checkout contains pre-kickoff implementation authorized by the project owner; Classic eligibility needs organizer confirmation.
+- Next.js landing page and architecture notes, built with recovered shadcn/ui primitives.
+- Interactive, explicitly illustrative endpoint-change and payment-mismatch examples.
+- Native ENS resolver permissions were tested separately on a disposable Sepolia fork.
+- A reusable SDK, live ENS service resolution, real risk screening, and complete testnet payment integration remain under development. No published npm package is claimed.
 
-The product and architecture brief is `docs/IDEA.md` in this local checkout. `docs/` is gitignored; its `reference/` directory keeps integration-specific provider snapshots. Current provider docs and deployed contract ABIs take precedence over snapshots.
+The core design does not require a Privy/CDP account, our hosted buyer database, or World authentication. Those can be independent adapters or reference integrations. ENS enforces record-write permissions; payment enforcement depends on the signing path an integrator chooses.
 
-## Local workflow
+## Run locally
 
 ```sh
 pnpm install
-cp .env.example .env.local
+pnpm dev
 pnpm build
-pnpm test
-pnpm --filter @hufu402/web ens:preflight
+pnpm typecheck
 ```
 
-Configure private values in the repository-root `.env.local`; the local web app, merchant, agent, and scripts load it. Vercel production variables must be set separately. Run `pnpm --filter @hufu402/web migrate` against transactional Postgres, then `pnpm dev` for the policy site. `pnpm test:db` exercises the policy and risk cache against that database. `pnpm --filter @hufu402/web ens:safe-plan` prepares Sepolia Safe calldata after the Safe, Ops, payee, and service addresses are set. The plan simulates factory deployments; review all transactions and onchain state before signing. After deployment, set `ENS_RESOLVER_DEPLOY_BLOCK` to the block containing the factory's resolver `ProxyDeployed` event and run `pnpm --filter @hufu402/web ens:role-readback` to verify ownership, records, and scoped Ops permissions against Sepolia.
+Web project: `apps/web`. Vercel root directory: `apps/web`. Build command: `pnpm build` from that directory. The landing page requires no secrets.
 
-The SDK is in `packages/sdk`, the policy site in `apps/web`, the x402 merchant in `apps/merchant`, and the payer CLI in `apps/agent`. The CLI accepts `--discover "search phrase"` to rank Bazaar candidates whose ENS endpoint and payee match; it then requires the live 402 price to match the selected catalog price. When World approval is needed, the CLI prints the link, waits for the verified approval, and resumes the same signed payment intent. Use `--no-wait` to print the approval link and exit. Live World, Intercepta, ENS, CDP, and payment integration still need the credentials and testnet assets listed in the local `docs/STATUS.md`.
+## Design records
+
+`docs/IDEA.md` is the current scope; `docs/DESIGN-CLARIFICATIONS.md` records the discussion and superseded choices. Research and fork validation are in `docs/reference/` and `docs/validation/`. These local documents are Git-ignored. Public-facing architecture and evidence boundaries are available at `/architecture`.
+
+ENS uses Sepolia; payments use Base Sepolia. This repository remains exploratory. Historical HuFu payment code is retained in Git history; see `AGENTS.md` for development rules.

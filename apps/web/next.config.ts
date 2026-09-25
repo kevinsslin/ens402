@@ -1,9 +1,4 @@
-import './load-env';
 import type { NextConfig } from 'next';
 
-const config: NextConfig = {
-  transpilePackages: ['@hufu402/sdk'],
-  agentRules: false,
-};
-
+const config: NextConfig = { devIndicators: false };
 export default config;
