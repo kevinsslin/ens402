@@ -5,7 +5,7 @@ import { getAddress, isAddress } from 'viem';
 import { corpusSize, searchKnowledge } from './search.js';
 
 const payTo = process.env.X402_PAY_TO;
-const price = process.env.X402_PRICE_USD ?? '$0.01';
+const price = process.env.X402_PRICE_USD ?? '$0.05';
 const ensName = process.env.SERVICE_ENS_NAME ?? 'search.hufu402.eth';
 const app = express();
 app.disable('x-powered-by');
