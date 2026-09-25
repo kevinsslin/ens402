@@ -40,7 +40,7 @@ All exact steps and variable names are in [SETUP.md](SETUP.md): Privy App ID/Sec
 
 Implementation commit `8147b52` passed both GitHub Actions jobs and deployed successfully to https://ens402.vercel.app. Public pages and status return 200; unauthenticated control returns 401. Production correctly reports missing database, Privy credentials and ENS name.
 
-Browser login, service inspection, approval, paid-receipt display and revocation were exercised. Inspection/approval/payment UI used explicitly injected browser fixtures, not live provider calls. The real local login used PostgreSQL. At 390 CSS pixels, console and architecture have no page-level horizontal overflow. Screenshot capture timed out, so visual screenshot acceptance remains unverified.
+Browser login, service inspection, approval, paid-receipt display and revocation were exercised. Inspection/approval/payment UI used explicitly injected browser fixtures, not live provider calls. The real local login used PostgreSQL. At 390 CSS pixels, console and architecture have no page-level horizontal overflow. The initial Ego screenshot capture timed out. A subsequent built-in browser inspection successfully verified the deployed desktop architecture diagram and mobile (390px) public console setup screen. Authenticated live payment screens still require the missing production configuration.
 
 The historical Vercel project `hufu402-merchant` still points to removed `apps/merchant` and has a failing deployment status. The current merchant routes are inside the successful ENS402 deployment. The old project was preserved.
 
