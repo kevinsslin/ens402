@@ -131,6 +131,7 @@ describe.skipIf(!process.env.DATABASE_URL)('policy database idempotency', () => 
     const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 402,
       headers: { 'PAYMENT-REQUIRED': Buffer.from(JSON.stringify(required)).toString('base64') } }));
     const ensClient = {
+      getChainId: vi.fn().mockResolvedValue(11155111),
       getEnsText: vi.fn().mockResolvedValue(authority.endpoint),
       getEnsAddress: vi.fn().mockResolvedValue(authority.payTo),
       getEnsResolver: vi.fn().mockResolvedValue(authority.resolver),

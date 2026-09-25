@@ -35,6 +35,7 @@ export function canonicalResourceUrl(input: string): string {
 
 export async function resolveServiceAuthority(client: EnsClient, rawName: string): Promise<ServiceAuthority> {
   const name = normalize(rawName);
+  if (await client.getChainId() !== sepolia.id) throw new Error('ENS RPC is not on Sepolia');
   const [endpoint, payTo, resolver] = await Promise.all([
     client.getEnsText({ name, key: ENDPOINT_RECORD_KEY, universalResolverAddress: ENS_V2_UNIVERSAL_RESOLVER }),
     client.getEnsAddress({ name, coinType: BASE_SEPOLIA_COIN_TYPE, universalResolverAddress: ENS_V2_UNIVERSAL_RESOLVER }),

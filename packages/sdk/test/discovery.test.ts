@@ -19,6 +19,7 @@ function listing(name: string, resource: string, amount: string, payTo: string) 
 describe('Bazaar discovery', () => {
   it('ranks only catalog candidates whose endpoint and payee match ENS', async () => {
     const client = {
+      getChainId: vi.fn().mockResolvedValue(11155111),
       getEnsText: vi.fn(async ({ name }: { name: string }) => services[name]?.endpoint),
       getEnsAddress: vi.fn(async ({ name }: { name: string }) => services[name]?.payTo),
       getEnsResolver: vi.fn().mockResolvedValue('0x3333333333333333333333333333333333333333'),

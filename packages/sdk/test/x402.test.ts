@@ -9,6 +9,7 @@ const payee = '0x1111111111111111111111111111111111111111';
 const attacker = '0x5555555555555555555555555555555555555555';
 function serviceClient() {
   return {
+    getChainId: vi.fn().mockResolvedValue(11155111),
     getEnsText: vi.fn().mockResolvedValue(url),
     getEnsAddress: vi.fn().mockResolvedValue(payee),
     getEnsResolver: vi.fn().mockResolvedValue('0x2222222222222222222222222222222222222222'),
