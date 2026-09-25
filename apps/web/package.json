@@ -9,7 +9,7 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test:db": "vitest run test/*.db.test.ts",
-    "test": "vitest run test/world.test.ts",
+    "test": "vitest run test/world.test.ts test/settlement.test.ts",
     "migrate": "tsx scripts/migrate.ts",
     "ens:preflight": "tsx scripts/ens-preflight.ts",
     "ens:safe-plan": "tsx scripts/ens-safe-plan.ts",

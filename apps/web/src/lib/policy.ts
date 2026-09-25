@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { getAddress, isAddress, parseAbiItem, verifyMessage } from 'viem';
+import { getAddress, isAddress, parseAbiItem, verifyMessage, type Log } from 'viem';
 import { createPublicClient, decodeEventLog, http } from 'viem';
 import { baseSepolia } from 'viem/chains';
 import { z } from 'zod';
@@ -146,22 +146,29 @@ export async function authorizePayment(raw: unknown): Promise<AuthorizationResul
 }
 
 const transferEvent = parseAbiItem('event Transfer(address indexed from, address indexed to, uint256 value)');
+export function hasExactUsdcTransfer(
+  intent: Pick<SignedPaymentIntent, 'payer' | 'payTo' | 'amountAtomic'>,
+  logs: readonly Pick<Log, 'address' | 'data' | 'topics'>[],
+): boolean {
+  let payerTransfers = 0;
+  for (const log of logs) {
+    if (getAddress(log.address) !== getAddress(BASE_SEPOLIA_USDC)) continue;
+    try {
+      const decoded = decodeEventLog({ abi: [transferEvent], data: log.data, topics: log.topics });
+      if (decoded.eventName !== 'Transfer' || getAddress(decoded.args.from) !== getAddress(intent.payer)) continue;
+      payerTransfers++;
+      if (getAddress(decoded.args.to) !== getAddress(intent.payTo) || decoded.args.value !== BigInt(intent.amountAtomic)) return false;
+    } catch { continue; }
+  }
+  return payerTransfers === 1;
+}
 export async function verifySettlement(intent: Pick<SignedPaymentIntent, 'payer' | 'payTo' | 'amountAtomic'>, hash: `0x${string}`): Promise<boolean> {
   const rpc = process.env.BASE_SEPOLIA_RPC_URL;
   if (!rpc) throw new Error('BASE_SEPOLIA_RPC_URL is required');
   const client = createPublicClient({ chain: baseSepolia, transport: http(rpc) });
   const receipt = await client.getTransactionReceipt({ hash });
   if (receipt.status !== 'success') return false;
-  return receipt.logs.some(log => {
-    if (getAddress(log.address) !== getAddress(BASE_SEPOLIA_USDC)) return false;
-    try {
-      const decoded = decodeEventLog({ abi: [transferEvent], data: log.data, topics: log.topics });
-      return decoded.eventName === 'Transfer' &&
-        getAddress(decoded.args.from) === getAddress(intent.payer) &&
-        getAddress(decoded.args.to) === getAddress(intent.payTo) &&
-        decoded.args.value >= BigInt(intent.amountAtomic);
-    } catch { return false; }
-  });
+  return hasExactUsdcTransfer(intent, receipt.logs);
 }
 
 export async function recordSettlement(raw: unknown): Promise<{ status: 'settled' | 'uncertain' }> {
