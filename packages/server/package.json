@@ -1,0 +1,28 @@
+{
+  "name": "@ens402/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./store": "./src/store.ts",
+    "./transport": "./src/transport.ts",
+    "./merchant": "./src/merchant.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ens402/sdk": "workspace:*",
+    "@privy-io/node": "0.35.0",
+    "@x402/core": "2.27.0",
+    "viem": "^2.56.9",
+    "pg": "^8.16.3",
+    "undici": "^7.16.0",
+    "ipaddr.js": "^2.2.0",
+    "@x402/evm": "2.27.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.15.5"
+  }
+}

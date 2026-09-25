@@ -21,7 +21,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <Link href="/" aria-label="ENS402 home" className="flex items-center gap-2.5 text-xl font-semibold tracking-tight"><Layers3 className="size-6 text-primary" aria-hidden="true"/>ENS<span className="-ml-2 text-primary">402</span></Link>
         <nav aria-label="Main navigation" className="flex items-center gap-5 text-sm text-muted-foreground sm:gap-7">
           <Link href="/#stack" className="hover:text-foreground">The stack</Link>
-          <Link href="/#integrate" className="hover:text-foreground">Integrate</Link>
+          <Link href="/console" className="hover:text-foreground">Console</Link>
           <Button asChild variant="outline" className="hidden sm:inline-flex"><Link href="/architecture">Architecture <ArrowUpRight aria-hidden="true"/></Link></Button>
         </nav>
       </div>

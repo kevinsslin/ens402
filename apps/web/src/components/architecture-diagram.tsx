@@ -18,6 +18,6 @@ export function ArchitectureDiagram() {
       { title: '5. Pay', body: 'Send the authorization through x402 to the service.', Icon: Building2 },
     ].map(({ title, body, Icon }, i) => <li key={title} className="relative rounded-lg border bg-background p-4"><div className="flex items-center justify-between"><Icon className="size-4 text-primary" aria-hidden="true"/>{i < 4 && <ArrowRight className="size-3 text-muted-foreground" aria-hidden="true"/>}</div><p className="mt-4 text-sm font-medium">{title}</p><p className="mt-2 text-xs leading-6 text-muted-foreground">{body}</p></li>)}</ol>
       <div className="mt-4 rounded-lg border border-destructive/30 px-4 py-3 text-xs leading-6"><span className="font-medium text-destructive">Any mismatch or missing evidence → stop before signing.</span><span className="text-muted-foreground"> Discovery can come from Bazaar, a catalog, or an agent&apos;s own search.</span></div>
-    </div><figcaption className="border-t px-5 py-4 text-xs leading-6 text-muted-foreground sm:px-7">Target flow. The SDK and signing adapter are implemented. A deployed ENS service, live Privy policy checks, and payment settlement still require end-to-end validation.</figcaption>
+    </div><figcaption className="border-t px-5 py-4 text-xs leading-6 text-muted-foreground sm:px-7">Implemented flow with contract-fork, protocol and PostgreSQL integration tests. A controlled live ENS service, Privy credentials and funded testnet settlement are still required for live end-to-end validation.</figcaption>
   </figure>;
 }

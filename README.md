@@ -2,55 +2,67 @@
 
 **Let agents find services. Verify where they pay.**
 
-ENS402 checks an x402 payment request against the merchant's public ENS configuration, buyer approval, and Intercepta address-risk evidence before requesting a signature. Native ENSv2 EAC separates who can edit the API URL from who can edit payment settings.
+An agent resolves a merchant's current API through ENS, compares the HTTP 402 bill with public payment settings, screens the recipient, and asks its wallet to sign. Native ENSv2 EAC lets an operator update the API URL without permission to change the payment recipient.
 
-## Implementation
+## Components
 
-- `apps/web`: shadcn/ui landing, architecture diagram, sponsor Q&A and interactive fixture scenarios using the actual SDK rules.
-- `packages/sdk`: wallet-independent request/risk checks, server-side Intercepta adapter, upstream x402 authorization generation, and a server-side Privy signer and policy builder.
-- Privy is the reference demo signer. Integrators supply their own provider account; the core has no Privy or World dependency.
-- Native ENS resolver permissions were tested separately on a disposable Sepolia fork. The SDK currently accepts an integrator-supplied resolved snapshot; it does not establish registry ownership or resolve registered names itself.
+- `apps/web`: shadcn/ui landing, architecture/pitch, fixture examples, authenticated operating console and server APIs.
+- `packages/sdk`: pinned ENSv2 resolution and native transaction preparation, request checks, Intercepta adapter, provider-independent signing, real x402 v2 HTTP exchange and on-chain settlement verification.
+- `packages/server`: Privy reference wallet provisioning, explicit approvals, PostgreSQL daily reservations and idempotent receipts, merchant/facilitator integration and reconciliation.
+- `contracts`: interfaces and reproducible tests of actual native ENS registry/resolver proxies on a disposable Sepolia fork. No replacement permission contract.
 
-## Run and test
+```mermaid
+flowchart LR
+  O[API operator] -->|Endpoint permission| E[ENSv2 native resolver]
+  T[Treasury] -->|Payment record permission| E
+  A[Agent selects service] --> R[Resolve ENS configuration]
+  E --> R
+  R --> V[Compare actual HTTP 402]
+  V --> I[Intercepta screening]
+  I --> P[Approval and budget check]
+  P --> W[Privy reference signer or integrator wallet]
+  W --> F[Merchant and facilitator]
+  F --> C[Verify Base Sepolia transfer and nonce]
+  C --> D[Decision receipt and resource]
+```
+
+## Run
+
+Use Node 22+, pnpm, PostgreSQL CLI tools, and Foundry for fork tests. See [SETUP.md](SETUP.md) for exact environment, ENS and funding steps. Preserve existing `.env` and `.env.local`; never commit credentials.
 
 ```sh
 pnpm install
+pnpm db:local
+pnpm db:migrate
+pnpm setup:check
 pnpm dev
-pnpm test
-pnpm typecheck
-pnpm build
 ```
 
-Copy `.env.example` to `.env` and fill the server credentials. Preserve any existing `.env`; never commit keys. The public website requires no secrets.
+`/architecture` is the sponsor walkthrough. `/console` runs real operations with a separate demo access token. Landing-page examples are labeled fixtures.
+
+## Verify
 
 ```sh
+pnpm test
+pnpm test:integration
+pnpm test:contracts
+pnpm test:ens:fork
+pnpm typecheck
+pnpm build
 pnpm test:intercepta:live
 pnpm test:privy:live
 ```
 
-The Intercepta command scans the provider's documentation example address, verifies caching, and saves a report under ignored `docs/validation/`.
+Integration tests use real temporary PostgreSQL databases and simulated external providers. Fork tests execute native ENS contracts and actual SDK resolution, with fork-local registrations. Genuine Intercepta scanning has passed. Privy policy enforcement, live registered-name writes and funded payment settlement still require the setup in SETUP.md. See [IMPLEMENTATION.md](IMPLEMENTATION.md) for evidence and remaining gates.
 
-The Privy command requires `PRIVY_APP_ID` and `PRIVY_APP_SECRET`. It creates an unfunded disposable wallet under a deny-all policy, enables a short-lived Base Sepolia USDC self-payment scope, and tests an x402 signature. It then calls Privy directly with forbidden recipient, chain, token, amount, expiry, type-map and personal-sign requests. Non-policy errors are inconclusive, not passing tests. Finally it restores deny-all. No funds are transferred; signatures and private keys are never persisted. Test resources remain in your Privy dashboard and are identified in the local report.
+## Integration and trust
 
-## Adapter contract
+`@ens402/sdk/ens` resolves supported registered names and prepares native record/grant transactions. `@ens402/sdk/http` obtains and checks the challenge, signs only after screening and a fresh ENS read, submits once, and verifies settlement through the caller's chain adapter. Lower-level `preparePayment` remains available for existing payment clients.
 
-`preparePayment` from `@ens402/sdk/x402` accepts a fresh `ServiceSnapshot`, the selected HTTP 402 requirement, the actual requested URL, a buyer `Approval`, a screening callback, and an x402-compatible signer. It returns a decision and evidence; only passing requests produce an authorization payload. The caller owns trusted ENS resolution, HTTP challenge parsing/selection, delivery, settlement and reconciliation.
+ENS enforces record writes. The SDK validates values and payment consistency. Ownership/resolver/version observations do not enumerate every admin grant or ancestor control path. Custom records `ens402.payment` and `ens402.status`, and the x402 value in `agent-endpoint[x402]`, are application conventions, not official ENS standards.
 
-`createPrivySigner` from `@ens402/sdk/privy` takes an integrator-owned Privy client and policy-bound wallet. Install the output of `buildPrivyPolicy` on that wallet before use. The local adapter validates and cryptographically checks signatures, but does not provision or attest the wallet policy. The live test script demonstrates provisioning and tests provider enforcement separately.
+Privy is the default demo signer. Its policy is designed to restrict each authorization's chain, token, recipient, amount and expiry. Live enforcement needs credential-dependent tests. Daily totals are enforced by the reference backend database. The Privy app secret can change policies, so that backend remains trusted. Other integrators can supply their own wallet and policy infrastructure.
 
-`InterceptaProvider` from `@ens402/sdk/intercepta` runs on the trusted server. Its process-local cache is address-scoped within the fixed Ethereum mainnet source, bounded to 1,000 entries, and expires after at most one hour. Failures never reuse expired clean evidence. ENS and approval checks run for every payment.
+Intercepta returns address-risk evidence, not service quality. Its bounded one-hour cache never substitutes expired evidence after failure. Ethereum mainnet evidence is supplementary to Base Sepolia payments. World identity and ERC-8004 reputation remain future inputs and pitch context.
 
-## Enforcement and current limits
-
-- ENS enforces record writes. The SDK checks record values, freshness and the selected request.
-- Privy policy is designed to restrict EIP-3009 signatures by chain, token, recipient, per-authorization amount and absolute expiry. Live enforcement remains unverified until the credential-dependent test succeeds.
-- The app secret can change demo wallet policies. Keep it on a trusted backend, away from the agent/browser. This setup does not protect against compromise of that backend.
-- No cumulative daily typed-data budget, session key, World approval, ERC-8004 reputation, automatic ENS ownership continuity, public signing endpoint, or settlement implementation is claimed.
-- Risk evidence on Ethereum mainnet does not establish contract behavior on Base Sepolia.
-- The browser demo uses synthetic inputs and sends no payment. Local tests use mocked provider transport and verify real cryptographic signatures. Genuine Intercepta results are separately recorded and labeled.
-
-## Deployment and design
-
-Vercel root: `apps/web`; build command: `pnpm build` from that directory. Workspace TypeScript source is consumed by Next.js. Public pitch and sources: `/architecture`.
-
-`docs/IDEA.md` defines scope. `docs/DESIGN-CLARIFICATIONS.md` records decisions. Research and test receipts live in `docs/reference/` and `docs/validation/`; these local documents are Git-ignored. ENS is on Sepolia, payments on Base Sepolia.
+Vercel project `ens402` uses root `apps/web`. ENS uses Sepolia; payments use Base Sepolia only. Local research, decisions and validation receipts are under Git-ignored `docs/`.
