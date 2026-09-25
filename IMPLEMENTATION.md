@@ -12,7 +12,7 @@ Updated September 26, 2026. The application is implemented; a funded live demons
 | Backend | Authenticated APIs; PostgreSQL budget locking, idempotency, durable nonce, cancellation and reconciliation | Cloud PostgreSQL for Vercel |
 | Merchant | Two protected routes, signature validation, facilitator verify/settle and nonce deduplication | Configured Treasury and funded purchase |
 | Frontend | Service inspection, explicit approval, funding address, payment receipt timeline, native seller controls | Full browser purchase with live credentials |
-| CI | Unit, integration, typecheck/build and native fork workflows | First remote run after push |
+| CI | Unit, integration, typecheck/build and native fork workflows | GitHub Actions run `36188932735` passed |
 
 ## Test evidence
 
@@ -35,3 +35,11 @@ All exact steps and variable names are in [SETUP.md](SETUP.md): Privy App ID/Sec
 - Incomplete wallet provisioning can resume with the same provider idempotency keys for at most 23 hours, within the provider's 24-hour window. Afterwards revoke the approval, review any resources in Privy and create a fresh approval. Do not fund orphan provisioning resources.
 - A merchant crash after claiming a nonce can require manual transaction investigation; it never attempts a second settlement for that nonce. Buyer reconciliation can confirm payment without claiming resource delivery.
 - World and ERC-8004 are not required runtime dependencies. The core remains wallet-provider independent.
+
+## Release verification
+
+Implementation commit `8147b52` passed both GitHub Actions jobs and deployed successfully to https://ens402.vercel.app. Public pages and status return 200; unauthenticated control returns 401. Production correctly reports missing database, Privy credentials and ENS name.
+
+Browser login, service inspection, approval, paid-receipt display and revocation were exercised. Inspection/approval/payment UI used explicitly injected browser fixtures, not live provider calls. The real local login used PostgreSQL. At 390 CSS pixels, console and architecture have no page-level horizontal overflow. Screenshot capture timed out, so visual screenshot acceptance remains unverified.
+
+The historical Vercel project `hufu402-merchant` still points to removed `apps/merchant` and has a failing deployment status. The current merchant routes are inside the successful ENS402 deployment. The old project was preserved.
