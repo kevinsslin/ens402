@@ -113,3 +113,16 @@ Latest discovery evidence: native Anvil registration and deterministic reconstru
 The filled-in form is at `/register/example`; the SDK integration guide is at `/docs`. Source lives in `apps/web`, `packages/sdk`, `packages/server` and `contracts`. SDK packages are workspace packages, not npm releases.
 
 Obsolete proposals and duplicate status files were removed. Provider source snapshots and raw evidence remain in Git-ignored `docs/reference/` and `docs/validation/`; they are reference material, not additional current scope documents.
+
+## Discovery comparison draft
+
+Pending product review before publishing a comparison table on the landing page. Scope the comparison to discovery/configuration features, not overall decentralization or production maturity.
+
+| Capability | ENS402 | Bazaar extension | x402scan discovery |
+| --- | --- | --- | --- |
+| Public service descriptions and call metadata | Yes | Yes | Yes |
+| Reconstruct published service configuration from onchain records/history | Yes, supported roots; hosted setup pending | Not specified by this extension | Not specified by this discovery spec |
+| Native EAC for configuration edits | Yes, fork-tested | Not specified | Not specified |
+| SDK comparison against independent ENS terms before signing | Yes, tested | Not specified | Not specified |
+
+Sources checked September 27, 2026: [Bazaar specification](https://github.com/coinbase/x402/blob/main/specs/extensions/bazaar.md), [x402scan discovery specification](https://github.com/Merit-Systems/x402scan/blob/main/docs/DISCOVERY.md), and [x402scan README](https://github.com/Merit-Systems/x402scan). Bazaar is an open extension with facilitator-side cataloging. x402scan is open source, supports OpenAPI/well-known discovery and URL submission, and its discovery spec treats runtime 402 as authoritative over static metadata. Neither should be described as manual-only or impossible to self-host. Absence from these specifications is not evidence that third-party integrations cannot add the feature.

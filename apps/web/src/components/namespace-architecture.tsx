@@ -17,7 +17,7 @@ export function NamespaceArchitecture() {
       <div className={styles.blueprint}>
         <div className={styles.platformRow}>
           <section className={styles.contract} aria-label="Platform registry">
-            <span className={styles.contractLabel}><Layers3 size={15} /> Platform Registry · UserRegistry</span>
+            <span className={styles.contractLabel}><Layers3 size={15} /> Platform Registry</span>
             <div className={styles.level}><span>01 / PLATFORM</span><strong>ens402.eth</strong></div>
             <div className={styles.platformEntry}><div className={styles.nameToken}>provider<span>Provider Admin owns this name</span></div><span className={styles.otherProviders}>Other providers have their own registries.</span></div>
           </section>
@@ -31,7 +31,7 @@ export function NamespaceArchitecture() {
         <div className={styles.subregistryLink}><ArrowDown size={17} /><span>subregistry pointer</span></div>
         <div className={styles.registryResolver}>
           <section className={styles.contract} aria-label="Provider registry and service name entries">
-            <span className={styles.contractLabel}><Layers3 size={15} /> Provider Registry · UserRegistry</span>
+            <span className={styles.contractLabel}><Layers3 size={15} /> Provider Registry</span>
             <div className={styles.level}><span>02 / PROVIDER</span><strong>provider.ens402.eth</strong></div>
             <p className={styles.sectionNote}>Names, ownership and pointers.</p>
             <div className={styles.serviceTree}>
@@ -48,7 +48,7 @@ export function NamespaceArchitecture() {
               {[1, 2, 3].map(n => <div key={n}><strong>service{n}</strong><span>/api/service{n}</span><span>0.0{n} USDC</span><span>Recipient {n}</span></div>)}
             </div>
             <div className={styles.fieldGroup}><span className={styles.writerLabel}>OPS WRITES</span><div><code>agent-endpoint[x402]</code><code>description</code><code>avatar</code><code>ens402.call</code></div></div>
-            <div className={`${styles.fieldGroup} ${styles.paymentGroup}`}><span className={styles.writerLabel}>TREASURY SAFE WRITES</span><code>ens402.payment</code><p>Price · Network · Asset · payTo · Scheme</p></div>
+            <div className={`${styles.fieldGroup} ${styles.paymentGroup}`}><span className={styles.writerLabel}>TREASURY ADMIN WRITES</span><code>ens402.payment</code><p>Price · Network · Asset · payTo · Scheme</p></div>
             <p className={styles.bottomNote}><code>ens402.status</code> is maintained by Provider Admin.</p>
           </section>
         </div>
@@ -62,18 +62,18 @@ export function NamespaceArchitecture() {
             <small>Retains the ability to edit every record. Name-pointer rights are separate.</small>
           </aside>
           <aside className={styles.walletCard}>
-            <span className={styles.walletType}>DELEGATED WRITER</span><h4><Wallet size={18} /> Ops</h4>
+            <span className={styles.walletType}>DELEGATED WRITER</span><h4><Wallet size={18} /> Ops Wallet <span>Hot wallet / EOA</span></h4>
             <p>Move an API. Update service details and call instructions.</p>
             <div className={styles.permission}><span>Shared Resolver · four text keys</span><div className={styles.roles}><Role>ROLE_SET_TEXT</Role></div></div>
             <ul><li><code>agent-endpoint[x402]</code></li><li><code>description</code></li><li><code>avatar</code></li><li><code>ens402.call</code></li></ul>
             <small>No payment-key or role-administration grant.</small>
           </aside>
           <aside className={`${styles.walletCard} ${styles.safeCard}`}>
-            <span className={styles.walletType}>DELEGATED WRITER · MULTISIG</span><h4><ShieldCheck size={18} /> Treasury Admin <span>Safe</span></h4>
+            <span className={styles.walletType}>DELEGATED WRITER</span><h4><ShieldCheck size={18} /> Treasury Admin <span>Demo: Safe multisig</span></h4>
             <p>Approve changes to the payment terms for any service.</p>
             <div className={styles.permission}><span>Shared Resolver · payment key</span><div className={styles.roles}><Role>ROLE_SET_TEXT</Role></div></div>
             <ul><li><code>ens402.payment</code></li></ul>
-            <small>Safe controls approvals. Each service’s payTo can be a different wallet.</small>
+            <small>The demo Safe controls approvals. Each service’s payTo can be a different wallet.</small>
           </aside>
         </div>
         <p className={styles.scopeNote}><strong>A key grant covers every service in this resolver.</strong> Different teams can use separate resolver instances.</p>
