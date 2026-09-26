@@ -1,64 +1,95 @@
-import { ArrowUpRight, Wallet } from "lucide-react";
+import { ArrowDown, Database, Globe, KeyRound, Layers3, Wallet } from "lucide-react";
+import type { ReactNode } from "react";
 import styles from "./namespace-architecture.module.css";
 
-const wallets = [
-  { name: "Platform owner", target: "A · Root", action: "Register companies", roles: ["ROLE_REGISTRAR", "ROLE_REGISTRAR_ADMIN"] },
-  { name: "Company Admin", target: "A · company / B · Root", action: "Choose the company registry; register services", roles: ["A / company: ROLE_SET_SUBREGISTRY", "B / root: ROLE_REGISTRAR + ROLE_REGISTRAR_ADMIN"] },
-  { name: "Service Admin", target: "B · service1 / C1 · Root", action: "Choose the resolver; manage its records and writers", roles: ["B / service1: ROLE_SET_RESOLVER + ROLE_SET_RESOLVER_ADMIN", "B / service1: ROLE_CAN_TRANSFER_ADMIN", "C1 / root: ROLE_SET_TEXT + ROLE_SET_TEXT_ADMIN"] },
-  { name: "Ops wallet", target: "C1 · Endpoint key", action: "Update the API URL", roles: ["ROLE_SET_TEXT", "Resource: hash of agent-endpoint[x402]"] },
-  { name: "Treasury wallet", target: "C1 · Payment key", action: "Update recipient, token and network", roles: ["ROLE_SET_TEXT", "Resource: hash of ens402.payment"] },
-];
+function WalletGrant({ name, children }: { name: string; children: ReactNode }) {
+  return <aside className={styles.wallet} aria-label={`${name} permissions`}>
+    <div className={styles.walletName}><Wallet size={15} aria-hidden="true" /><strong>{name}</strong></div>
+    {children}
+  </aside>;
+}
+
+function Roles({ scope, roles }: { scope: string; roles: string[] }) {
+  return <div className={styles.grant}>
+    <p className={styles.scope}>{scope}</p>
+    {roles.map(role => <code key={role}>{role}</code>)}
+  </div>;
+}
+
+function Pointer({ children }: { children: ReactNode }) {
+  return <div className={styles.pointer}><span /><ArrowDown size={14} aria-hidden="true" /><p>{children}</p></div>;
+}
 
 export function NamespaceArchitecture() {
   return (
-    <figure className={styles.figure} aria-label="ENS contract tree and separate wallet permissions">
+    <figure className={styles.figure} aria-label="ENS registry tree, service resolvers and wallet roles">
       <header className={styles.header}>
-        <div>
-          <p className={styles.eyebrow}>01 / Contracts and names</p>
-          <h3>One namespace. Separate service resolvers.</h3>
-          <p>Registries hold names. Each service name points to its own resolver, which holds its public configuration.</p>
-        </div>
+        <div><p className={styles.eyebrow}>The public configuration layer</p><h3>Every service has a home.<br />Every wallet has a defined job.</h3></div>
         <span className={styles.status}>Proposed company hierarchy</span>
       </header>
-      <div className={styles.tree}>
-        <div className={styles.legend}><span>Solid arrow: contract pointer</span><span>Dashed arrow: name inside a registry</span></div>
-        <a className={styles.diagramLink} href="/diagrams/ens402-contracts.svg" target="_blank" rel="noreferrer" aria-label="Open the full-size contract tree">
-          {/* Pre-rendered Mermaid SVG keeps this static diagram free of client JavaScript. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/diagrams/ens402-contracts.svg" width={440} height={558} loading="lazy" alt="ens402.eth points to Platform Registry A. The company name points to Company Registry B. Its service1, service2 and service3 names point to separate resolvers C1, C2 and C3. Each resolver stores an API URL, payment settings and status." />
-        </a>
-        <div className={styles.treeFooter}>
-          <p>Full service name: <code>service1.company.ens402.eth</code><br/>Each service has its own API URL, payment settings and permissions.</p>
-          <div className={styles.links}>
-            <a href="/diagrams/ens402-contracts.svg" target="_blank" rel="noreferrer">Full-size diagram <ArrowUpRight size={13} aria-hidden="true" /></a>
-            <a href="/diagrams/ens402-contracts.mmd" download>Mermaid source ↓</a>
+      <div className={styles.canvas}>
+        <div className={styles.laneLabels}><span>Names, contracts & records</span><span>Wallets & native EAC roles</span></div>
+        <div className={styles.row}>
+          <div className={styles.contract}>
+            <div className={styles.nodeHeading}><span className={styles.icon}><Layers3 size={18} aria-hidden="true" /></span><div><p className={styles.kind}>Platform UserRegistry</p><h4>ens402.eth</h4></div><span className={styles.nodeId}>A</span></div>
+            <div className={styles.nameEntry}><span>Name entry</span><code>company</code><span className={styles.entryNote}>→ Company registry</span></div>
           </div>
+          <WalletGrant name="Platform owner"><Roles scope="A · Registry root" roles={["ROLE_REGISTRAR", "ROLE_REGISTRAR_ADMIN"]} /><p className={styles.job}>Register companies and manage registrar grants.</p></WalletGrant>
         </div>
-      </div>
-      <section className={styles.permissions} aria-label="Wallet permissions">
-        <div className={styles.walletHeading}>
-          <div><p className={styles.eyebrow}>02 / Wallet permissions</p><h4>Who can change what?</h4></div>
-          <p>Letters refer to the contracts above.<br/>Service-level examples use Service 1.</p>
-        </div>
-        <div className={styles.wallets}>
-          {wallets.map(wallet => (
-            <div className={styles.walletRow} key={wallet.name}>
-              <p className={styles.walletName}><Wallet size={14} aria-hidden="true" />{wallet.name}</p>
-              <span className={styles.target}>{wallet.target}</span>
-              <p className={styles.action}>{wallet.action}</p>
+        <Pointer>Company name’s subregistry pointer</Pointer>
+        <div className={styles.row}>
+          <div className={styles.contract}>
+            <div className={styles.nodeHeading}><span className={styles.icon}><Layers3 size={18} aria-hidden="true" /></span><div><p className={styles.kind}>Company UserRegistry</p><h4>company.ens402.eth</h4></div><span className={styles.nodeId}>B</span></div>
+            <p className={styles.nodeDescription}>Three service names. Three independent resolvers.</p>
+            <div className={styles.services}>
+              {[1, 2, 3].map(number => <div key={number} className={number === 1 ? styles.selectedService : styles.service}>
+                <code>service{number}</code><div className={styles.servicePointer}><ArrowDown size={13} aria-hidden="true" /><span>resolver</span></div><div className={styles.miniResolver}><Database size={13} aria-hidden="true" /><span>Resolver {number}</span></div>
+              </div>)}
             </div>
-          ))}
-        </div>
-        <details className={styles.details}>
-          <summary>Native EAC roles and exact scopes</summary>
-          <div className={styles.roleList}>
-            {wallets.map(wallet => <div key={wallet.name}><strong>{wallet.name}</strong><div>{wallet.roles.map(role => <code key={role}>{role}</code>)}</div></div>)}
           </div>
-          <p>Root means all resources in that contract. A role does not automatically carry into a child registry or a separate resolver. Text-key grants apply across records in the same resolver, so independent services use separate resolvers. Admin roles can grant broader authority; a narrow writer grant does not remove an existing root grant.</p>
-          <p>Company Admin and Service Admin can be the same wallet. Ops and Treasury use separate wallets. Changing a name owner does not transfer administration of its separate resolver.</p>
-        </details>
-      </section>
-      <figcaption className={styles.caption}>Intended architecture, not a live permissions audit. The company registry layer is planned. These wallets manage public ENS configuration; the buyer’s payment-signing wallet is separate.</figcaption>
+          <WalletGrant name="Company Admin">
+            <Roles scope="A · company name" roles={["ROLE_SET_SUBREGISTRY"]} />
+            <Roles scope="B · Registry root" roles={["ROLE_REGISTRAR", "ROLE_REGISTRAR_ADMIN"]} />
+            <p className={styles.job}>Choose the company registry and create services.</p>
+          </WalletGrant>
+        </div>
+        <div className={styles.focusLink}><span /><p><Database size={13} aria-hidden="true" /> Inside Resolver 1</p></div>
+        <section className={styles.resolver} aria-label="Resolver 1 records and their writers">
+          <div className={`${styles.row} ${styles.resolverHeader}`}>
+            <div>
+              <div className={styles.nodeHeading}><span className={styles.resolverIcon}><Database size={18} aria-hidden="true" /></span><div><p className={styles.kind}>PermissionedResolver</p><h4>Resolver 1</h4></div><span className={styles.nodeId}>C1</span></div>
+              <code className={styles.fullName}>service1.company.ens402.eth</code>
+              <p className={styles.nodeDescription}>One contract holds this service’s public configuration. Native EAC checks who may write each record.</p>
+              <span className={styles.rootNote}><KeyRound size={13} aria-hidden="true" /> Admin retains full text control</span>
+            </div>
+            <WalletGrant name="Service Admin">
+              <Roles scope="B · service1 name" roles={["ROLE_SET_RESOLVER", "ROLE_SET_RESOLVER_ADMIN", "ROLE_CAN_TRANSFER_ADMIN"]} />
+              <Roles scope="C1 · Resolver root" roles={["ROLE_SET_TEXT", "ROLE_SET_TEXT_ADMIN"]} />
+            </WalletGrant>
+          </div>
+          <div className={`${styles.row} ${styles.recordRow}`}>
+            <div className={styles.record}>
+              <div className={styles.recordTitle}><Globe size={16} aria-hidden="true" /><h5>API endpoint</h5><span>Text record</span></div>
+              <code>agent-endpoint[x402]</code><p>https://api.example.com/v1/service</p>
+            </div>
+            <WalletGrant name="Ops wallet"><Roles scope="C1 · Endpoint key only" roles={["ROLE_SET_TEXT"]} /><p className={styles.job}>Update the URL. No payment-record permission.</p></WalletGrant>
+          </div>
+          <div className={`${styles.row} ${styles.recordRow}`}>
+            <div className={styles.record}>
+              <div className={styles.recordTitle}><Wallet size={16} aria-hidden="true" /><h5>Payment settings</h5><span>Text record</span></div>
+              <code>ens402.payment</code><p>Recipient · token · network · scheme</p>
+            </div>
+            <WalletGrant name="Treasury wallet"><Roles scope="C1 · Payment key only" roles={["ROLE_SET_TEXT"]} /><p className={styles.job}>Update where and how the service gets paid.</p></WalletGrant>
+          </div>
+          <p className={styles.statusRecord}><code>ens402.status</code><span>Active / suspended · maintained by Service Admin in this example.</span></p>
+        </section>
+        <div className={styles.legend}><span><i /> Name / contract relationship</span><span><i /> Scoped write or administration grant</span></div>
+      </div>
+      <figcaption className={styles.caption}>
+        <p>Roles apply to a contract and resource, not automatically to its children. Ops and Treasury grants use the hash of their text key. Resolver 2 and 3 need their own grants. Company Admin and Service Admin may share a wallet; Ops and Treasury are separate.</p>
+        <p>Intended grants, not live permissions. The company layer is planned. Buyer payment signing is separate from these configuration wallets.</p>
+        <a href="/diagrams/ens402-contracts.mmd" download>Download the Mermaid structure reference ↓</a>
+      </figcaption>
     </figure>
   );
 }
