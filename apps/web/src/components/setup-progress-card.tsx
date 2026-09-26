@@ -55,9 +55,10 @@ export function SetupProgressCard({
   const index = parties
     ? setupChecklistIndex(stepDescription, parties)
     : undefined;
-  const current = index === undefined ? undefined : items[index];
+  const isBatch = (actions?.length ?? 0) > 1;
+  const current = isBatch || index === undefined ? undefined : items[index];
   const states = setupChecklistState(phase, transactions, parties ?? { ops: "", treasury: "" });
-  const completed = states.filter(state => state === "complete").length;
+  const completed = phases.filter((_, p) => items.every((item, i) => item.phase !== p || states[i] === "complete")).length;
   const status =
     activity === "wallet"
       ? "Confirm in your wallet"
@@ -82,19 +83,17 @@ export function SetupProgressCard({
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
           {complete
             ? "Your directory, team permissions and publisher are configured."
-            : "Permission updates on the same resolver are batched into one wallet confirmation. Deployments and other contracts use separate transactions. The checklist below counts configuration checks, not signatures."}
+            : "Each transaction card is one wallet confirmation. Permissions inside a batch are applied together."}
         </p>
         <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-          <span>Setup checklist</span>
+          <span>Configuration progress</span>
           <span>
-            {completed === undefined
-              ? "Checking configuration"
-              : `${completed} of ${items.length} checks passed`}
+            {completed} of {phases.length} stages complete
           </span>
         </div>
         <Progress
           className="mt-2 h-1.5"
-          value={completed === undefined ? 0 : (completed / items.length) * 100}
+          value={(completed / phases.length) * 100}
           aria-label="Provider configuration progress"
         />
       </header>
@@ -109,11 +108,6 @@ export function SetupProgressCard({
                   ? status
                   : "Ready for your approval"}
             </span>
-            {index !== undefined && (
-              <span className="ml-auto text-muted-foreground">
-                Check {index + 1} / {items.length}
-              </span>
-            )}
           </div>
           <h3 className="mt-3 text-lg font-semibold">
             {current?.title ?? title}
@@ -147,19 +141,9 @@ export function SetupProgressCard({
             </dl>
           )}
           {actions && actions.length > 1 && <p className="mt-4 rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm font-medium text-primary">{actions.length} permission updates · 1 wallet confirmation</p>}
-          {actions && (
-            <ul className="mt-4 space-y-2 rounded-lg bg-muted/40 p-4 text-sm">
-              {actions.map((action, i) => (
-                <li key={i} className="flex gap-2">
-                  <span className="text-muted-foreground">{i + 1}.</span>
-                  <span>{action}</span>
-                </li>
-              ))}
-            </ul>
-          )}
           {signer && (
             <p className="mt-3 break-all text-xs text-muted-foreground">
-              Signed by {signerRole ?? "your wallet"} ·{" "}
+              Signer: {signerRole ?? "your wallet"} ·{" "}
               <span className="font-mono">{signer}</span>
             </p>
           )}
@@ -172,12 +156,12 @@ export function SetupProgressCard({
             ) : (
               <p className="text-muted-foreground">
                 {activity === "wallet"
-                  ? "Review this permission in Rabby or your connected wallet."
+                  ? "Review this transaction in your connected wallet."
                   : activity === "confirming"
                     ? "Submitted. Checking automatically before requesting the next signature."
                     : activity === "checking"
                       ? "Checking current on-chain permissions."
-                      : "Each transaction can configure several checklist items. Completed permissions are skipped automatically."}
+                      : "One confirmation applies all permissions in this transaction. Completed permissions are skipped automatically."}
               </p>
             )}
           </div>
@@ -205,38 +189,48 @@ export function SetupProgressCard({
         {phases.map((label, p) => {
           const phaseItems = items.map((item, i) => ({ ...item, state: states[i] })).filter(item => item.phase === p);
           const phaseComplete = phaseItems.every(item => item.state === "complete");
+          // The plan already contains native multicall batches. Never split them into numbered steps.
+          const phaseTransactions = transactions.filter(step => {
+            const indices = (step.actions ?? [step.description]).map(action => setupChecklistIndex(action, parties ?? { ops: "", treasury: "" }));
+            return indices.some(i => i !== undefined && items[i]?.phase === p)
+              || (indices.every(i => i === undefined) && p === phase);
+          });
+          const activePhase = p === phase && !complete;
           return (
-          <details key={label} open={p === phase && !phaseComplete} className="py-4">
-            <summary className="cursor-pointer text-sm font-medium">
-              <span className="ml-1 inline-flex items-center gap-2">{phaseComplete && <Check aria-label="Complete" className="size-4 text-primary" />}{label}</span>
-              <span className="float-right text-xs font-normal text-muted-foreground">
-                {phaseComplete ? "Complete" : `${phaseItems.filter(item => item.state === "complete").length} / ${phaseItems.length} checks passed`}
-              </span>
-            </summary>
-            <ol className="mt-3 space-y-2">
-              {items.map(
-                (item, i) =>
-                  item.phase === p && (
-                    <li
-                      key={i}
-                      data-state={states[i]}
-                      aria-current={i === index ? "step" : undefined}
-                      className={`flex items-center gap-3 rounded-md px-2 py-2 text-sm ${i === index ? "bg-muted font-medium" : "text-muted-foreground"}`}
-                    >
-                      <span className="flex size-5 shrink-0 items-center justify-center text-xs">
-                        {states[i] === "complete" ? (
-                          <Check aria-label="Complete" className="size-4 text-primary" />
-                        ) : (
-                          i + 1
-                        )}
-                      </span>
-                      {item.title}
-                    </li>
-                  ),
+            <div key={label} className="py-4">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                {activePhase && busy ? <Spinner className="size-4" /> : phaseComplete ? <Check aria-label="Complete" className="size-4 text-primary" /> : <span className="size-4 rounded-full border" />}
+                {label}
+                <span className="ml-auto text-xs font-normal text-muted-foreground">
+                  {activePhase && busy ? status : phaseComplete ? "Complete" : "Pending"}
+                </span>
+              </div>
+              {phaseTransactions.length > 0 && !complete && (
+                <ul className="mt-3 space-y-3">
+                  {phaseTransactions.map((step) => {
+                    const active = step.description === stepDescription;
+                    const labels = (step.actions ?? [step.description]).map(action => {
+                      const i = setupChecklistIndex(action, parties ?? { ops: "", treasury: "" });
+                      return i === undefined ? action : items[i]!.title;
+                    });
+                    return (
+                      <li key={step.description} aria-current={active ? "step" : undefined} aria-busy={active && busy} className={`rounded-xl border p-4 ${active ? "border-primary/30 bg-primary/5" : "bg-muted/20"}`}>
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                          {active && busy && <Spinner className="size-4 shrink-0" />}
+                          <span>{step.actions?.length ? `${step.actions.length} permission updates` : labels[0]}</span>
+                          <span className="ml-auto shrink-0 text-xs text-muted-foreground">1 transaction</span>
+                        </div>
+                        {step.actions && <ul className="mt-3 flex flex-wrap gap-2">{labels.map(label => <li key={label} className="rounded-md bg-background px-2 py-1 text-xs text-muted-foreground">{label}</li>)}</ul>}
+                        <p className="mt-3 text-xs text-muted-foreground">{active ? error ? "Paused. Review the message above." : busy ? status : "Ready for one wallet confirmation" : "Queued"}</p>
+                      </li>
+                    );
+                  })}
+                </ul>
               )}
-            </ol>
-          </details>
-        );})}
+              {!phaseComplete && phaseTransactions.length === 0 && <p className="mt-2 text-xs text-muted-foreground">{activePhase ? "Checking the next transaction…" : "Prepared after the previous stage completes."}</p>}
+            </div>
+          );
+        })}
       </div>
       {complete && (
         <div role="status" className="border-t px-6 py-5">
