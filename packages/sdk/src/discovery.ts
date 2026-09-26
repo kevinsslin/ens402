@@ -48,13 +48,26 @@ export function parseDiscoveryQuery(input: DiscoveryQuery): Required<Omit<Discov
   return { query: query.trim(), paymentNetwork, assetAddress: assetAddress.toLowerCase(), pageSize, mode, maxPricePerRequestAtomic: input.maxPricePerRequestAtomic };
 }
 /** Query any compatible operator. No platform wallet or credentials are required. */
+/** Stable, optional availability code; remote error text is never trusted. */
+export class DiscoveryApiError extends Error {
+  constructor(public readonly status: number, public readonly code?: "CATALOG_NOT_READY") {
+    super(`Discovery API unavailable (${status})`);
+    this.name = "DiscoveryApiError";
+  }
+}
 export async function discover(input: DiscoveryQuery, options: { apiUrl: string; fetch?: typeof fetch; now?: number; maxAgeSeconds?: number; expectedRoots?: string[] }): Promise<DiscoveryResponse> {
   const query = parseDiscoveryQuery(input);
   const url = new URL(options.apiUrl);
   if (url.username || url.password || url.hash || (url.protocol !== "https:" && !(url.protocol === "http:" && ["localhost", "127.0.0.1"].includes(url.hostname)))) throw new Error("Use an HTTPS discovery API URL");
   for (const [key, value] of Object.entries(query)) if (value !== undefined) url.searchParams.set(key, String(value));
   const response = await (options.fetch ?? fetch)(url, { signal: AbortSignal.timeout(15_000), redirect: "error" });
-  if (!response.ok) throw new Error(`Discovery API unavailable (${response.status})`);
+  if (!response.ok) {
+    let code: "CATALOG_NOT_READY" | undefined;
+    if (response.status === 503) {
+      try { if ((await boundedDiscoveryJson(response) as { code?: unknown } | null)?.code === "CATALOG_NOT_READY") code = "CATALOG_NOT_READY"; } catch { /* Preserve the HTTP error for malformed responses. */ }
+    }
+    throw new DiscoveryApiError(response.status, code);
+  }
   const result = await boundedDiscoveryJson(response) as DiscoveryResponse;
   const now = options.now ?? Math.floor(Date.now() / 1000);
   const maxAge = options.maxAgeSeconds ?? 3600;

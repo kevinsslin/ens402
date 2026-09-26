@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { Pool } from "pg";
 import { discoverySchema } from "./discovery-schema";
-import { discoveryContentHash, discoveryTerms, embedDiscoveryService, searchDiscovery, type Catalog, type CatalogSource, type EmbeddingProvider } from "./discovery";
+import { DiscoveryNotReadyError, discoveryContentHash, discoveryTerms, embedDiscoveryService, searchDiscovery, type Catalog, type CatalogSource, type EmbeddingProvider } from "./discovery";
 import { parseDiscoveryQuery, type DiscoveryQuery, type DiscoveryService } from "@ens402/sdk/discovery";
 
 /** Complete, bounded catalog replacement. Configure a separate database from the account ledger. */
@@ -38,7 +38,7 @@ export class DiscoveryStore implements CatalogSource {
     try {
       await client.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
       const metadata = await client.query("SELECT source,checkpoint FROM discovery_catalog WHERE id=1");
-      if (!metadata.rows[0]) throw new Error("Discovery catalog not synchronized");
+      if (!metadata.rows[0]) throw new DiscoveryNotReadyError();
       const rows = await client.query(`SELECT s.service, e.model, e.content_hash, e.vector FROM discovery_services s
         LEFT JOIN discovery_embeddings e ON e.name=s.name AND e.content_hash=s.content_hash AND e.vector IS NOT NULL
         ${indexedKeyword ? "WHERE s.name=$1 OR s.search_document @@ to_tsquery('simple',$2)" : ""}

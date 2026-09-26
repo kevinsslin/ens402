@@ -5,6 +5,7 @@ import Link from "next/link";
 import { formatUnits, parseUnits } from "viem";
 import {
   discover,
+  DiscoveryApiError,
   type DiscoveryService,
   type DiscoveryResponse,
 } from "@ens402/sdk/discovery";
@@ -31,12 +32,14 @@ export function DiscoveryConsole({
   const [ceiling, setCeiling] = useState("");
   const [result, setResult] = useState<DiscoveryResponse | null>(null);
   const [busy, setBusy] = useState(false);
+  const [catalogNotReady, setCatalogNotReady] = useState(false);
   const [error, setError] = useState("");
   async function search(event: FormEvent) {
     event.preventDefault();
     if (busy) return;
     setBusy(true);
     setError("");
+    setCatalogNotReady(false);
     setResult(null);
     try {
       if (ceiling && !/^\d+(\.\d{1,6})?$/.test(ceiling))
@@ -55,6 +58,10 @@ export function DiscoveryConsole({
         ),
       );
     } catch (cause) {
+      if (cause instanceof DiscoveryApiError && cause.code === "CATALOG_NOT_READY") {
+        setCatalogNotReady(true);
+        return;
+      }
       setError(
         cause instanceof Error && cause.message.includes("(503)")
           ? "Service search is temporarily unavailable. Please try again later."
@@ -73,49 +80,42 @@ export function DiscoveryConsole({
     >
       {!embedded && <p className="eyebrow">Search services</p>}
       {embedded ? (
-        <h2 className="text-3xl sm:text-4xl">What would you like to do?</h2>
+        <h2 className="text-3xl sm:text-4xl">Find a service for your next task.</h2>
       ) : (
         <h1 className="mt-3 text-4xl sm:text-6xl">
-          What would you like to do?
+          Find a service for your next task.
         </h1>
       )}
       <p className="mt-4 max-w-2xl text-muted-foreground">
-        Describe what you need. Find an API, review its terms, then pay with
-        USDC.
+        Search in your own words. Compare APIs, review their terms, and call them with your agent.
       </p>
       <form
         onSubmit={search}
-        className="mt-7 rounded-2xl border border-primary/25 bg-white p-4 shadow-sm sm:p-6"
+        className="mt-8"
       >
-        <label htmlFor="service-prompt" className="sr-only">
-          Describe the service you need
-        </label>
-        <textarea
-          id="service-prompt"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          disabled={busy}
-          maxLength={500}
-          rows={2}
-          placeholder="I need a weather forecast for Tokyo…"
-          className="w-full resize-none bg-transparent p-1 text-lg leading-8 outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md disabled:opacity-60"
-        />
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t pt-4">
-          <span className="text-xs font-medium text-muted-foreground">
-            Base Sepolia · USDC
-          </span>
-          <Button
-            type="submit"
-            disabled={busy || selecting}
-            className="gap-2 rounded-full px-5"
-          >
-            {busy ? (
-              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-            ) : (
-              <Search className="size-4" aria-hidden="true" />
-            )}
-            {busy ? "Finding services…" : "Find services"}
+        <div className="flex flex-col gap-3 rounded-2xl border border-primary/20 bg-white p-2 shadow-[0_6px_24px_-12px_rgba(82,152,255,0.35)] transition-shadow focus-within:border-primary/60 focus-within:ring-4 focus-within:ring-primary/10 sm:flex-row sm:items-center">
+          <div className="flex min-w-0 flex-1 items-center gap-3 px-3">
+            <Search className="size-5 shrink-0 text-primary" aria-hidden="true" />
+            <label htmlFor="service-prompt" className="sr-only">Describe the service you need</label>
+            <input
+              id="service-prompt"
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              disabled={busy}
+              maxLength={500}
+              placeholder="Weather forecasts, exchange rates, research…"
+              className="h-14 w-full min-w-0 bg-transparent text-base outline-none disabled:opacity-60"
+            />
+          </div>
+          <Button type="submit" disabled={busy || selecting} className="h-12 shrink-0 gap-2 rounded-xl px-6">
+            {busy ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <ArrowRight className="size-4" aria-hidden="true" />}
+            {busy ? "Searching…" : "Search services"}
           </Button>
+        </div>
+        <div className="mt-3 flex items-center justify-between gap-3 px-1 text-xs text-muted-foreground">
+          <span>Search by keyword or meaning</span>
+          <span>Base Sepolia · USDC</span>
         </div>
         <details className="mt-4 text-sm">
           <summary className="w-fit cursor-pointer text-muted-foreground">
@@ -138,7 +138,7 @@ export function DiscoveryConsole({
           </label>
         </details>
       </form>
-      {!result && !busy && !error && (
+      {!result && !busy && !error && !catalogNotReady && (
         <div className="mt-4 flex flex-wrap gap-2" aria-label="Example prompts">
           {[
             "Weather forecast for Tokyo",
@@ -157,6 +157,17 @@ export function DiscoveryConsole({
               {prompt}
             </button>
           ))}
+        </div>
+      )}
+      {catalogNotReady && (
+        <div role="status" className="mt-8 rounded-2xl border bg-slate-50/70 p-6 sm:p-8">
+          <p className="text-lg font-semibold">The service directory is not live yet.</p>
+          <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
+            The first on-chain catalog sync has not completed. Services will appear here after platform setup, publication, and indexing.
+          </p>
+          <Button asChild variant="outline" className="mt-5 bg-white">
+            <Link href="/provider">Open service onboarding <ArrowRight className="ml-2 size-4" aria-hidden="true" /></Link>
+          </Button>
         </div>
       )}
       {error && (

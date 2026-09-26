@@ -1,5 +1,5 @@
 import { configuredDiscovery } from "@ens402/server/discovery-runtime";
-import { searchDiscovery } from "@ens402/server/discovery";
+import { DiscoveryNotReadyError, searchDiscovery } from "@ens402/server/discovery";
 import { parseDiscoveryQuery, type DiscoveryQuery } from "@ens402/sdk/discovery";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,5 +21,8 @@ export async function GET(request: Request) {
   } catch { return Response.json({ error: "Invalid discovery query or filters." }, { status: 400, headers }); }
   try {
     return Response.json(await searchDiscovery(query, configuredDiscovery()), { headers });
-  } catch { return Response.json({ error: "Discovery catalog unavailable or stale." }, { status: 503, headers }); }
+  } catch (error) {
+    if (error instanceof DiscoveryNotReadyError) return Response.json({ code: "CATALOG_NOT_READY", error: "The first catalog sync has not completed." }, { status: 503, headers });
+    return Response.json({ code: "CATALOG_UNAVAILABLE", error: "Discovery catalog unavailable or stale." }, { status: 503, headers });
+  }
 }

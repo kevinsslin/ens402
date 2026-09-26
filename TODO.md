@@ -2,6 +2,14 @@
 
 Current scope: **Discover, Govern, Guard**. Namespace: **Platform Registry -> Provider Registry -> Service**, with one shared native resolver per provider. Start with [README.md](README.md); operator steps are in [SETUP.md](SETUP.md), test evidence in [AUDIT.md](AUDIT.md).
 
+## Demo critical path
+
+- Production database is reachable but has no catalog snapshot or services (verified September 27). Search cannot return real results until the first publication and sync.
+- Owner: open `/provider`, connect the wallet holding `ens402.eth`, then complete platform setup with the displayed transactions.
+- Provider: configure the real Admin, Ops and Treasury wallets, publish services, then use **Refresh listings**. No always-on worker or Cron is required for this demo.
+- Verify indexed listings and live semantic results, then fund the buyer with Base Sepolia USDC and rehearse Guard, payment and delivery.
+- Search now distinguishes first-sync setup from an outage. Local tests and UI verification do not imply the public payment journey is complete.
+
 ## Implemented and locally verified
 
 - [x] Envio native event ingestion, dynamic registry/resolver discovery, finalized reconstruction, pre-link records, expiry and canonical replay. Independent Anvil reconstruction produces the same catalog.
@@ -46,7 +54,7 @@ Local tests do not complete these steps. No mainnet transactions.
 5. [ ] **Indexer:** verify the manual in-app bounded refresh. RPC reconstruction runs first; hosted Envio and the Railway worker are optional scaling paths. Verify finalized checkpoints, listing updates and live catalog embeddings.
 6. [ ] **Analytics:** hosted schema and web DB configuration are ready. Set the worker DB and `ANALYTICS_FROM_BLOCK`, then run the scanner and verify real receipts. Optional reviewed facilitator file and read-only `ANALYTICS_LEDGER_DATABASE_URL` enable additional coverage.
 7. [ ] **Paid name endpoint:** configure restricted issuance worker, fund Sepolia gas, publish its service records and align HTTP recipient/price with schema v3. Merchant namespace and service identity are separate.
-8. [ ] **Buyer:** complete Privy browser login, approve scope, fund displayed payer with Base Sepolia USDC, execute a public purchase and verify payment plus delivery receipts.
+8. [ ] **Buyer:** complete Privy browser login, review the fixed-price checkout, fund displayed payer with Base Sepolia USDC, execute a public purchase and verify payment plus delivery receipts.
 9. [ ] **Full demo:** public onboarding -> indexed listing -> semantic search -> call instructions -> Guard -> settled purchase -> classified merchant totals. Rehearse wrong price/payTo, stale index, endpoint change, role revocation, retry and address rotation. Keep attack fixtures out of normal listings.
 
 ## Remaining boundaries to validate with real setup

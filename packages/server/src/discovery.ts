@@ -2,6 +2,11 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { parseDiscoveryQuery, validateDiscoveryService, validateDiscoverySource, validateDiscoveryCheckpoint, type DiscoveryQuery, type DiscoveryResponse, type DiscoveryService } from "@ens402/sdk/discovery";
 
+/** The store is reachable but has never received a verified catalog snapshot. */
+export class DiscoveryNotReadyError extends Error {
+  constructor() { super("Discovery catalog not synchronized"); this.name = "DiscoveryNotReadyError"; }
+}
+
 export type Embedding = { model: string; contentHash: string; vector: number[] };
 export type Catalog = { checkpoint?: DiscoveryResponse["checkpoint"]; source: DiscoveryResponse["source"]; services: Array<{ service: DiscoveryService; embedding?: Embedding }> };
 /** Operators provide their own trusted ingestion source. A snapshot is not a live indexer. */
