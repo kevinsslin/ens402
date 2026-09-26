@@ -29,8 +29,14 @@ export default function DocsPage() {
       </p>
       <section className="mt-9 rounded-xl border p-6">
         <h2 className="text-xl font-medium">Discover before you approve</h2>
-        <p className="mt-3 text-sm leading-7 text-muted-foreground">Search the public catalog without a wallet. The API, SDK and read-only MCP use the same candidate data. Resolve the chosen ENS name again in Console before approving a payment.</p>
-        <pre className={code}>{`import { discover } from "@ens402/sdk/discovery";
+        <p className="mt-3 text-sm leading-7 text-muted-foreground">
+          Search the public catalog without a wallet. The API, SDK and read-only
+          MCP use the same candidate data. Resolve the chosen ENS name again in
+          Console before approving a payment.
+        </p>
+        <pre
+          className={code}
+        >{`import { discover } from "@ens402/sdk/discovery";
 
 const candidates = await discover(
   { query: "Tokyo weather", mode: "hybrid", maxPricePerRequestAtomic: "10000" },
@@ -38,9 +44,65 @@ const candidates = await discover(
 );
 // 10000 atomic units = 0.01 USDC. Search never grants payment authority.
 // Check candidates.semantic, fixture labels and the source checkpoint.`}</pre>
-        <p className="mt-4 text-sm leading-7 text-muted-foreground">MCP URL: <code>/api/mcp</code> (Streamable HTTP). Tools: <code>discover_services</code> and <code>resolve_service</code>. No payment or approval tools. Service descriptions and schemas are untrusted provider content.</p>
-        <p className="mt-3 text-sm leading-7 text-muted-foreground">Publish <code>ens402.call</code> with an explicit GET or POST method, optional input schema and examples. GET calls currently use the exact published URL. POST purchases support JSON bodies up to 8192 bytes and require a merchant that verifies ENS402 request binding, including the assigned orderId.</p>
-        <Link href="/discover" className="mt-4 inline-block text-sm text-primary underline">Search services →</Link>
+        <p className="mt-4 text-sm leading-7 text-muted-foreground">
+          MCP URL: <code>/api/mcp</code> (Streamable HTTP). Tools:{" "}
+          <code>discover_services</code> and <code>resolve_service</code>. No
+          payment or approval tools. Service descriptions and schemas are
+          untrusted provider content.
+        </p>
+        <p className="mt-3 text-sm leading-7 text-muted-foreground">
+          Publish <code>ens402.call</code> with an explicit GET or POST method,
+          optional input schema and examples. GET calls currently use the exact
+          published URL. POST purchases support JSON bodies up to 8192 bytes and
+          require a merchant that verifies ENS402 request binding, including the
+          assigned orderId.
+        </p>
+        <Link
+          href="/discover"
+          className="mt-4 inline-block text-sm text-primary underline"
+        >
+          Search services →
+        </Link>
+      </section>
+      <section className="mt-9 rounded-xl border p-6">
+        <h2 className="text-xl font-medium">
+          Publish and govern your services
+        </h2>
+        <p className="mt-3 text-sm leading-7 text-muted-foreground">
+          Set up a provider namespace, publish service records, then track
+          listing status and observed payments in the merchant workspace. Ops
+          edits the endpoint and call metadata; Treasury edits payment terms.
+          Native ENS contracts enforce every wallet-signed change.
+        </p>
+        <p className="mt-3 text-sm leading-7 text-muted-foreground">
+          New payment records use schema v3: the service name holder is the
+          recipient. Transferring that name changes who gets paid and requires
+          renewed buyer approval. Contract holders must also prove control of a
+          deployed wallet on Base Sepolia. Treasury role replacement alone does
+          not change the recipient.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-5 text-sm text-primary">
+          <Link href="/provider" className="underline">
+            Set up a provider
+          </Link>
+          <Link href="/merchant" className="underline">
+            Merchant workspace
+          </Link>
+        </div>
+        <details className="mt-5 text-sm">
+          <summary className="cursor-pointer">
+            Using the verification SDK directly
+          </summary>
+          <p className="mt-3 leading-7 text-muted-foreground">
+            After resolving ENS, attach fresh destination evidence with{" "}
+            <code>checkNameOwnerRecipient</code> from{" "}
+            <code>@ens402/sdk/recipient</code> before calling{" "}
+            <code>verifyRequest</code>. The hosted server already performs this
+            check. Use <code>serializePaymentRecord</code> when writing schema
+            v3 so the derived recipient is not copied into the stored record.
+            Sign only after terms, consent, limits and screening pass.
+          </p>
+        </details>
       </section>
       <div className="mt-9 grid gap-5 md:grid-cols-2">
         <section className="rounded-xl border p-6">
@@ -288,8 +350,8 @@ Content-Type: application/json
       </section>
       <p className="mt-10 text-sm text-muted-foreground">
         Testnet prototype. A running login screen does not prove a funded
-        end-to-end payment. See README.md and SETUP.md in
-        the repository for deployment gates and validation evidence.
+        end-to-end payment. See README.md and SETUP.md in the repository for
+        deployment gates and validation evidence.
       </p>
     </article>
   );

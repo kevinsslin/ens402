@@ -21,7 +21,10 @@ import {
   type ResolvedService,
 } from "./index";
 import { factoryAbi, recordKeys, universalAbi, resolverAbi } from "./abi";
-import { checkResolverPolicy, type CurrentResolverPolicy } from "./resolver-policy";
+import {
+  checkResolverPolicy,
+  type CurrentResolverPolicy,
+} from "./resolver-policy";
 export type { CurrentResolverPolicy } from "./resolver-policy";
 export const currentDeployment = {
   chainId: 11155111,
@@ -152,7 +155,12 @@ export async function resolveCurrentService(
     }),
   ]);
   const policyEvidence = checkResolverPolicy({
-    policy, name, parentRegistry, resolver, recordId, recordCount: count,
+    policy,
+    name,
+    parentRegistry,
+    resolver,
+    recordId,
+    recordCount: count,
   });
   const records = await Promise.all(
     recordKeys.map(async (key) => {
@@ -197,7 +205,7 @@ export async function resolveCurrentService(
     deployment: "current",
     name,
     endpoint: validateEndpoint(records[0]!),
-    payment: parsePaymentRecord(records[1]!),
+    payment: parsePaymentRecord(records[1]!, owner),
     description: validateDescription(records[3]!),
     picture: validatePicture(records[4]!),
     call: records[5] ? parseCallMetadata(records[5]) : undefined,

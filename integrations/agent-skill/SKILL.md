@@ -18,7 +18,7 @@ Use `ENS402Client` from `@ens402/sdk/platform` in this repository. The package i
 7. If the service, recipient, authority or request scope changes, request human approval. The API key cannot create wallets, modify policy or approve another service.
 8. Cancel only an unsent reserved attempt. Revocation cannot invalidate a payment authorization already signed and disclosed.
 
-The hosted resource supports GET or bounded JSON POST to the exact ENS-published URL. POST requires a UUID v4 orderId and merchant support for ENS402 request binding; pass the same request bytes through preparation and signing. Forwarded credentials, cross-origin redirects and smart-contract wallet signatures are not supported. Screening is Intercepta Ethereum-mainnet address evidence, not a service-quality guarantee. All payments use Base Sepolia test USDC.
+The hosted resource supports GET or bounded JSON POST to the exact ENS-published URL. POST requires a UUID v4 orderId and merchant support for ENS402 request binding; pass the same request bytes through preparation and signing. Forwarded credentials, cross-origin redirects and smart-contract payer signatures are not supported. Contract recipients have a separate destination-control check. Screening is Intercepta Ethereum-mainnet address evidence, not a service-quality guarantee. All payments use Base Sepolia test USDC.
 
 ## Discover first
 
@@ -33,3 +33,5 @@ A stateless, read-only MCP endpoint is available at `/api/mcp` (Streamable HTTP,
 5. Pass the selected name to the existing Guard flow. Fresh ENS and HTTP 402 verification must precede signing. Do not pay the endpoint or recipient directly from cached search metadata.
 
 Example browser journey: `/discover` -> select a candidate -> `/console?service=NAME` -> inspect current ENS -> approve -> Guard purchase. Unregistered fixture names can demonstrate search but cannot pass real ENS verification until provider setup publishes them.
+
+Schema-v3 recipients follow the current service-name owner. Name transfers invalidate prior authority-bound approvals. Hosted inspection verifies destination eligibility/control; standalone SDK callers must attach `checkNameOwnerRecipient` evidence before Guard. Never infer Base Sepolia Safe control from a Sepolia EAC grant.

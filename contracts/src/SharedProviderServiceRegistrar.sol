@@ -15,7 +15,7 @@ interface ISharedResolverAccess {
 /// @notice Publish separate service record bundles in one provider-controlled native resolver.
 /// @dev Provider-wide key grants intentionally span all service bundles. Governance initializes
 ///      Ops endpoint/description/avatar/call-schema and Treasury payment setter grants separately. This registrar
-///      needs persistent setter grants for those five keys and status, but no text-admin/link/upgrade
+///      needs six persistent setter grants (those five keys plus status), but no text-admin/link/upgrade
 ///      grants. It never gives service registrants root resolver authority. Existing or linked bundles
 ///      are rejected, including expired names: re-registration requires a separately designed lifecycle.
 ///      Native name pointer powers remain independent from resolver administration.

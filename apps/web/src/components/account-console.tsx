@@ -4,10 +4,25 @@ import { PrivyProvider, usePrivy, useWallets } from "@privy-io/react-auth";
 import { baseSepolia, sepolia } from "viem/chains";
 import { Button } from "@/components/ui/button";
 import { RegistrationConsole } from "./registration-console";
+import { ProviderConsole } from "./provider-console";
+import { MerchantConsole } from "./merchant-console";
 import { OperatorConsole } from "./operator-console";
 
-type Registration = { registrar: string; parent: string; restricted?: boolean; shared?: { resolver: string; ops: string; treasury: string } };
-function AccountWorkspace({ registration }: { registration?: Registration }) {
+type Registration = {
+  registrar: string;
+  parent: string;
+  restricted?: boolean;
+  shared?: { resolver: string; ops: string; treasury: string };
+};
+function AccountWorkspace({
+  registration,
+  workspace,
+  parent,
+}: {
+  registration?: Registration;
+  workspace?: "provider" | "merchant";
+  parent?: string;
+}) {
   const {
     ready,
     authenticated,
@@ -30,13 +45,16 @@ function AccountWorkspace({ registration }: { registration?: Registration }) {
     return (
       <section className="section-shell py-20">
         <p className="eyebrow">ENS402 Console</p>
-        <h1 className="mt-4 text-4xl font-medium">
-          Your workspace.
-        </h1>
+        <h1 className="mt-4 text-4xl font-medium">Your workspace.</h1>
         <p className="mt-6 max-w-xl leading-7 text-muted-foreground">
           Sign in to inspect services, set payment limits and view activity.
         </p>
-        <a href="/discover" className="mt-6 block text-sm text-primary underline">Browse services without signing in</a>
+        <a
+          href="/discover"
+          className="mt-6 block text-sm text-primary underline"
+        >
+          Browse services without signing in
+        </a>
         <Button className="mt-8" onClick={() => login()}>
           Sign in
         </Button>
@@ -80,9 +98,28 @@ function AccountWorkspace({ registration }: { registration?: Registration }) {
           </Button>
         </div>
       </div>
-      {registration ? (
+      {workspace === "provider" ? (
+        <ProviderConsole
+          getToken={getAccessToken}
+          parent={parent || "ens402.eth"}
+          walletAddress={wallet?.address}
+          getProvider={async () => {
+            if (!wallet) throw Error("Connect the required signing wallet");
+            return wallet.getEthereumProvider();
+          }}
+        />
+      ) : workspace === "merchant" ? (
+        <MerchantConsole
+          walletAddress={wallet?.address}
+          getProvider={async () => {
+            if (!wallet) throw Error("Connect the required signing wallet");
+            return wallet.getEthereumProvider();
+          }}
+        />
+      ) : registration ? (
         <RegistrationConsole
           {...registration}
+          getToken={getAccessToken}
           walletAddress={wallet?.address}
           getProvider={async () => {
             if (!wallet)
@@ -115,8 +152,12 @@ function AccountWorkspace({ registration }: { registration?: Registration }) {
 export function AccountConsole({
   appId,
   registration,
+  workspace,
+  parent,
 }: {
   appId: string;
+  workspace?: "provider" | "merchant";
+  parent?: string;
   registration?: Registration;
 }) {
   return (
@@ -129,7 +170,11 @@ export function AccountConsole({
         supportedChains: [baseSepolia, sepolia],
       }}
     >
-      <AccountWorkspace registration={registration} />
+      <AccountWorkspace
+        registration={registration}
+        workspace={workspace}
+        parent={parent}
+      />
     </PrivyProvider>
   );
 }

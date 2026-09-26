@@ -22,6 +22,12 @@ export type PaymentConfig = {
 } & (
   | { version: 1 }
   | { version: 2; pricing: { model: "fixed"; amount: string; unit: "request" } }
+  | {
+      version: 3;
+      recipient: "name-owner";
+      controlProof?: { validUntil: number; signature: `0x${string}` };
+      pricing: { model: "fixed"; amount: string; unit: "request" };
+    }
 );
 export type ServiceSnapshot = {
   name: string;
@@ -31,6 +37,15 @@ export type ServiceSnapshot = {
   description?: string;
   picture?: string;
   call?: CallMetadata;
+  /** Destination-chain eligibility/control observation for a holder-derived recipient. */
+  recipientCheck?: {
+    address: string;
+    network: typeof NETWORK;
+    observedAt: number;
+    ensBlock: string;
+    paymentBlock: string;
+    method: "eoa-code-check" | "destination-signature";
+  };
   /** Integrator-provided identity of the approved registry/resolver/control deployment. */
   authority: string;
   block: string;
@@ -150,15 +165,34 @@ export function verifyRequest(
     return decision("reject", "Endpoint is outside approved scope");
   const p = service.payment;
   if (
-    ![1, 2].includes(p.version) ||
+    ![1, 2, 3].includes(p.version) ||
     p.scheme !== "exact" ||
     p.network !== NETWORK ||
     !sameAddress(p.asset, USDC)
   )
     return decision("reject", "Unsupported ENS payment configuration");
+  if (p.version === 3) {
+    const check = service.recipientCheck;
+    if (
+      p.recipient !== "name-owner" ||
+      !check ||
+      !sameAddress(check.address, p.payTo) ||
+      check.network !== NETWORK ||
+      check.ensBlock !== service.block ||
+      !check.paymentBlock ||
+      !["eoa-code-check", "destination-signature"].includes(check.method) ||
+      !Number.isFinite(check.observedAt) ||
+      check.observedAt > now ||
+      now - check.observedAt > 30
+    )
+      return decision(
+        "hold",
+        "Verify the name holder on the payment chain before signing",
+      );
+  }
   if (
     approval.fixedPrice !== undefined &&
-    (p.version !== 2 || p.pricing?.amount !== approval.fixedPrice)
+    (p.version === 1 || p.pricing?.amount !== approval.fixedPrice)
   )
     return decision(
       "hold",
@@ -181,7 +215,7 @@ export function verifyRequest(
   )
     return decision("reject", "Amount exceeds the approved payment limit");
   if (
-    p.version === 2 &&
+    p.version !== 1 &&
     (p.pricing?.model !== "fixed" ||
       p.pricing.unit !== "request" ||
       !validAmount(p.pricing.amount) ||

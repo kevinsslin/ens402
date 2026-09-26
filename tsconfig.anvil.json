@@ -12,6 +12,10 @@
     "scripts/provider-plan.ts",
     "scripts/ens/provider-registrar.ts",
     "scripts/ens/provider-plan-fork.ts",
-    "scripts/discovery-*.ts"
+    "scripts/discovery-*.ts",
+    "scripts/ens/manage.ts",
+    "scripts/ens/management-fork.ts",
+    "scripts/ens/recipient-fork.ts",
+    "scripts/recipient-proof.ts"
   ]
 }

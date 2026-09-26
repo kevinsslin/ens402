@@ -45,6 +45,7 @@ export function RegistrationConsole({
   registrar,
   parent,
   getProvider,
+  getToken,
   walletAddress,
   example = false,
   restricted = false,
@@ -53,6 +54,7 @@ export function RegistrationConsole({
   registrar: string;
   parent: string;
   getProvider: () => Promise<Provider>;
+  getToken?: () => Promise<string | null>;
   walletAddress?: string;
   example?: boolean;
   restricted?: boolean;
@@ -62,14 +64,15 @@ export function RegistrationConsole({
     [endpoint, setEndpoint] = useState(
       example ? "https://api.example.com/weather" : "",
     ),
-    [payTo, setPayTo] = useState(
-      example ? "0x4444444444444444444444444444444444444444" : "",
-    ),
     [operator, setOperator] = useState(
-      example ? "0x2222222222222222222222222222222222222222" : shared?.ops || "",
+      example
+        ? "0x2222222222222222222222222222222222222222"
+        : shared?.ops || "",
     ),
     [treasury, setTreasury] = useState(
-      example ? "0x3333333333333333333333333333333333333333" : shared?.treasury || "",
+      example
+        ? "0x3333333333333333333333333333333333333333"
+        : shared?.treasury || "",
     ),
     [description, setDescription] = useState(
       example
@@ -81,6 +84,10 @@ export function RegistrationConsole({
   const [method, setMethod] = useState<"GET" | "POST">("GET");
   const [inputSchema, setInputSchema] = useState("");
   const [exampleInput, setExampleInput] = useState("");
+  const payTo =
+    walletAddress ||
+    (example ? "0x1111111111111111111111111111111111111111" : "");
+  const [phase, setPhase] = useState("draft");
   const [pending, setPending] = useState<Pending | null>(null),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
@@ -131,20 +138,45 @@ export function RegistrationConsole({
         })) !== bytesToHex(packetToBytes(parent))
       )
         throw new Error("Registrar parent does not match this site.");
-      if (shared && (await client.readContract({ address, abi: serviceRegistrarAbi, functionName: "sharedResolver" })).toLowerCase() !== shared.resolver.toLowerCase())
-        throw new Error("Registrar shared resolver does not match provider configuration.");
+      if (
+        shared &&
+        (
+          await client.readContract({
+            address,
+            abi: serviceRegistrarAbi,
+            functionName: "sharedResolver",
+          })
+        ).toLowerCase() !== shared.resolver.toLowerCase()
+      )
+        throw new Error(
+          "Registrar shared resolver does not match provider configuration.",
+        );
       if (restricted) {
-        const registry = await client.readContract({ address, abi: serviceRegistrarAbi, functionName: "registry" });
+        const registry = await client.readContract({
+          address,
+          abi: serviceRegistrarAbi,
+          functionName: "registry",
+        });
         const { parseAbi } = await import("viem");
-        const authorized = await client.readContract({ address: registry, abi: parseAbi(["function hasRootRoles(uint256 roles,address account) view returns(bool)"]), functionName: "hasRootRoles", args: [1n, owner] });
-        if (!authorized) throw new Error("This wallet needs the provider’s native service registration permission.");
+        const authorized = await client.readContract({
+          address: registry,
+          abi: parseAbi([
+            "function hasRootRoles(uint256 roles,address account) view returns(bool)",
+          ]),
+          functionName: "hasRootRoles",
+          args: [1n, owner],
+        });
+        if (!authorized)
+          throw new Error(
+            "This wallet needs the provider’s native service registration permission.",
+          );
       }
       const storageKey = `ens402-registration-call-v1:${registrar}:${owner.toLowerCase()}`;
       if (!reveal) {
         if (!/^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$/.test(label))
           throw new Error("Use 3-32 lowercase letters, numbers or hyphens.");
         const normalizedEndpoint = validateEndpoint(endpoint);
-        for (const a of [payTo, operator, treasury])
+        for (const a of [owner, operator, treasury])
           if (!/^0x[0-9a-fA-F]{40}$/.test(a) || /^0x0{40}$/.test(a))
             throw new Error("Use nonzero Ethereum addresses.");
         if (
@@ -161,19 +193,28 @@ export function RegistrationConsole({
         const priceUnits = units(price);
         if (!validAmount(priceUnits) || BigInt(priceUnits) <= 0n)
           throw new Error("Use a positive USDC amount within uint256 bounds.");
-        const call: { method: "GET" | "POST"; inputSchema?: Record<string, unknown>; example?: Record<string, unknown> } = { method };
-        for (const [key, raw] of [["inputSchema", inputSchema], ["example", exampleInput]] as const) {
+        const call: {
+          method: "GET" | "POST";
+          inputSchema?: Record<string, unknown>;
+          example?: Record<string, unknown>;
+        } = { method };
+        for (const [key, raw] of [
+          ["inputSchema", inputSchema],
+          ["example", exampleInput],
+        ] as const) {
           if (!raw.trim()) continue;
           const parsed = JSON.parse(raw);
-          if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("Call schema and example must be JSON objects.");
+          if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
+            throw new Error("Call schema and example must be JSON objects.");
           call[key] = parsed;
         }
         const callConfig = JSON.stringify(call);
-        if (new TextEncoder().encode(callConfig).length > 16384) throw new Error("Call metadata must fit within 16,384 bytes.");
+        if (new TextEncoder().encode(callConfig).length > 16384)
+          throw new Error("Call metadata must fit within 16,384 bytes.");
         const service = {
           label,
           endpoint: normalizedEndpoint,
-          payTo: payTo as Address,
+          payTo: owner,
           endpointOperator: operator as Address,
           treasury: treasury as Address,
           description: normalizedDescription,
@@ -181,6 +222,27 @@ export function RegistrationConsole({
           price: priceUnits,
           callConfig,
         };
+        if (!getToken)
+          throw new Error(
+            "Sign in before checking the endpoint and registering.",
+          );
+        setPhase("checking endpoint");
+        const probe = await fetch("/api/provider/probe", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${await getToken()}`,
+          },
+          body: JSON.stringify({
+            endpoint: normalizedEndpoint,
+            callConfig,
+            price: priceUnits,
+            payTo: owner,
+          }),
+        });
+        const probeResult = await probe.json();
+        if (!probe.ok)
+          throw new Error(probeResult.error || "Endpoint check failed");
         const secret = bytesToHex(crypto.getRandomValues(new Uint8Array(32)));
         const commitment = await client.readContract({
           address,
@@ -191,12 +253,14 @@ export function RegistrationConsole({
         const draft = { owner, secret, commitment, service };
         sessionStorage.setItem(storageKey, JSON.stringify(draft));
         setPending(draft);
+        setPhase("awaiting signature");
         const hash = await wallet.writeContract({
           address,
           abi: serviceRegistrarAbi,
           functionName: "commit",
           args: [commitment],
         });
+        setPhase("registering");
         const receipt = await client.waitForTransactionReceipt({ hash });
         if (receipt.status !== "success")
           throw new Error("Commitment reverted.");
@@ -235,17 +299,24 @@ export function RegistrationConsole({
             draft.secret,
           ],
         });
+        setPhase("awaiting signature");
         const hash = await wallet.writeContract(simulation.request);
+        setPhase("registering");
         const receipt = await client.waitForTransactionReceipt({ hash });
         if (receipt.status !== "success")
           throw new Error("Registration reverted.");
         sessionStorage.removeItem(storageKey);
+        setPhase("awaiting index");
+        window.location.assign(
+          `/merchant?provider=${encodeURIComponent(parent)}&service=${encodeURIComponent(`${draft.service.label}.${parent}`)}`,
+        );
         setPending(null);
         setMessage(
           `Registered ${draft.service.label}.${parent}. ${shared ? "Your wallet owns the name; Provider Admin retains shared resolver governance." : "Your wallet owns the name and resolver administration."} Listing awaits finalized index synchronization. Transaction: ${hash}`,
         );
       }
     } catch (e) {
+      setPhase("needs attention");
       setMessage(e instanceof Error ? e.message : "Registration failed.");
     } finally {
       setBusy(false);
@@ -256,7 +327,9 @@ export function RegistrationConsole({
       <p className="eyebrow">Publish your service / Sepolia</p>
       <h1 className="mt-4 text-4xl font-medium">Give your API a name.</h1>
       <p className="mt-5 max-w-2xl leading-7 text-muted-foreground">
-        {shared ? "Add your API and price. Existing provider delegates manage its records." : "Add your API, price and delegates. Your connected wallet becomes Admin."}
+        {shared
+          ? "Add your API and price. Existing provider delegates manage its records."
+          : "Add your API, price and delegates. Your connected wallet becomes Admin."}
       </p>
       <div className="mt-5 rounded-xl border bg-card p-4 text-sm leading-6">
         {example
@@ -270,17 +343,21 @@ export function RegistrationConsole({
           . Picture URL, input schema and example input are optional.
         </p>
       </div>
-      {shared && <p className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-900">
-        Shared provider resolver. Ops and Treasury Safe below must already hold their key grants.
-        These grants apply to every service in this resolver; this form does not grant new permissions.
-        Provider Admin keeps resolver governance. The payment recipient is specific to this service.
-      </p>}
+      {shared && (
+        <p className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-900">
+          Shared provider resolver. Ops and Treasury Safe below must already
+          hold their key grants. These grants apply to every service in this
+          resolver; this form does not grant new permissions. Provider Admin
+          keeps resolver governance. The payment recipient is specific to this
+          service.
+        </p>
+      )}
       {!configured && !example ? (
         <div className="mt-8 rounded-xl border p-6">
           <h2 className="text-xl">Namespace setup is pending</h2>
           <p className="mt-3 leading-7 text-muted-foreground">
-            Registration opens after the platform completes setup.
-            No payment or transaction is requested yet.
+            Registration opens after the platform completes setup. No payment or
+            transaction is requested yet.
           </p>
           <a
             className="mt-4 inline-block text-primary underline"
@@ -347,10 +424,33 @@ export function RegistrationConsole({
             </label>
             <label className="text-sm">
               HTTP method (required)
-              <select className={field} value={method} onChange={e => setMethod(e.target.value as "GET" | "POST")}><option value="GET">GET</option><option value="POST">POST</option></select>
+              <select
+                className={field}
+                value={method}
+                onChange={(e) => setMethod(e.target.value as "GET" | "POST")}
+              >
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+              </select>
             </label>
-            <label className="text-sm sm:col-span-2">Input schema (optional JSON object)<textarea className={field} value={inputSchema} onChange={e => setInputSchema(e.target.value)} placeholder='{"type":"object","properties":{}}' /></label>
-            <label className="text-sm sm:col-span-2">Example input (optional JSON object)<textarea className={field} value={exampleInput} onChange={e => setExampleInput(e.target.value)} placeholder='{}' /></label>
+            <label className="text-sm sm:col-span-2">
+              Input schema (optional JSON object)
+              <textarea
+                className={field}
+                value={inputSchema}
+                onChange={(e) => setInputSchema(e.target.value)}
+                placeholder='{"type":"object","properties":{}}'
+              />
+            </label>
+            <label className="text-sm sm:col-span-2">
+              Example input (optional JSON object)
+              <textarea
+                className={field}
+                value={exampleInput}
+                onChange={(e) => setExampleInput(e.target.value)}
+                placeholder="{}"
+              />
+            </label>
             <label className="text-sm">
               Picture URL (optional)
               <input
@@ -380,19 +480,39 @@ export function RegistrationConsole({
                 {price || "0"} USDC × 10⁶ = {atomicPrice} atomic units
               </p>
               <details className="mt-2 text-muted-foreground">
-                <summary className="cursor-pointer">How price matching works</summary>
-                <p className="mt-2">Both ENS and HTTP 402 use this integer amount, on the same chain and token contract.</p>
+                <summary className="cursor-pointer">
+                  How price matching works
+                </summary>
+                <p className="mt-2">
+                  Both ENS and HTTP 402 use this integer amount, on the same
+                  chain and token contract.
+                </p>
               </details>
             </div>
+            <label className="text-sm sm:col-span-2">
+              USDC recipient (ENS name owner)
+              <input
+                className={field}
+                readOnly
+                value={payTo}
+                placeholder="Connect the name-owner wallet"
+              />
+              <span className="mt-1 block text-xs text-muted-foreground">
+                Recipient follows current ENS ownership. Contract holders
+                additionally require proof of control on Base Sepolia before
+                payments.
+              </span>
+            </label>
             {[
-              ["USDC recipient", payTo, setPayTo],
               [
                 "Ops wallet (endpoint, description, picture, call schema)",
                 operator,
                 setOperator,
               ],
               [
-                shared ? "Treasury Admin · Safe (existing payment writer)" : "Treasury wallet (price and payment settings)",
+                shared
+                  ? "Treasury Admin · Safe (existing payment writer)"
+                  : "Treasury wallet (price and payment settings)",
                 treasury,
                 setTreasury,
               ],
@@ -439,6 +559,9 @@ export function RegistrationConsole({
           )}
         </>
       )}
+      <p role="status" className="mt-4 text-sm text-muted-foreground">
+        Status: {phase}
+      </p>
       {message && (
         <p
           role="status"

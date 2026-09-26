@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-// Interfaces for the pinned ENSv2 Sepolia deployment. ENS contracts enforce roles.
+/// @dev ABI-only adapters for pinned ENSv2 Sepolia deployments. They do not implement access control.
+///      Legacy and current initializers intentionally have different signatures; select by deployment pin.
+/// @notice Legacy resolver ABI retained for historical fork compatibility.
 interface INativeResolver {
     function initialize(address rootAccount, uint256 roleBitmap, bytes[] calldata data) external;
     function authorizeTextRoles(bytes calldata name, string calldata key, address operator, bool grant)
@@ -16,6 +18,7 @@ interface INativeResolver {
     function upgradeToAndCall(address implementation, bytes calldata data) external;
 }
 
+/// @notice Native registry operations. Root and name resources have distinct authority.
 interface INativeRegistry {
     function initialize(address rootAccount, uint256 roleBitmap) external;
     function register(
@@ -33,22 +36,26 @@ interface INativeRegistry {
     function revokeRootRoles(uint256 roles, address account) external returns (bool);
 }
 
+/// @notice Official factory deployment and implementation-provenance verification.
 interface IVerifiableFactory {
     function deployProxy(address implementation, uint256 salt, bytes calldata data) external returns (address);
     function verifyContract(address proxy) external view returns (address);
 }
 
+/// @notice ENS tree traversal and contextual record resolution; fallback offsets must be checked.
 interface IUniversalResolverV2 {
     function findResolver(bytes calldata name) external view returns (address, bytes32, uint256);
     function findOwner(bytes calldata name) external view returns (address);
     function resolve(bytes calldata name, bytes calldata data) external view returns (bytes memory, address);
 }
 
+/// @notice Initial native EAC root grant. Role bits are interpreted by the target contract.
 struct NativeGrant {
     address account;
     uint256 roleBitmap;
 }
 
+/// @notice Current argument-scoped resolver ABI. Setter grants cover every bundle on the instance.
 interface ICurrentResolver {
     function initialize(NativeGrant[] calldata grants, bytes[] calldata calls) external;
     function setText(bytes calldata name, string calldata key, string calldata value) external;
@@ -59,6 +66,7 @@ interface ICurrentResolver {
     function revokeRootRoles(uint256 roles, address account) external returns (bool);
 }
 
+/// @notice Current native registry initialization with explicit root grants.
 interface ICurrentRegistry {
     function initialize(NativeGrant[] calldata grants) external;
 }

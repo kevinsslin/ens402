@@ -35,7 +35,15 @@
     "discovery:watch": "tsx indexer/src/worker.ts",
     "test:discovery:fork": "forge build --root contracts --quiet && tsx indexer/src/fork.ts",
     "test:indexer": "npm --prefix indexer run codegen && npm --prefix indexer run typecheck && npm --prefix indexer test",
-    "discovery:fixture-plan": "tsx scripts/discovery-fixture-plan.ts"
+    "discovery:fixture-plan": "tsx scripts/discovery-fixture-plan.ts",
+    "analytics:migrate": "tsx scripts/analytics-migrate.ts",
+    "analytics:sync": "tsx scripts/analytics-sync.ts",
+    "test:analytics": "vitest run packages/server/test/analytics.test.ts indexer/src/analytics.test.ts indexer/src/analytics-anvil.test.ts",
+    "ens:manage": "tsx scripts/ens/manage.ts",
+    "recipient:proof": "tsx scripts/recipient-proof.ts",
+    "test:ens:management": "tsx scripts/ens/management-fork.ts",
+    "test:ens:recipient": "forge build --root contracts --quiet && tsx scripts/ens/recipient-fork.ts",
+    "provider:artifact": "forge build --root contracts --quiet && tsx scripts/build-provider-web-artifact.ts"
   },
   "devDependencies": {
     "@privy-io/node": "0.35.0",

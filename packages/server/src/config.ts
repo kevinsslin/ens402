@@ -103,16 +103,84 @@ export function readiness() {
 }
 
 /** Provider pins are operator configuration, never inferred from untrusted service metadata. */
-export function configuredResolverPolicy(env: Record<string, string | undefined> = process.env): CurrentResolverPolicy {
-  const fields = [env.PROVIDER_ENS_NAME, env.PROVIDER_REGISTRY_ADDRESS, env.PROVIDER_RESOLVER_ADDRESS].map(value => value?.trim());
+export function configuredResolverPolicy(
+  env: Record<string, string | undefined> = process.env,
+): CurrentResolverPolicy {
+  const fields = [
+    env.PROVIDER_ENS_NAME,
+    env.PROVIDER_REGISTRY_ADDRESS,
+    env.PROVIDER_RESOLVER_ADDRESS,
+  ].map((value) => value?.trim());
   const present = fields.filter(Boolean).length;
   if (present === 0) return { mode: "dedicated" }; // Compatibility for existing dedicated deployments.
-  if (present !== 3) throw new Error("Configure provider name, registry and resolver together");
+  if (present !== 3)
+    throw new Error("Configure provider name, registry and resolver together");
   const [name, registry, resolver] = fields as [string, string, string];
   const providerName = normalize(name);
-  if (!providerName.endsWith(".eth") || providerName.split(".").length < 3 ||
-      !isAddress(registry) || !isAddress(resolver) ||
-      registry.toLowerCase() === zeroAddress || resolver.toLowerCase() === zeroAddress)
+  if (
+    !providerName.endsWith(".eth") ||
+    providerName.split(".").length < 3 ||
+    !isAddress(registry) ||
+    !isAddress(resolver) ||
+    registry.toLowerCase() === zeroAddress ||
+    resolver.toLowerCase() === zeroAddress
+  )
     throw new Error("Invalid provider resolver configuration");
-  return { mode: "provider-shared", providerName, providerRegistry: registry as Address, resolver: resolver as Address };
+  return {
+    mode: "provider-shared",
+    providerName,
+    providerRegistry: registry as Address,
+    resolver: resolver as Address,
+  };
+}
+
+/** Explicit operator pins for additional providers. Catalog metadata cannot expand this trust set. */
+export function configuredProviderGroups(
+  env: Record<string, string | undefined> = process.env,
+): Extract<CurrentResolverPolicy, { mode: "provider-shared" }>[] {
+  const primary = configuredResolverPolicy(env);
+  const groups = primary.mode === "provider-shared" ? [primary] : [];
+  if (env.PROVIDER_GROUPS_JSON?.trim()) {
+    const entries: unknown = JSON.parse(env.PROVIDER_GROUPS_JSON);
+    if (!Array.isArray(entries) || entries.length > 100)
+      throw Error("Provider groups must be an array of at most 100 pins");
+    for (const entry of entries) {
+      if (!entry || typeof entry !== "object")
+        throw Error("Invalid provider group");
+      const e = entry as Record<string, string>;
+      const policy = configuredResolverPolicy({
+        PROVIDER_ENS_NAME: e.providerName,
+        PROVIDER_REGISTRY_ADDRESS: e.providerRegistry,
+        PROVIDER_RESOLVER_ADDRESS: e.resolver,
+      });
+      if (policy.mode !== "provider-shared")
+        throw Error("Incomplete provider group");
+      const prior = groups.find(
+        (group) => group.providerName === policy.providerName,
+      );
+      if (
+        prior &&
+        (prior.providerRegistry.toLowerCase() !==
+          policy.providerRegistry.toLowerCase() ||
+          prior.resolver.toLowerCase() !== policy.resolver.toLowerCase())
+      )
+        throw Error("Conflicting provider pins");
+      if (!prior) groups.push(policy);
+    }
+  }
+  return groups;
+}
+export function resolverPolicyForService(
+  name: string,
+  env: Record<string, string | undefined> = process.env,
+): CurrentResolverPolicy {
+  const provider = normalize(name).split(".").slice(1).join(".");
+  const groups = configuredProviderGroups(env);
+  const group = groups.find((group) => group.providerName === provider);
+  if (group) return group;
+  if (groups.length)
+    throw Error(
+      "Configure this provider's registry and resolver before hosted verification",
+    );
+  return { mode: "dedicated" };
 }

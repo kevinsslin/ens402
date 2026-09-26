@@ -15,7 +15,9 @@
     "./platform": "./src/platform.ts",
     "./ens/registration": "./src/ens/registration.ts",
     "./discovery": "./src/discovery.ts",
-    "./call": "./src/call.ts"
+    "./call": "./src/call.ts",
+    "./recipient": "./src/recipient.ts",
+    "./ens/management": "./src/ens/management.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

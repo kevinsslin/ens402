@@ -16,6 +16,9 @@ import {ENSRoles} from "./libraries/ENSRoles.sol";
 /// @notice Free testnet service registration. Native ENS enforces record permissions.
 /// @dev Grant this contract only ROLE_REGISTRAR on a dedicated native subregistry.
 ///      The parent registry's administrators retain their native override powers.
+///      Current deployments publish holder-derived schema v3; the compatibility payTo input
+///      must equal the caller. Legacy deployments publish explicit-recipient schema v2.
+///      This contract does not prove payment-chain control or settle tokens; clients verify that.
 contract ServiceRegistrar is IServiceRegistrar {
     /// @inheritdoc IServiceRegistrar
     uint256 public constant override MIN_COMMITMENT_AGE = 60;
@@ -92,6 +95,7 @@ contract ServiceRegistrar is IServiceRegistrar {
         registrationEntered = true;
         if (block.timestamp >= registrationExpiry) revert RegistrationExpired();
         _validate(service, msg.sender);
+        if (currentResolver && service.payTo != msg.sender) revert InvalidRecord();
         bytes32 commitment = makeCommitment(service, msg.sender, secret);
         uint256 committedAt = commitments[commitment];
         if (
@@ -177,8 +181,19 @@ contract ServiceRegistrar is IServiceRegistrar {
         INativeResolver(resolverAddress).revokeRootRoles(temporaryRoles, address(this));
     }
 
-    /// @dev Serialize fixed-price payment terms in Base Sepolia USDC atomic units.
-    function _paymentRecord(Service calldata service) internal pure returns (string memory) {
+    /// @dev Serialize fixed-price payment terms in Base Sepolia USDC atomic units (6 decimals).
+    ///      Current v3 omits payTo; consumers derive it from live name ownership and verify
+    ///      destination control. Legacy v2 preserves its explicit-recipient compatibility path.
+    /// @param service Validated registration fields bound by the commitment.
+    /// @return Serialized ENS402 application payment record, not an official ENS standard.
+    function _paymentRecord(Service calldata service) internal view returns (string memory) {
+        if (currentResolver) {
+            return string.concat(
+                '{"version":3,"recipient":"name-owner","scheme":"exact","network":"eip155:84532","asset":"0x036cbd53842c5426634e7929541ec2318f3dcf7e","pricing":{"model":"fixed","amount":"',
+                _uintString(service.price),
+                '","unit":"request"}}'
+            );
+        }
         return string.concat(
             '{"version":2,"scheme":"exact","network":"eip155:84532","asset":"0x036cbd53842c5426634e7929541ec2318f3dcf7e","payTo":"',
             _address(service.payTo),

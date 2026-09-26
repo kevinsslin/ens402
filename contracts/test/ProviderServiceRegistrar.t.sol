@@ -21,6 +21,7 @@ contract ProviderServiceRegistrarTest {
     INativeRegistry registry;
     ProviderServiceRegistrar registrar;
     uint64 expiry;
+    address paymentOwner;
 
     function _registry(uint256 salt, address admin) internal returns (INativeRegistry) {
         NativeGrant[] memory grants = new NativeGrant[](1);
@@ -42,11 +43,11 @@ contract ProviderServiceRegistrarTest {
         registry.grantRootRoles(ENSRoles.ROLE_REGISTRAR, address(registrar));
     }
 
-    function _service() internal pure returns (IServiceRegistrar.Service memory) {
+    function _service() internal view returns (IServiceRegistrar.Service memory) {
         return IServiceRegistrar.Service(
             "weather",
             "https://weather.example/api",
-            address(0xD1),
+            paymentOwner,
             address(0xE1),
             address(0xF1),
             "Weather forecast",
@@ -57,6 +58,7 @@ contract ProviderServiceRegistrarTest {
     }
 
     function _commit(IServiceRegistrar api, address owner) internal returns (bytes32 commitment) {
+        paymentOwner = owner;
         commitment = api.makeCommitment(_service(), owner, secret);
         api.commit(commitment);
         vm.warp(block.timestamp + api.MIN_COMMITMENT_AGE());

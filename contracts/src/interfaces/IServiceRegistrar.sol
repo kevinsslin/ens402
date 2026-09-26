@@ -24,13 +24,15 @@ interface IServiceRegistrar {
     error ReentrantCall();
 
     /// @notice Initial service metadata and delegates, bound into the commitment.
-    /// @dev Admin is the registering caller, not a field in this struct.
+    /// @dev Name owner is the registering caller. Isolated mode also makes it resolver Admin;
+    ///      shared mode retains provider resolver governance without granting caller root rights.
     struct Service {
         /// @dev One lowercase ASCII label, 3 to 32 bytes, with no leading/trailing hyphen.
         string label;
         /// @dev HTTPS endpoint, 9 to 2048 bytes. Clients separately validate URL semantics.
         string endpoint;
-        /// @dev Nonzero payment recipient, distinct in purpose from the Treasury delegate.
+        /// @dev Current deployment: must equal caller as initial name-owner confirmation; omitted from stored v3 terms.
+        ///      Legacy deployment: explicit nonzero payment recipient. Never the Treasury writer by implication.
         address payTo;
         /// @dev Ops delegate: endpoint, description, avatar and call-schema writes. Must differ from Admin and Treasury.
         address endpointOperator;
@@ -48,8 +50,8 @@ interface IServiceRegistrar {
 
     /// @notice A fully initialized service was published in the native registry.
     /// @param node ENS namehash of the service.
-    /// @param owner Initial name owner and Resolver Admin.
-    /// @param resolver Dedicated native PermissionedResolver instance.
+    /// @param owner Initial name owner; resolver administration depends on isolated or shared mode.
+    /// @param resolver Native PermissionedResolver instance, dedicated or shared by provider policy.
     /// @param tokenId Native registry token identifier.
     /// @param label Registered label below this registrar's parent name.
     event ServiceRegistered(

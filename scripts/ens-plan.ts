@@ -9,6 +9,7 @@ import {
   prepareTextPermission,
   validateEndpoint,
   parsePaymentRecord,
+  serializePaymentRecord,
 } from "../packages/sdk/src/ens/index";
 import { registryAbi } from "../packages/sdk/src/ens/abi";
 import { NETWORK, USDC } from "../packages/sdk/src/index";
@@ -38,17 +39,18 @@ if (
 const endpoint = validateEndpoint(required("MERCHANT_RESOURCE_URL"));
 const payment = parsePaymentRecord(
   JSON.stringify({
-    version: 2,
+    version: 3,
+    recipient: "name-owner",
     scheme: "exact",
     network: NETWORK,
     asset: USDC,
-    payTo: wallet("MERCHANT_PAY_TO"),
     pricing: {
       model: "fixed",
       amount: required("MERCHANT_PRICE_UNITS"),
       unit: "request",
     },
   }),
+  admin,
 );
 const { client, block } = await setupClient();
 const { registry, label } = await ownedName(client, name, admin, block.number);
@@ -73,7 +75,12 @@ const { result: resolver } = await client.simulateContract({
   functionName: "deployProxy",
   args: [deployment.resolverImplementation, salt, initialize],
 });
-const service = { name, resolver, deployment: "current" as const };
+const service = {
+  name,
+  owner: admin,
+  resolver,
+  deployment: "current" as const,
+};
 await savePlan("ens-transactions.json", {
   purpose: "Configure one service, not the platform namespace",
   chainId: deployment.chainId,
@@ -96,9 +103,10 @@ await savePlan("ens-transactions.json", {
       wallet: ops,
       contract: resolver,
       resource:
-        "Separate keccak256(key) grants: agent-endpoint[x402], description, avatar",
+        "Separate keccak256(key) grants: agent-endpoint[x402], description, avatar, ens402.call",
       roles: ["ROLE_SET_TEXT"],
-      effect: "Write endpoint, description and avatar through separate grants",
+      effect:
+        "Write endpoint, description, avatar and call metadata through separate grants",
     },
     {
       wallet: treasury,
@@ -126,7 +134,11 @@ await savePlan("ens-transactions.json", {
       description: "1. Deploy native resolver with Admin root text rights",
     },
     prepareRecordUpdate(service, "agent-endpoint[x402]", endpoint),
-    prepareRecordUpdate(service, "ens402.payment", JSON.stringify(payment)),
+    prepareRecordUpdate(
+      service,
+      "ens402.payment",
+      serializePaymentRecord(payment),
+    ),
     prepareRecordUpdate(service, "ens402.status", "active"),
     prepareRecordUpdate(
       service,

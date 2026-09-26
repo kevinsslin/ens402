@@ -1,5 +1,9 @@
 import { parseCallMetadata } from "../call";
-import { resolveCurrentService, currentResolverAbi, type CurrentResolverPolicy } from "./current";
+import {
+  resolveCurrentService,
+  currentResolverAbi,
+  type CurrentResolverPolicy,
+} from "./current";
 export type { CurrentResolverPolicy } from "./current";
 export {
   currentDeployment,
@@ -45,26 +49,52 @@ export type ResolvedService = ServiceSnapshot & {
   recordVersion: string;
   authorityCoverage: readonly string[];
 };
-export function parsePaymentRecord(raw: string): PaymentConfig {
+export function parsePaymentRecord(
+  raw: string,
+  owner?: Address,
+): PaymentConfig {
   if (raw.length > 4096) throw new Error("Payment record is too large");
   const p = JSON.parse(raw) as PaymentConfig;
   if (
     !p ||
-    ![1, 2].includes(p.version) ||
+    ![1, 2, 3].includes(p.version) ||
     p.scheme !== "exact" ||
     p.network !== NETWORK ||
     !sameAddress(p.asset, USDC) ||
-    !sameAddress(p.payTo, p.payTo) ||
-    sameAddress(p.payTo, zeroAddress)
+    (p.version !== 3 &&
+      (!sameAddress(p.payTo, p.payTo) || sameAddress(p.payTo, zeroAddress)))
   )
     throw new Error("Unsupported ENS payment record");
+  let recipient = p.payTo;
+  if (p.version === 3) {
+    if (
+      p.recipient !== "name-owner" ||
+      Object.prototype.hasOwnProperty.call(p, "payTo") ||
+      !owner ||
+      !sameAddress(owner, owner) ||
+      sameAddress(owner, zeroAddress)
+    )
+      throw new Error(
+        "Holder-derived payment requires the live nonzero name owner and no payTo field",
+      );
+    recipient = owner;
+    if (
+      p.controlProof &&
+      (!Number.isSafeInteger(p.controlProof.validUntil) ||
+        p.controlProof.validUntil <= 0 ||
+        typeof p.controlProof.signature !== "string" ||
+        !/^0x(?:[0-9a-fA-F]{2})+$/.test(p.controlProof.signature) ||
+        p.controlProof.signature.length > 4098)
+    )
+      throw new Error("Invalid destination control proof");
+  }
   const base = {
     scheme: "exact" as const,
     network: NETWORK,
     asset: p.asset.toLowerCase(),
-    payTo: p.payTo.toLowerCase(),
+    payTo: recipient.toLowerCase(),
   };
-  if (p.version === 2) {
+  if (p.version === 2 || p.version === 3) {
     if (
       p.pricing?.model !== "fixed" ||
       p.pricing.unit !== "request" ||
@@ -73,15 +103,32 @@ export function parsePaymentRecord(raw: string): PaymentConfig {
       BigInt(p.pricing.amount) <= 0n
     )
       throw new Error("A positive fixed price in atomic units is required");
-    return {
-      ...base,
-      version: 2,
-      pricing: { model: "fixed", amount: p.pricing.amount, unit: "request" },
+    const pricing = {
+      model: "fixed" as const,
+      amount: p.pricing.amount,
+      unit: "request" as const,
     };
+    if (p.version === 3)
+      return {
+        ...base,
+        version: 3,
+        recipient: "name-owner",
+        ...(p.controlProof ? { controlProof: p.controlProof } : {}),
+        pricing,
+      };
+    return { ...base, version: 2, pricing };
   }
   if ("pricing" in p)
     throw new Error("Pricing requires payment schema version 2");
   return { ...base, version: 1 };
+}
+/** Serialize public configuration without copying a derived live recipient into a v3 record. */
+export function serializePaymentRecord(payment: PaymentConfig): string {
+  if (payment.version === 3) {
+    const { payTo: _derived, ...stored } = payment;
+    return JSON.stringify(stored);
+  }
+  return JSON.stringify(payment);
 }
 export function validateDescription(raw: string): string {
   if (
@@ -118,7 +165,10 @@ export async function resolveService(
 ): Promise<ResolvedService> {
   if (deployment === "current")
     return resolveCurrentService(client, input, now, resolverPolicy);
-  if (resolverPolicy.mode !== "dedicated") throw new Error("Shared resolver policy requires the current ENS deployment");
+  if (resolverPolicy.mode !== "dedicated")
+    throw new Error(
+      "Shared resolver policy requires the current ENS deployment",
+    );
   if ((await client.getChainId()) !== ensDeployment.chainId)
     throw new Error("ENS requires Sepolia");
   const name = normalize(input);
@@ -222,7 +272,7 @@ export async function resolveService(
     args: [node],
     blockNumber,
   });
-  const payment = parsePaymentRecord(records[1]!);
+  const payment = parsePaymentRecord(records[1]!, owner);
   const endpoint = validateEndpoint(records[0]!);
   if (!["active", "suspended"].includes(records[2]!))
     throw new Error("Unsupported service status");
@@ -275,14 +325,18 @@ export type EnsTransaction = {
   description: string;
 };
 export function prepareRecordUpdate(
-  service: Pick<ResolvedService, "name" | "resolver" | "deployment">,
+  service: Pick<ResolvedService, "name" | "resolver" | "deployment"> & {
+    owner?: Address;
+  },
   key: RecordKey,
   value: string,
 ): EnsTransaction {
   if (!recordKeys.includes(key)) throw new Error("Unsupported service record");
   if (key === "agent-endpoint[x402]") value = validateEndpoint(value);
-  if (key === "ens402.payment")
-    value = JSON.stringify(parsePaymentRecord(value));
+  if (key === "ens402.payment") {
+    const payment = parsePaymentRecord(value, service.owner);
+    value = serializePaymentRecord(payment);
+  }
   if (key === "description") value = validateDescription(value);
   if (key === "avatar") value = validatePicture(value);
   if (key === "ens402.call") parseCallMetadata(value);

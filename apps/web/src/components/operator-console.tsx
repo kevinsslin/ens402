@@ -1,4 +1,5 @@
 "use client";
+import { serializePaymentRecord } from "@ens402/sdk/ens";
 import { useEffect, useState, type FormEvent } from "react";
 import { ArrowRight, Loader2, RefreshCw, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -23,7 +24,10 @@ type ApprovalRow = {
   payer: string | null;
 };
 type Execution = {
-  prepared?: { typedData: Record<string, unknown>; receipt?: { request?: ResourceRequest } };
+  prepared?: {
+    typedData: Record<string, unknown>;
+    receipt?: { request?: ResourceRequest };
+  };
   id: string;
   approval_id: string;
   state: string;
@@ -81,8 +85,15 @@ export function OperatorConsole({
   });
   const [name, setName] = useState("");
   useEffect(() => {
-    const candidate = new URLSearchParams(window.location.search).get("service");
-    if (candidate && /^[a-z0-9.-]+\.eth$/.test(candidate) && candidate.length <= 255) setName(candidate);
+    const query = new URLSearchParams(window.location.search);
+    const candidate = query.get("service");
+    if (query.get("manage") === "1") setView("services");
+    if (
+      candidate &&
+      /^[a-z0-9.-]+\.eth$/.test(candidate) &&
+      candidate.length <= 255
+    )
+      setName(candidate);
   }, []);
 
   const [service, setService] = useState<ResolvedService | null>(null);
@@ -227,7 +238,7 @@ export function OperatorConsole({
         authority: service.authority,
         payTo: service.payment.payTo,
         fixedPrice:
-          service.payment.version === 2
+          service.payment.version !== 1
             ? service.payment.pricing.amount
             : undefined,
         endpoints: endpoints
@@ -251,7 +262,11 @@ export function OperatorConsole({
     await run("purchase", async () => {
       const row = state.approvals.find((a) => a.id === approvalId);
       if (!row) throw new Error("Approval not found.");
-      const current: { id: string; approvalId: string; request?: ResourceRequest } =
+      const current: {
+        id: string;
+        approvalId: string;
+        request?: ResourceRequest;
+      } =
         attempt?.approvalId === approvalId
           ? attempt
           : { id: crypto.randomUUID(), approvalId };
@@ -259,7 +274,8 @@ export function OperatorConsole({
         "/api/merchant/register",
       );
       if (
-        isRegistration && !current.request &&
+        isRegistration &&
+        !current.request &&
         (!/^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$/.test(buyLabel) ||
           !/^0x[0-9a-fA-F]{40}$/.test(buyRecipient) ||
           /^0x0{40}$/.test(buyRecipient))
@@ -267,18 +283,24 @@ export function OperatorConsole({
         throw new Error(
           "Enter the subname label and recipient before purchasing.",
         );
-      const resourceRequest = current.request ?? (isRegistration
-        ? {
-            method: "POST" as const,
-            body: JSON.stringify({
-              orderId: current.id,
-              label: buyLabel,
-              recipient: buyRecipient,
-            }),
-          }
-        : row.service.call?.method === "POST"
-          ? preparePostInput(postInputs[row.id] ?? JSON.stringify(row.service.call.example ?? {}), current.id)
-          : undefined);
+      const resourceRequest =
+        current.request ??
+        (isRegistration
+          ? {
+              method: "POST" as const,
+              body: JSON.stringify({
+                orderId: current.id,
+                label: buyLabel,
+                recipient: buyRecipient,
+              }),
+            }
+          : row.service.call?.method === "POST"
+            ? preparePostInput(
+                postInputs[row.id] ??
+                  JSON.stringify(row.service.call.example ?? {}),
+                current.id,
+              )
+            : undefined);
       current.request = resourceRequest;
       setAttempt(current);
       sessionStorage.setItem(storageKey, JSON.stringify(current));
@@ -643,7 +665,7 @@ export function OperatorConsole({
                         Published fixed price
                       </p>
                       <p className="mt-2 text-sm">
-                        {service.payment.version === 2
+                        {service.payment.version !== 1
                           ? `${usdc(service.payment.pricing.amount)} USDC / request`
                           : "Legacy record: only buyer amount limits apply"}
                       </p>
@@ -860,12 +882,61 @@ export function OperatorConsole({
                         Last checked balance: {balances[row.id]} USDC
                       </p>
                     )}
-                    {row.service.call?.method === "POST" && !row.service.endpoint.endsWith("/api/merchant/register") && <details className="mt-5 rounded-lg border p-4" open>
-                      <summary className="cursor-pointer text-sm font-medium">POST request input</summary>
-                      <p className="mt-2 text-xs leading-6 text-muted-foreground">Enter a JSON object. ENS402 adds an orderId and binds the exact request to this purchase. The merchant must support ENS402 request binding.</p>
-                      <label className="mt-3 block text-sm">JSON input<textarea className={`${field} min-h-28 font-mono text-xs`} aria-label={`JSON input for ${row.service.name}`} value={(attempt?.approvalId === row.id ? attempt.request?.body : undefined) ?? postInputs[row.id] ?? JSON.stringify(row.service.call.example ?? {}, null, 2)} maxLength={8192} disabled={!!attempt} onChange={event => setPostInputs(previous => ({ ...previous, [row.id]: event.target.value }))} /></label>
-                      {row.service.call.inputSchema && <details className="mt-3 text-xs"><summary className="cursor-pointer">Provider input schema</summary><pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-all">{JSON.stringify(row.service.call.inputSchema, null, 2)}</pre></details>}
-                    </details>}
+                    {row.service.call?.method === "POST" &&
+                      !row.service.endpoint.endsWith(
+                        "/api/merchant/register",
+                      ) && (
+                        <details className="mt-5 rounded-lg border p-4" open>
+                          <summary className="cursor-pointer text-sm font-medium">
+                            POST request input
+                          </summary>
+                          <p className="mt-2 text-xs leading-6 text-muted-foreground">
+                            Enter a JSON object. ENS402 adds an orderId and
+                            binds the exact request to this purchase. The
+                            merchant must support ENS402 request binding.
+                          </p>
+                          <label className="mt-3 block text-sm">
+                            JSON input
+                            <textarea
+                              className={`${field} min-h-28 font-mono text-xs`}
+                              aria-label={`JSON input for ${row.service.name}`}
+                              value={
+                                (attempt?.approvalId === row.id
+                                  ? attempt.request?.body
+                                  : undefined) ??
+                                postInputs[row.id] ??
+                                JSON.stringify(
+                                  row.service.call.example ?? {},
+                                  null,
+                                  2,
+                                )
+                              }
+                              maxLength={8192}
+                              disabled={!!attempt}
+                              onChange={(event) =>
+                                setPostInputs((previous) => ({
+                                  ...previous,
+                                  [row.id]: event.target.value,
+                                }))
+                              }
+                            />
+                          </label>
+                          {row.service.call.inputSchema && (
+                            <details className="mt-3 text-xs">
+                              <summary className="cursor-pointer">
+                                Provider input schema
+                              </summary>
+                              <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-all">
+                                {JSON.stringify(
+                                  row.service.call.inputSchema,
+                                  null,
+                                  2,
+                                )}
+                              </pre>
+                            </details>
+                          )}
+                        </details>
+                      )}
                     <div className="mt-5 flex flex-wrap gap-2">
                       {row.state === "provisioning" && (
                         <Button
@@ -1048,10 +1119,17 @@ export function OperatorConsole({
                           const selected = {
                             id: execution.id,
                             approvalId: execution.approval_id,
-                            request: execution.prepared?.receipt?.request ?? (attempt?.id === execution.id ? attempt.request : undefined),
+                            request:
+                              execution.prepared?.receipt?.request ??
+                              (attempt?.id === execution.id
+                                ? attempt.request
+                                : undefined),
                           };
                           setAttempt(selected);
-                          sessionStorage.setItem(storageKey, JSON.stringify(selected));
+                          sessionStorage.setItem(
+                            storageKey,
+                            JSON.stringify(selected),
+                          );
                           setNotice(
                             "Attempt selected. Use Resume same attempt on its wallet card.",
                           );
@@ -1188,16 +1266,18 @@ export function OperatorConsole({
                         setPlan(null);
                         setValue(
                           e.target.value === "ens402.payment"
-                            ? JSON.stringify(service?.payment ?? {}, null, 2)
+                            ? service
+                              ? serializePaymentRecord(service.payment)
+                              : "{}"
                             : e.target.value === "ens402.status"
                               ? "active"
                               : e.target.value === "description"
                                 ? (service?.description ?? "")
                                 : e.target.value === "ens402.call"
                                   ? '{"method":"GET"}'
-                                : e.target.value === "avatar"
-                                  ? (service?.picture ?? "")
-                                  : (service?.endpoint ?? ""),
+                                  : e.target.value === "avatar"
+                                    ? (service?.picture ?? "")
+                                    : (service?.endpoint ?? ""),
                         );
                       }}
                     >
@@ -1218,9 +1298,9 @@ export function OperatorConsole({
                                 ? "Description"
                                 : key === "ens402.call"
                                   ? "Call schema"
-                                : key === "avatar"
-                                  ? "Picture URL"
-                                  : "Availability"}
+                                  : key === "avatar"
+                                    ? "Picture URL"
+                                    : "Availability"}
                         </option>
                       ))}
                     </select>
@@ -1313,9 +1393,9 @@ export function OperatorConsole({
                         ? "Service description"
                         : record === "ens402.call"
                           ? "Call metadata JSON (explicit GET or POST)"
-                        : record === "avatar"
-                          ? "Picture URL (HTTPS, optional)"
-                          : "API URL"}
+                          : record === "avatar"
+                            ? "Picture URL (HTTPS, optional)"
+                            : "API URL"}
                       <textarea
                         className={`${field} min-h-24 font-mono text-xs`}
                         value={value}

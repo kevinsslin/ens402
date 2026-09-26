@@ -1,3 +1,4 @@
+import { checkNameOwnerRecipient } from "@ens402/sdk/recipient";
 import {
   validateResourceRequest,
   type ResourceRequest,
@@ -21,7 +22,7 @@ import { normalize } from "viem/ens";
 import { sameAddress, NETWORK } from "@ens402/sdk";
 import { Store } from "./store";
 import {
-  configuredResolverPolicy,
+  resolverPolicyForService,
   allowedNames,
   allowedOrigins,
   amount,
@@ -67,7 +68,21 @@ function serviceName(input: unknown): string {
   return name;
 }
 export async function inspectService(input: unknown) {
-  return resolveService(ensClient(), serviceName(input), undefined, "current", configuredResolverPolicy());
+  const source = ensClient();
+  const service = await resolveService(
+    source,
+    serviceName(input),
+    undefined,
+    "current",
+    resolverPolicyForService(serviceName(input)),
+  );
+  if (service.payment.version === 3)
+    service.recipientCheck = await checkNameOwnerRecipient(
+      source,
+      baseClient(),
+      service,
+    );
+  return service;
 }
 export async function createApproval(
   input: Record<string, unknown>,
@@ -134,7 +149,7 @@ export async function createApproval(
       "Service changed since inspection; review and approve again",
     );
   const fixedPrice =
-    service.payment.version === 2 ? service.payment.pricing.amount : undefined;
+    service.payment.version !== 1 ? service.payment.pricing.amount : undefined;
   if (
     fixedPrice !== undefined &&
     (input.fixedPrice !== fixedPrice || BigInt(fixedPrice) > BigInt(maxAmount))
@@ -194,19 +209,15 @@ async function provisionApproval(
   if (row.state !== "provisioning")
     throw new Error("Approval cannot be activated");
   const client = privy();
-  const policy = await client
-    .policies()
-    .create({
-      ...buildPrivyPolicy(row.approval),
-      idempotency_key: `${id}-policy`,
-    });
-  const wallet = await client
-    .wallets()
-    .create({
-      chain_type: "ethereum",
-      policy_ids: [policy.id],
-      idempotency_key: `${id}-wallet`,
-    });
+  const policy = await client.policies().create({
+    ...buildPrivyPolicy(row.approval),
+    idempotency_key: `${id}-policy`,
+  });
+  const wallet = await client.wallets().create({
+    chain_type: "ethereum",
+    policy_ids: [policy.id],
+    idempotency_key: `${id}-wallet`,
+  });
   return store.activate(id, wallet.id, wallet.address, policy.id);
 }
 export async function resumeApproval(input: unknown) {

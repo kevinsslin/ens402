@@ -118,3 +118,34 @@ Evidence below is local or explicitly credential-scoped; it does not establish p
 The persistent local discovery database is a labeled fixture source, separate from the account ledger. A new empty Neon database/role is required for the live chain source; reusing the fixture database for a different source is rejected. Setup commands are consolidated in SETUP.md.
 
 Latest root-agent receipts for this revision: 135 fast tests, 12 web tests, 11 discovery database tests, and 3 indexer tests passed; Envio codegen/typecheck, workspace typecheck and Anvil-script typecheck passed. The native discovery fork and optimized production build passed. Live semantic verification also ranked weather first for "Will I need an umbrella tomorrow?" and rates first for "Convert dollars into euros" without keyword matches. Whole-word matching and stopword filtering prevent English short words from creating spurious hits; positive cosine similarity ranks semantic suggestions, not confidence or quality guarantees.
+
+## TODO implementation completion, September 27
+
+This round adds wallet-driven provider onboarding and merchant management, native delegate/Admin transitions, holder-derived recipients and classified address analytics. It does not perform public owner transactions or claim a funded public walkthrough.
+
+- `/provider` prepares resumable wallet-signed native registry, shared resolver and registrar setup. Service publication validates public call metadata and probes actual unsigned HTTP 402 terms using authenticated, SSRF-safe transport before commit/reveal.
+- `/merchant` checks live provider membership, owners and effective roles; publication receipt and searchable listing are separate states. Public observations do not authenticate an arbitrary wallet address. Mutations still require native wallet signatures.
+- Native resolver multicall replaces scoped writers atomically. Postchecks must explicitly pass. Unexpected root/admin rights, unknown role values and a wrong outgoing delegate are rejected. Admin handover binds incoming acceptance, live registry pointers and configured resolver scope; a shared resolver cannot be silently transferred as service-only governance.
+- Schema v3 stores `recipient: name-owner`, with no stored payTo. Fresh ENS ownership determines the recipient; authority changes invalidate approvals. Contract holders require deployed Base Sepolia code and direct ERC-1271 magic-value verification at a pinned block. Generic signature verification with EOA fallback is deliberately not used for this check. The contract fixture verifies ERC-1271 behavior, not actual Safe owners/threshold.
+- Analytics indexes finalized Base Sepolia USDC receipts, groups each shared address once, preserves name/control/address epochs and replays canonical checkpoints. Separate unclassified/facilitator/verified totals prevent treating all transfers as x402 revenue. Worker-only terminal ledger evidence is independently checked against Transfer, AuthorizationUsed, amount, payer, recipient, nonce and finalized canonical receipt.
+- Additional hosted provider groups require explicit verified configuration. Registration/indexing does not silently expand the hosted Guard trust set. This manual admission boundary remains documented in SETUP.
+- The public registrar bytecode artifact is generated from Forge output. Hosted builds verify its source digest, preventing unnoticed source/artifact drift.
+
+Validation this round:
+
+| Check | Result |
+| --- | --- |
+| `pnpm test` | 143 tests passed |
+| Web onboarding, endpoint probe and existing route tests | 21 tests passed |
+| Discovery PostgreSQL | 11 tests passed |
+| Analytics PostgreSQL, readonly ledger proof feed and local Anvil scanner | 13 tests passed |
+| Envio codegen/typecheck/handler tests | Passed; 3 tests |
+| Full native Solidity suite | 55 tests passed |
+| `pnpm test:anvil` | Passed, including actual USDC/ENS dual-fork flow and 28 ledger/workflow tests |
+| Discovery/provider fork | Passed: native commit/reveal, PostgreSQL ingestion, independent reconstruction, update/rollback/expiry |
+| Native management fork | Passed: replacement, broad-right rejection, accepted staged Admin handover and final authority checks |
+| Recipient fork | Passed: native v3 owner resolution/transfer, prior-approval rejection and destination ERC-1271 proof |
+| TypeScript and production build | Passed locally; final deployment receipt is separate |
+| Browser | Provider/merchant sign-in gates and editable service example loaded; 390px form had no horizontal overflow |
+
+The browser verification did not sign in as the real owner or execute wallet transactions. Hosted ingestion, public grants, Safe execution and a funded buyer purchase remain explicit TODO items. Ancestor/root/link/upgrade powers are not renounced and exclusive resolver membership is not claimed.

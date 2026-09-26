@@ -78,15 +78,7 @@ contract SharedProviderRegistrarTest {
 
     function _service(string memory label) internal pure returns (IServiceRegistrar.Service memory) {
         return IServiceRegistrar.Service(
-            label,
-            "https://weather.example/api",
-            address(0xE1),
-            ops,
-            treasurySafe,
-            "Weather",
-            "",
-            10000,
-            '{"method":"GET"}'
+            label, "https://weather.example/api", publisher, ops, treasurySafe, "Weather", "", 10000, '{"method":"GET"}'
         );
     }
 

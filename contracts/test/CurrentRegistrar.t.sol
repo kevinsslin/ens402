@@ -83,7 +83,7 @@ contract CurrentRegistrarTest {
         IServiceRegistrar.Service memory s = IServiceRegistrar.Service(
             "priced",
             "https://weather.example/api",
-            treasury,
+            owner,
             ops,
             treasury,
             "Weather forecast",
@@ -105,7 +105,7 @@ contract CurrentRegistrarTest {
             keccak256(bytes(_text(dns, node, "ens402.payment")))
                 == keccak256(
                     bytes(
-                        '{"version":2,"scheme":"exact","network":"eip155:84532","asset":"0x036cbd53842c5426634e7929541ec2318f3dcf7e","payTo":"0x0000000000000000000000000000000000001003","pricing":{"model":"fixed","amount":"10000","unit":"request"}}'
+                        '{"version":3,"recipient":"name-owner","scheme":"exact","network":"eip155:84532","asset":"0x036cbd53842c5426634e7929541ec2318f3dcf7e","pricing":{"model":"fixed","amount":"10000","unit":"request"}}'
                     )
                 ),
             "missing fixed price"
@@ -132,7 +132,7 @@ contract CurrentRegistrarTest {
         IServiceRegistrar.Service memory service = IServiceRegistrar.Service(
             "weather",
             "https://weather.example/api",
-            treasury,
+            owner,
             owner,
             treasury,
             "Weather forecast",
@@ -151,7 +151,7 @@ contract CurrentRegistrarTest {
         IServiceRegistrar.Service memory s = IServiceRegistrar.Service(
             "weather",
             "https://weather.example/api",
-            treasury,
+            owner,
             ops,
             treasury,
             "Weather forecast",
@@ -191,5 +191,26 @@ contract CurrentRegistrarTest {
         require(registry.findOwner("weather") == nextOwner, "name transfer failed");
         require(INativeResolver(resolver).hasRootRoles(16, owner), "resolver authority changed unexpectedly");
         require(!INativeResolver(resolver).hasRootRoles(16, nextOwner), "implicit resolver authority transfer");
+    }
+
+    function testCurrentRegistrationRejectsRecipientDifferentFromNameOwner() public {
+        IServiceRegistrar.Service memory service = IServiceRegistrar.Service(
+            "wrongpay",
+            "https://weather.example/api",
+            treasury,
+            ops,
+            treasury,
+            "Weather forecast",
+            "",
+            10000,
+            '{"method":"GET"}'
+        );
+        bytes32 secret = bytes32(uint256(998));
+        registrar.commit(registrar.makeCommitment(service, owner, secret));
+        vm.warp(block.timestamp + 60);
+        vm.expectPartialRevert(IServiceRegistrar.InvalidRecord.selector);
+        vm.prank(owner);
+        registrar.register(service, secret);
+        require(registry.findOwner("wrongpay") == address(0), "mismatched holder was published");
     }
 }

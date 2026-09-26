@@ -90,7 +90,7 @@ The per-authorization limits are configured in Privy. Daily totals are enforced 
 4. With the endpoint operator wallet, simulate and submit an endpoint update within the buyer-approved endpoint list. Resolve again.
 5. Attempt to edit `ens402.payment` as the operator. Native simulation must reject it.
 6. Revoke the operator's endpoint permission and repeat the endpoint edit attempt. It must fail unless a broader root/name permission remains.
-7. Change Treasury using its authorized wallet. A prior buyer approval must stop matching; explicitly approve the new recipient.
+7. Change payment terms using Treasury, or transfer a schema-v3 service name to change its recipient. Refresh ENS and obtain a new buyer approval. Replacing a Treasury writer alone does not change the recipient.
 
 The included second merchant route is `/api/merchant/search-v2`. Choose **Also approve the demo v2 route** when creating the buyer approval, then update the ENS endpoint to that URL. For other merchants, deploy a second functioning URL and include both exact URLs in the explicit approval. A different unapproved URL deliberately holds/rejects the flow.
 
@@ -185,7 +185,7 @@ Use three distinct wallets:
 | Ops endpoint writer | `0x03eEe8Be9682D6DF713563FDf7f8D1eD78d7479D` | Sepolia ETH for record updates |
 | Treasury payment-record writer | `0x0Ca23D06479560bb9A916c19Df5a2948a8ed3346` | Sepolia ETH for record updates |
 
-Ops and Treasury are freshly generated test-only wallets. Their keys are stored only in ignored root `.env` as `ENS_OPS_TEST_PRIVATE_KEY` and `ENS_TREASURY_TEST_PRIVATE_KEY`; the file is owner-readable/writable only. No roles have been granted and no transaction has been sent from them. The Admin key was not requested or copied. Funding these two writers does not fund the separate Base Sepolia USDC payer. The USDC receiving address remains `MERCHANT_PAY_TO`, an independent configuration.
+Ops and Treasury are freshly generated test-only wallets. Their keys are stored only in ignored root `.env` as `ENS_OPS_TEST_PRIVATE_KEY` and `ENS_TREASURY_TEST_PRIVATE_KEY`; the file is owner-readable/writable only. No roles have been granted and no transaction has been sent from them. The Admin key was not requested or copied. Funding these two writers does not fund the separate Base Sepolia USDC payer. The merchant HTTP challenge uses `MERCHANT_PAY_TO`; for schema v3 it must equal the current service-name owner. The demo Treasury EOA above is not the Safe required by shared-provider onboarding.
 
 ## Native contract roles
 
@@ -319,7 +319,7 @@ Shared mode configuration: set `PROVIDER_ENS_NAME`, `PROVIDER_REGISTRY_ADDRESS`,
 The registration page then checks the selected shared resolver and native publisher authority.
 `PROVIDER_OPS_ADDRESS` and `PROVIDER_TREASURY_SAFE_ADDRESS` prefill existing delegates;
 registration must validate live permissions, not grant new ones. Treasury Safe is a payment-key
-writer across all services, while every service's `payTo` remains independent. Contract code
+writer across all services. Schema-v3 recipients follow each service name owner. Contract code
 presence does not prove Safe identity or threshold; verify the actual Safe before public use.
 
 ### OpenAI embedding configuration
@@ -334,3 +334,52 @@ DISCOVERY_QUERY_EMBEDDINGS_PER_MINUTE=60
 ```
 
 Local OpenAI vector generation is verified: three fixture vectors persisted, with zero failures. This does not verify hosted configuration or real merchant results. The implementation reads `DISCOVERY_EMBEDDING_API_KEY`, not `OPENAI_API_KEY`. All three provider fields must be set together. Run `pnpm discovery:embed` after catalog synchronization, then `pnpm discovery:check`. Restart local development or redeploy Vercel after changing environment variables. Keyword search remains available without an embedding provider.
+
+## Provider onboarding and merchant management
+
+1. The owner first enables the Platform Registry beneath `ens402.eth` using `ens:namespace:plan`. This is the one prerequisite that provider onboarding cannot bypass.
+2. Open `/provider`, connect Provider Admin, and enter a provider label, Platform registrar signer, Ops EOA and deployed Treasury Safe. The page reads actual native state and presents one wallet-signed transaction at a time. Switch to the stated signer when requested. Setup progress is stored locally and revalidated onchain.
+3. Once registry, shared resolver and restricted registrar are verified, publish service description, optional image, endpoint, fixed USDC price and call metadata in the same page. Native commit/reveal waits at least 60 seconds. The registering wallet becomes the service-name holder and initial recipient.
+4. After the registration receipt, `/merchant?provider=<name>&service=<name>` checks live membership, ownership, effective writers and listing status. `awaiting-index` is distinct from `listed`. Permissions are public observations, not authenticated account data; edits require the connected wallet to sign native transactions.
+5. Replace Ops/Treasury in the merchant permissions control. Native resolver multicall grants the incoming writer and removes the outgoing writer atomically. Unexpected broad/root permissions stop the operation. Shared resolver scope covers every service bundle. Treasury replacement does not change the recipient.
+6. For Admin handover, the incoming wallet accepts the exact target scope first. The outgoing wallet grants the incoming native authority and transfers the name; the incoming wallet then removes outgoing root rights. Reopen and continue after each receipt. Shared service-name transfers preserve provider resolver governance. Isolated services require the resolver administration handover too.
+
+CLI alternatives: `pnpm ens:manage rotate|verify-rotation|acceptance|handover <public-input.json>`. Input types are exported from `@ens402/sdk/ens/management`. Plans contain unsigned transactions and never broadcast. Acceptance is a planner requirement, not a new ENS contract restriction. Parent powers, third-party grants, alias/link and upgrade authority are outside this bounded handover.
+
+## Holder-derived payment records
+
+New current-ENS registrations publish:
+
+```json
+{"version":3,"recipient":"name-owner","scheme":"exact","network":"eip155:84532","asset":"0x036cbd53842c5426634e7929541ec2318f3dcf7e","pricing":{"model":"fixed","amount":"10000","unit":"request"}}
+```
+
+The SDK derives internal `payment.payTo` from the live service owner. Do not copy that derived field back into the ENS record; use `serializePaymentRecord()`. Legacy v1/v2 explicit-recipient records remain readable. A name transfer changes the v3 recipient and invalidates previous authority-bound buyer approvals. Treasury controls price and terms, not ownership.
+
+Standalone SDK integrators must resolve current ENS state and call `checkNameOwnerRecipient(ensClient, baseClient, service)` before `verifyRequest` and signing. The reference server does this in `inspectService`. Destination evidence older than 30 seconds is rejected. No bridge is involved.
+
+For an EOA, code absence on both chains is an eligibility check; it does not prove someone holds the key. For a contract holder, deploy the intended wallet on Base Sepolia and sign the exact service/chain/owner/expiry message:
+
+```sh
+pnpm recipient:proof <service-name> <holder-address> <future-unix-seconds>
+```
+
+Add `controlProof: { "validUntil": <seconds>, "signature": "0x..." }` to the v3 record using its authorized payment writer. Guard checks the signature on Base Sepolia. Safe owners/threshold and actual message signing must be rehearsed using the real Safe; the local ERC-1271 fixture is not a Safe audit.
+
+## Address-level analytics
+
+Configure `ANALYTICS_DATABASE_URL` on the worker and web app. It may use the public discovery database, but must be separate from the private `DATABASE_URL` ledger. Set `ANALYTICS_FROM_BLOCK` to the intentional Base Sepolia scan start, then run `pnpm analytics:migrate`. `discovery:watch` runs the scanner after successful catalog synchronization; analytics failures preserve discovery and retry later.
+
+Optional `ANALYTICS_FACILITATORS_FILE` is a reviewed JSON file: `{ "version": "reviewed-v1", "network": "eip155:84532", "addresses": [] }`. No facilitator addresses are guessed. Transfers are unclassified by default; a known transaction sender supplies only a facilitator heuristic. Independently verified settlements have a separate category. The dashboard shows checkpoint, observation windows and integer USDC totals, grouped once per recipient. Name/address epochs preserve history, and shared addresses are not duplicated across services.
+
+Public launch still requires a hosted discovery database, indexer/worker process, verified namespace and provider setup, real Safe configuration, and a funded buyer rehearsal. None of these is implied by a successful local test.
+
+For the worker's verified category, set `ANALYTICS_LEDGER_DATABASE_URL` to a read-only credential for the ENS402 account database, or use the worker's existing `DATABASE_URL`. Only terminal local payment evidence is eligible; every match is independently checked against finalized chain receipts. No public route accepts evidence submissions or exposes the ledger. A feed outage leaves transfers conservatively classified and retries later.
+
+### Hosted provider trust groups
+
+After onboarding, configure the confirmed `PROVIDER_ENS_NAME`, `PROVIDER_REGISTRY_ADDRESS` and `PROVIDER_RESOLVER_ADDRESS`. Additional providers can be added through `PROVIDER_GROUPS_JSON`, an array of `{providerName,providerRegistry,resolver}`. Hosted Guard and Admin handover use these operator-reviewed pins; publishing/indexing alone does not add a provider to that trust set. SDK integrators can supply their own resolver policy. This admission step is currently manual, and unknown provider groups are held.
+
+For a reviewed isolated service resolver only, set `ENS_MANAGEMENT_RESOLVER_POLICY=dedicated` to enable its separate governance handover. A one-bundle count is a check, not proof of exclusive resolver membership. Shared provider governance requires its configured registry/resolver binding; a service-name handover never implicitly transfers that shared governance.
+
+When Solidity sources change, run `pnpm provider:artifact` and commit the regenerated public deployment artifact. Hosted web builds verify its source digest without requiring Forge.
