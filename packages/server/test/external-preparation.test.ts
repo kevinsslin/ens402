@@ -35,23 +35,23 @@ it("checks approval expiry again after a slow scan", async()=>{
   mock.getApproval.mockResolvedValue({mode:"self",payer:`0x${"1".repeat(40)}`,approval:{...approval(),expiresAt:now+61}});
   mock.screen.mockImplementation(async()=>{now+=62; return {provider:"intercepta",network:"ethereum-mainnet",address:payTo,observedAt:now,expiresAt:now+3600,cached:false,scan:{toxicScore:0,traits:[]}};});
   const result=await prepareExternal({id,approvalId:id});
-  expect(result.receipt.reason).toMatch(/expired/i); expect(mock.savePrepared).not.toHaveBeenCalled();
-  expect(result.receipt.requirement.payTo).toBe(payTo);
+  expect(result.receipt?.reason).toMatch(/expired/i); expect(mock.savePrepared).not.toHaveBeenCalled();
+  expect(result.receipt?.requirement?.payTo).toBe(payTo);
 });
 it("retains ENS and HTTP 402 details when screening is unavailable", async()=>{
   mock.screen.mockRejectedValue(new Error("private provider details"));
   const result=await prepareExternal({id,approvalId:id});
-  expect(result.receipt.reason).toBe("Intercepta screening unavailable; no signature requested");
-  expect(result.receipt.service.payment.payTo).toBe(payTo); expect(result.receipt.requirement.payTo).toBe(payTo);
+  expect(result.receipt?.reason).toBe("Intercepta screening unavailable; no signature requested");
+  expect(result.receipt?.service?.payment.payTo).toBe(payTo); expect(result.receipt?.requirement?.payTo).toBe(payTo);
   expect(JSON.stringify(result)).not.toContain("private provider details"); expect(mock.savePrepared).not.toHaveBeenCalled();
 });
 it("keeps real risk signals blocked and preserves their evidence", async()=>{
   mock.screen.mockResolvedValue({provider:"intercepta",network:"ethereum-mainnet",address:payTo,observedAt:now,expiresAt:now+3600,scan:{toxicScore:1,traits:[]}});
   const result=await prepareExternal({id,approvalId:id});
-  expect(result.receipt.reason).toBe("Risk signals need review"); expect(result.receipt.evidence.scan.toxicScore).toBe(1); expect(mock.savePrepared).not.toHaveBeenCalled();
+  expect(result.receipt?.reason).toBe("Risk signals need review"); expect(result.receipt?.evidence?.scan.toxicScore).toBe(1); expect(mock.savePrepared).not.toHaveBeenCalled();
 });
 it("identifies the HTTP challenge stage and preserves the resolved service", async()=>{
   mock.transport.mockResolvedValue(new Response(null,{status:503}));
   const result=await prepareExternal({id,approvalId:id});
-  expect(result.receipt.reason).toContain("HTTP 402"); expect(result.receipt.service.name).toBe("weather.example.eth"); expect(mock.screen).not.toHaveBeenCalled();
+  expect(result.receipt?.reason).toContain("HTTP 402"); expect(result.receipt?.service?.name).toBe("weather.example.eth"); expect(mock.screen).not.toHaveBeenCalled();
 });
