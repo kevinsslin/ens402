@@ -30,8 +30,7 @@ export function ServiceLayers() {
             </p>
           </div>
           <p className="mt-4 text-sm leading-6 text-muted-foreground">
-            A public source that independent catalogs can index. Agents resolve
-            the name to get its current terms.
+            Resolve current terms from one public source.
           </p>
           <p className="mt-4 text-xs font-medium text-primary">
             Resolution built · catalog indexer planned
@@ -58,8 +57,7 @@ export function ServiceLayers() {
             </p>
           </div>
           <p className="mt-4 text-sm leading-6 text-muted-foreground">
-            The ENS contract checks the writer during an edit. Onchain
-            transactions and events make changes auditable.
+            ENS enforces permissions on every edit.
           </p>
           <p className="mt-4 text-xs font-medium text-primary">
             Native allow / deny / revoke tested on forks
@@ -86,8 +84,7 @@ export function ServiceLayers() {
             </p>
           </div>
           <p className="mt-4 text-sm leading-6 text-muted-foreground">
-            Match the fixed amount, check buyer limits and Intercepta evidence.
-            A mismatch stops this signing flow.
+            Check price, buyer limits and recipient risk.
           </p>
           <p className="mt-4 text-xs font-medium text-primary">
             Checks built · raw keys can bypass the SDK

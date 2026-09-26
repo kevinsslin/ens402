@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { EB_Garamond, Inter, Geist_Mono } from "next/font/google";
-import { ArrowUpRight, Layers3 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Layers3 } from "lucide-react";
+import { SiteNav } from "@/components/site-nav";
 import "./globals.css";
 
 const sans = Inter({
@@ -39,7 +39,7 @@ export default function RootLayout({
           Skip to content
         </a>
         <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur-sm">
-          <div className="section-shell grid min-h-20 grid-cols-[auto_1fr] items-center gap-x-6 gap-y-3 py-4 sm:grid-cols-[1fr_auto_1fr]">
+          <div className="section-shell flex min-h-18 flex-wrap items-center justify-between gap-x-6 gap-y-2 py-3">
             <Link
               href="/"
               aria-label="ENS402 home"
@@ -48,32 +48,7 @@ export default function RootLayout({
               <Layers3 className="size-6 text-primary" aria-hidden="true" />
               ENS<span className="-ml-2 text-primary">402</span>
             </Link>
-            <nav
-              aria-label="Main navigation"
-              className="col-span-2 flex items-center justify-self-center gap-6 font-mono text-xs text-muted-foreground sm:col-span-1 sm:gap-7"
-            >
-              <Link href="/#discovery" className="hover:text-foreground">
-                How it works
-              </Link>
-              <Link href="/console" className="hover:text-foreground">
-                Console
-              </Link>
-              <Link href="/docs" className="hover:text-foreground">
-                Docs
-              </Link>
-              <Link href="/register" className="hover:text-foreground">
-                Register
-              </Link>
-            </nav>
-            <Button
-              asChild
-              variant="outline"
-              className="hidden justify-self-end sm:inline-flex"
-            >
-              <Link href="/console">
-                Console <ArrowUpRight aria-hidden="true" />
-              </Link>
-            </Button>
+            <SiteNav />
           </div>
         </header>
         <main id="main-content">{children}</main>
@@ -92,7 +67,7 @@ export default function RootLayout({
                 href="/architecture"
                 className="mt-2 inline-block underline underline-offset-4"
               >
-                Design, sources & implementation status
+                Architecture & status
               </Link>
             </div>
           </div>

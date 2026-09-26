@@ -14,7 +14,7 @@ export default function Home() {
           ENS<span className="italic">402</span>
         </div>
         <p className="eyebrow mt-8 px-5 leading-5">
-          Public x402 configuration. Governed updates. Verified payments.
+          Discover. Govern. Guard.
         </p>
         <h1 className="display-title mx-auto mt-6 max-w-5xl px-5">
           Publish your x402 terms.
@@ -22,9 +22,8 @@ export default function Home() {
           <span>Check every payment request.</span>
         </h1>
         <p className="hero-copy mx-auto mt-8 max-w-2xl px-5 text-muted-foreground">
-          ENS publishes service configuration for discovery. Native EAC controls
-          who can change it. The ENS402 SDK checks the actual HTTP 402 against
-          those records and buyer limits before requesting a signature.
+          Publish x402 settings on ENS. Control changes with EAC.
+          Check every bill before your agent signs.
         </p>
         <div className="mt-7 flex flex-wrap justify-center gap-3">
           <Button asChild size="lg">
@@ -62,14 +61,11 @@ export default function Home() {
           <div>
             <p className="eyebrow">Discover. Govern. Guard.</p>
             <h2 className="mt-4 font-heading text-4xl tracking-tight sm:text-5xl">
-              One public configuration. Three connected layers.
+              One service. Three layers.
             </h2>
           </div>
           <p className="text-base leading-8 text-muted-foreground">
-            Publish what a service does, where it runs and how it gets paid
-            under an ENS name. The same records support independent discovery,
-            accountable updates and payment checks. The SDK brings these checks
-            into an agent’s existing purchase flow.
+            Find the service, control its settings, verify its payment request.
           </p>
         </div>
         <ServiceLayers />
@@ -77,29 +73,29 @@ export default function Home() {
       <section id="use-cases" className="section-shell pb-14 sm:pb-20">
         <p className="eyebrow">What this changes</p>
         <h2 className="mt-4 font-heading text-4xl tracking-tight sm:text-5xl">
-          A directory you can rebuild. A request you can check.
+          When things change.
         </h2>
         <div className="mt-8 grid gap-5 md:grid-cols-2">
           {[
             [
               "A directory drops a listing",
-              "Another indexer can reconstruct the published catalog from the same supported ENS roots and history. Providers can use their own namespace.",
-              "Planned indexer demonstration",
+              "Rebuild the catalog from supported ENS roots and public history.",
+              "Indexer planned",
             ],
             [
               "An API moves to a new URL",
-              "Ops updates its endpoint record. An integrated client resolves the new URL and continues if it is within the buyer’s approved scope; otherwise it asks for approval.",
-              "ENS resolution and scope checks implemented",
+              "Resolve the new URL from ENS. Ask for approval if it leaves the buyer’s allowed scope.",
+              "Resolution + scope checks built",
             ],
             [
               "An API asks for a different recipient",
-              "The SDK detects that the HTTP 402 disagrees with the published payment settings and stops this purchase before requesting a signature.",
-              "Implemented recipient comparison",
+              "The SDK stops signing when the recipient differs from ENS.",
+              "Recipient check built",
             ],
             [
               "A server silently raises the price",
-              "For payment schema v2, the SDK compares the requested amount with the published unit price. Extra fees or dynamic pricing require explicit rules and consent.",
-              "Fixed-price publication, comparison and buyer amount limits implemented",
+              "A bill that differs from the published fixed price is blocked.",
+              "Fixed-price check built",
             ],
           ].map(([title, body, status]) => (
             <article key={title} className="rounded-xl border bg-card p-6">
@@ -139,9 +135,7 @@ export default function Home() {
               <span>Keep each edit accountable.</span>
             </h2>
             <p className="mt-6 text-lg leading-7 text-muted-foreground">
-              Platform → Provider → Service. Each provider manages its service
-              directory. Each service has a dedicated resolver, with separate
-              Admin, Ops and Treasury permissions enforced by native ENS EAC.
+              Each provider manages its services. Each wallet has scoped permissions.
             </p>
           </div>
           <NamespaceArchitecture />
@@ -149,7 +143,7 @@ export default function Home() {
             href="/permissions"
             className="mt-6 inline-flex items-center gap-2 text-sm text-primary underline underline-offset-4"
           >
-            View the exact roles and setup flow{" "}
+            Roles & setup{" "}
             <ArrowRight className="size-4" />
           </Link>
         </div>
@@ -157,16 +151,14 @@ export default function Home() {
       <section id="integration" className="section-shell py-14 sm:py-20">
         <p className="eyebrow">Reference app + reusable SDK</p>
         <h2 className="mt-4 font-heading text-4xl tracking-tight sm:text-5xl">
-          Our Console uses the same verification core.
+          Use our Console. Build with our SDK.
         </h2>
         <div className="mt-7 grid gap-5 md:grid-cols-2">
           <div className="rounded-xl border p-6">
             <h3 className="text-lg font-medium">ENS402 Console</h3>
             <p className="mt-3 text-sm leading-7 text-muted-foreground">
-              The Console calls our backend, which imports the SDK to resolve
-              ENS, check HTTP 402, screen risk and run the purchase flow. The
-              backend adds user accounts, approvals and budget tracking; Privy
-              is the managed demo signer.
+              Inspect services, set limits and track payments. Privy signs
+              managed demo payments.
             </p>
             <p className="mt-4 font-mono text-xs leading-6 text-primary">
               Console → Backend → ENS402 SDK → Signer
@@ -175,9 +167,8 @@ export default function Home() {
           <div className="rounded-xl border p-6">
             <h3 className="text-lg font-medium">Your agent or app</h3>
             <p className="mt-3 text-sm leading-7 text-muted-foreground">
-              Use the SDK core in your runtime with your own resolver, screening
-              and signer integrations. Our hosted service is optional. Client
-              checks cannot constrain a wallet that signs outside that flow.
+              Bring your own signer. Add ENS and payment checks to your agent.
+              Signing outside this flow bypasses those checks.
             </p>
             <p className="mt-4 font-mono text-xs leading-6 text-primary">
               Your app → ENS402 SDK → Your signer
@@ -186,44 +177,19 @@ export default function Home() {
         </div>
         <div className="mt-5 flex flex-wrap gap-5 text-sm text-primary">
           <Link className="underline underline-offset-4" href="/console">
-            Try the reference Console
+            Open Console
           </Link>
           <Link className="underline underline-offset-4" href="/docs">
-            Read the SDK integration guide
+            SDK docs
           </Link>
         </div>
       </section>
-      <section className="section-shell py-14 sm:py-20">
-        <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
-          <div>
-            <h2 className="font-heading text-4xl tracking-tight sm:text-5xl">
-              Public records. Your search. Your signer.
-            </h2>
-            <p className="mt-5 max-w-xl text-lg leading-7 text-muted-foreground">
-              Bring your own selection logic and wallet. The verification core
-              works independently of our proposed directory. Privy is the demo
-              signer.
-            </p>
-          </div>
-          <Button asChild variant="outline">
-            <Link href="/architecture">
-              Explore the architecture <ArrowRight aria-hidden="true" />
-            </Link>
-          </Button>
-        </div>
-        <p className="mt-8 border-t pt-5 text-xs leading-6 text-muted-foreground">
-          Testnet prototype · Open indexing is planned; metadata and fixed-price
-          verification are implemented · Native ENS and USDC tested on Anvil
-          forks · Intercepta live scan verified · Live Privy signing verified ·
-          Funded public-testnet demo pending.{" "}
-          <Link
-            className="text-primary underline underline-offset-4"
-            href="/architecture#status"
-          >
-            Evidence & limitations
-          </Link>
-        </p>
-      </section>
+      <div className="section-shell pb-10 text-sm text-muted-foreground">
+        Testnet prototype · Provider setup and indexing pending.{" "}
+        <Link className="text-primary underline underline-offset-4" href="/architecture#status">
+          Implementation status
+        </Link>
+      </div>
     </div>
   );
 }

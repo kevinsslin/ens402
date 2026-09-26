@@ -59,19 +59,15 @@ export function NamespaceArchitecture() {
         <div>
           <p className={styles.eyebrow}>Platform → Provider → Service</p>
           <h3>
-            Every service has a home.
-            <br />
-            Every wallet has a defined job.
+            Three levels. Clear ownership.
           </h3>
         </div>
-        <span className={styles.status}>Target architecture · Provider setup pending</span>
+        <span className={styles.status}>Provider setup pending</span>
       </header>
       <div className={styles.canvas}>
         <p className={styles.namespaceNote}>
-          <strong>Choose your namespace.</strong> This example uses
-          provider.ens402.eth. The discovery design also supports provider-owned
-          names such as service1.provider.eth, without requiring our parent
-          domain. Multi-namespace indexing is planned.
+          <strong>Native ENS registries. Dedicated service resolvers.</strong>{" "}
+          Each wallet’s grants apply only to the scope shown.
         </p>
         <div className={styles.laneLabels}>
           <span>Names, contracts & records</span>
@@ -179,8 +175,7 @@ export function NamespaceArchitecture() {
                 service1.provider.ens402.eth
               </code>
               <p className={styles.nodeDescription}>
-                Public service configuration, with native EAC enforcing each
-                writer’s scope.
+                Public settings. Scoped writers.
               </p>
               <span className={styles.rootNote}>
                 <KeyRound size={13} aria-hidden="true" /> Admin retains full
@@ -213,10 +208,7 @@ export function NamespaceArchitecture() {
               <p>Returns structured search results for a supplied query.</p>
               <code>avatar</code>
               <p>Optional HTTPS picture URL.</p>
-              <p className={styles.plannedNote}>
-                Description and picture publishing are implemented. Rich
-                call-format schemas remain planned.
-              </p>
+
             </div>
             <WalletGrant name="Ops wallet">
               <Roles
@@ -224,8 +216,7 @@ export function NamespaceArchitecture() {
                 roles={["ROLE_SET_TEXT"]}
               />
               <p className={styles.job}>
-                Maintain the description and optional picture with separate
-                native key grants.
+                Edit service details and artwork.
               </p>
             </WalletGrant>
           </div>
@@ -276,9 +267,7 @@ export function NamespaceArchitecture() {
                 </div>
               </dl>
               <p className={styles.plannedNote}>
-                Payment schema v2 holds a fixed amount in atomic USDC units
-                alongside scheme, network, asset and payTo. SDK checks the
-                actual 402 against this amount.
+                0.01 USDC = 10000 atomic units. SDK compares this with HTTP 402.
               </p>
             </div>
             <WalletGrant name="Treasury wallet">
@@ -306,23 +295,22 @@ export function NamespaceArchitecture() {
         </div>
       </div>
       <figcaption className={styles.caption}>
-        <p>
-          Platform and Provider Registry represent ENSv2 UserRegistry contracts.
-          Roles apply to a contract and resource, not automatically to its
-          children. Ops and Treasury grants use the hash of their text key.
-          Resolver 2 and 3 need their own grants. Provider Admin and Service
-          Admin may share a wallet; Ops and Treasury are separate.
-        </p>
-        <p>
-          Intended grants, not live permissions. The provider hierarchy and
-          multi-namespace indexer remain planned. Metadata publishing and
-          fixed-price checks are implemented. Admin retains the ability to write
-          these records and change grants. Buyer payment signing is separate
-          from these configuration wallets.
-        </p>
-        <a href="/diagrams/ens402-contracts.mmd" download>
-          Download the Mermaid structure reference ↓
-        </a>
+        <p>Target architecture · Service permissions fork-tested · Public setup pending</p>
+        <details>
+          <summary className="cursor-pointer py-2 font-medium text-primary">Permission boundaries & implementation status</summary>
+          <p>
+            Platform and Provider Registry are native ENSv2 UserRegistry instances.
+            Grants apply to a contract and resource, not automatically to its children.
+            Each resolver needs its own Ops and Treasury grants. Admin retains
+            full text control and grant management. Payment signing is separate.
+          </p>
+          <p>
+            Provider onboarding and multi-namespace indexing still need implementation.
+            Metadata publishing and fixed-price checks are implemented.
+            The roles shown are intended grants, not a live permission audit.
+          </p>
+        </details>
+        <a href="/diagrams/ens402-contracts.mmd" download>Download Mermaid reference ↓</a>
       </figcaption>
     </figure>
   );

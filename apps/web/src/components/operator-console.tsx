@@ -534,9 +534,9 @@ export function OperatorConsole({
           >
             {(
               [
-                ["buy", "Buy a service"],
-                ["services", "Manage a service"],
-                ["activity", "Payment activity"],
+                ["buy", "Buy"],
+                ["services", "Manage"],
+                ["activity", "Activity"],
               ] as const
             ).map(([id, label]) => (
               <Button

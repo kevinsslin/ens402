@@ -230,12 +230,11 @@ export function RegistrationConsole({
       <p className="eyebrow">Publish your service / Sepolia</p>
       <h1 className="mt-4 text-4xl font-medium">Give your API a name.</h1>
       <p className="mt-5 max-w-2xl leading-7 text-muted-foreground">
-        Publish an API and its fixed USDC price. Ops edits the service details;
-        Treasury edits payment terms. Your connected wallet is Service Admin.
+        Add your API, price and delegates. Your connected wallet becomes Admin.
       </p>
       <div className="mt-5 rounded-xl border bg-card p-4 text-sm leading-6">
         {example
-          ? "Editable example only. These are placeholder addresses; no wallet connection or transaction is possible here."
+          ? "Example only · Placeholder addresses · Transactions disabled."
           : "ENS records: Sepolia. Payments: Base Sepolia USDC, 6 decimals."}
         <p className="mt-2">
           Service Admin:{" "}
@@ -249,9 +248,8 @@ export function RegistrationConsole({
         <div className="mt-8 rounded-xl border p-6">
           <h2 className="text-xl">Namespace setup is pending</h2>
           <p className="mt-3 leading-7 text-muted-foreground">
-            The platform first needs an ENSv2 Sepolia parent name and a deployed
-            ServiceRegistrar with native registrar permission. No registration
-            fee or transaction is requested while setup is pending.
+            Registration opens after the platform completes setup.
+            No payment or transaction is requested yet.
           </p>
           <a
             className="mt-4 inline-block text-primary underline"
@@ -344,11 +342,10 @@ export function RegistrationConsole({
               <p className="font-medium">
                 {price || "0"} USDC × 10⁶ = {atomicPrice} atomic units
               </p>
-              <p className="mt-1 text-muted-foreground">
-                ENS pricing.amount and HTTP 402 amount must both equal this
-                integer, on the same chain and token contract. No floating-point
-                rounding.
-              </p>
+              <details className="mt-2 text-muted-foreground">
+                <summary className="cursor-pointer">How price matching works</summary>
+                <p className="mt-2">Both ENS and HTTP 402 use this integer amount, on the same chain and token contract.</p>
+              </details>
             </div>
             {[
               ["USDC recipient", payTo, setPayTo],

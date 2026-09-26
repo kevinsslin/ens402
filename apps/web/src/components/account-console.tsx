@@ -31,20 +31,16 @@ function AccountWorkspace({ registration }: { registration?: Registration }) {
       <section className="section-shell py-20">
         <p className="eyebrow">ENS402 Console</p>
         <h1 className="mt-4 text-4xl font-medium">
-          Your services.
-          <br />
-          Your payment controls.
+          Your workspace.
         </h1>
         <p className="mt-6 max-w-xl leading-7 text-muted-foreground">
-          Publish an x402 service with ENS, or buy from one with checks before
-          every payment. Sign in to manage your services and view payment
-          activity.
+          Sign in to inspect services, set payment limits and view activity.
         </p>
         <Button className="mt-8" onClick={() => login()}>
           Sign in
         </Button>
         <a href="/docs" className="ml-5 text-sm text-primary underline">
-          Read the integration guide
+          SDK docs
         </a>
       </section>
     );
@@ -76,7 +72,7 @@ function AccountWorkspace({ registration }: { registration?: Registration }) {
             </label>
           )}
           <Button variant="outline" onClick={() => connectWallet()}>
-            {wallet ? "Use another wallet" : "Connect wallet"}
+            {wallet ? "Switch wallet" : "Connect wallet"}
           </Button>
           <Button variant="ghost" onClick={() => logout()}>
             Sign out
