@@ -9,6 +9,7 @@ import { createPublicClient, createWalletClient, http, encodeFunctionData, parse
 import { sepolia } from "viem/chains";
 import { currentDeployment as d } from "../../packages/sdk/src/ens/current";
 import { factoryAbi } from "../../packages/sdk/src/ens/abi";
+import { batchNativePermissions } from "./batch-permissions";
 import { serviceRegistrarAbi } from "../../packages/sdk/src/ens/registration";
 import { providerRegistrarPlan } from "./provider-registrar";
 import { retireRegistrarPlan } from "./retire-registrar";
@@ -55,7 +56,7 @@ try {
     child.on("exit", code => code === 0 ? ok() : bad(Error(`planner ${code}`)));
   });
   const plan = async () => JSON.parse(await readFile(resolve(dir, "docs/setup/provider-alpha-transactions.json"), "utf8"));
-  const send = async (tx: any) => client.waitForTransactionReceipt({ hash: await wallet.sendTransaction({ account: tx.signer, to: tx.to, data: tx.data, value: 0n }) });
+  const send = async (tx: any) => { const request={account:tx.signer,to:tx.to,data:tx.data,value:0n}; await client.call(request); const receipt=await client.waitForTransactionReceipt({hash:await wallet.sendTransaction(request)}); assert.equal(receipt.status,"success");return receipt; };
   await run();
   let p = await plan(); assert.equal(p.transactions.length, 2);
   await send(p.transactions[0]); await run(); p = await plan(); assert.equal(p.transactions.length, 1);
@@ -64,14 +65,14 @@ try {
     assert.equal(p.sharedResolver.transactions.length, 1);
     await send(p.sharedResolver.transactions[0]); await run(); p = await plan();
     assert.equal(p.sharedResolver.transactions.length, 5);
-    for (const tx of p.sharedResolver.transactions) await send(tx);
+    for (const tx of batchNativePermissions(p.sharedResolver.transactions,[p.sharedResolver.resolver])) await send(tx);
     await run(); p = await plan(); assert.equal(p.sharedResolver.transactions.length, 0);
   }
   assert.equal(p.registrarPlan.verified, false);
   const receipt = await send(p.registrarPlan.transactions[0]);
   process.env.PROVIDER_SERVICE_REGISTRAR_ADDRESS = receipt.contractAddress!;
   await run(); p = await plan(); assert.equal(p.registrarPlan.verified, true); assert.equal(p.registrarPlan.transactions.length, shared ? 7 : 1);
-  for (const tx of p.registrarPlan.transactions) await send(tx); await run(); p = await plan(); assert.equal(p.registrarPlan.transactions.length, 0);
+  for (const tx of batchNativePermissions(p.registrarPlan.transactions,[p.sharedResolver?.resolver].filter(Boolean))) await send(tx); await run(); p = await plan(); assert.equal(p.registrarPlan.transactions.length, 0);
   if (shared) {
     const current = process.env.PROVIDER_SERVICE_REGISTRAR_ADDRESS as Address;
     const service = {label:"direct",endpoint:"https://example.com/api",payTo:admin,endpointOperator:ops,treasury,description:"Direct publication",picture:"",price:10000n,callConfig:'{"method":"GET"}'};
@@ -81,15 +82,21 @@ try {
     const registryAbi = parseAbi(["function findOwner(string) view returns(address)"]);
     assert.equal((await client.readContract({address:p.registry,abi:registryAbi,functionName:"findOwner",args:["direct"]})).toLowerCase(),admin.toLowerCase());
     const legacyArtifact=JSON.parse(await readFile(resolve(cwd,"apps/web/src/server/provider-artifact-legacy.json"),"utf8"));
-    const legacyPlan = await providerRegistrarPlan(client,admin,p.registry,p.name,BigInt(p.expiry),await client.getBlockNumber(),undefined,p.sharedResolver.resolver,ops,treasury,legacyArtifact);
+    const legacyPlan = await providerRegistrarPlan(client,admin,p.registry,p.name,BigInt(p.expiry),await client.getBlockNumber({cacheTime:0}),undefined,p.sharedResolver.resolver,ops,treasury,legacyArtifact);
     const oldReceipt=await send(legacyPlan.transactions[0]);
     const old=oldReceipt.contractAddress!;
-    const oldGrants=await providerRegistrarPlan(client,admin,p.registry,p.name,BigInt(p.expiry),await client.getBlockNumber(),old,p.sharedResolver.resolver,ops,treasury,legacyArtifact);
+    const oldGrants=await providerRegistrarPlan(client,admin,p.registry,p.name,BigInt(p.expiry),await client.getBlockNumber({cacheTime:0}),old,p.sharedResolver.resolver,ops,treasury,legacyArtifact);
     for(const tx of oldGrants.transactions) await send(tx);
-    const retirement=await retireRegistrarPlan(client,admin,p.registry,p.sharedResolver.resolver,old,await client.getBlockNumber());
+    const retirement=await retireRegistrarPlan(client,admin,p.registry,p.sharedResolver.resolver,old,await client.getBlockNumber({cacheTime:0}));
     assert.equal(retirement.length,7);
-    for(const tx of retirement) await send(tx);
-    assert.equal((await retireRegistrarPlan(client,admin,p.registry,p.sharedResolver.resolver,old,await client.getBlockNumber())).length,0);
+    // Registry calls remain separate; only the native resolver supports this multicall.
+    await send({signer:admin,to:p.registry,data:encodeFunctionData({abi:parseAbi(["function revokeRootRoles(uint256,address) returns(bool)"]),functionName:"revokeRootRoles",args:[1n,current]})});
+    const replacementGrants=await providerRegistrarPlan(client,admin,p.registry,p.name,BigInt(p.expiry),await client.getBlockNumber({cacheTime:0}),current,p.sharedResolver.resolver,ops,treasury);
+    const retirementBatches = batchNativePermissions([...replacementGrants.transactions,...retirement],[p.sharedResolver.resolver]);
+    assert.equal(retirementBatches[2]!.actions?.length,6);
+    assert.equal(retirementBatches.length,3);
+    for(const tx of retirementBatches) await send(tx);
+    assert.equal((await retireRegistrarPlan(client,admin,p.registry,p.sharedResolver.resolver,old,await client.getBlockNumber({cacheTime:0}))).length,0);
     await client.waitForTransactionReceipt({hash:await wallet.writeContract({account:admin,address:current,abi:serviceRegistrarAbi,functionName:"register",args:[{...service,label:"after"},zeroSecret]})});
     assert.equal((await client.readContract({address:p.registry,abi:registryAbi,functionName:"findOwner",args:["direct"]})).toLowerCase(),admin.toLowerCase());
     console.log("PASS: direct single-transaction registration, seven old publisher grants revoked, new publishing and existing names preserved");

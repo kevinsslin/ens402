@@ -114,16 +114,6 @@ export async function prepareDelegateRotation(
   addresses(input.admin, input.outgoing, input.incoming);
   const block = await client.getBlock();
   await pinned(client, input.resolver, "resolver", block.number);
-  if (input.role === "treasury") {
-    const code = await client.getCode({
-      address: input.incoming,
-      blockNumber: block.number,
-    });
-    if (!code || code === "0x")
-      throw Error(
-        "Treasury must be a deployed Safe; verify its owners and threshold separately",
-      );
-  }
   if (
     !(await client.readContract({
       address: input.resolver,
@@ -554,5 +544,115 @@ export async function prepareAdminHandover(
     observedBlockHash: block.hash,
     scope:
       "Named root grants and name ownership; other holders and ancestor authority are outside this handover",
+  };
+}
+
+const delegateEvents = parseAbi([
+  "event ProxyDeployed(address indexed sender,address indexed proxyAddress,uint256 salt,address implementation)",
+  "event EACRolesChanged(uint256 indexed resource,address indexed account,uint256 oldRoleBitmap,uint256 newRoleBitmap)",
+]);
+const resolverBirths = new Map<string, bigint>();
+/** Enumerate candidate identities from complete deployment history, then read their current native roles.
+ * Publisher contracts holding all six keys and root administrators are not narrow Ops/Treasury delegates.
+ */
+export async function readResolverDelegates(
+  client: PublicClient,
+  resolver: Address,
+) {
+  if (!isAddress(resolver) || resolver.toLowerCase() === zeroAddress)
+    throw Error("Invalid resolver address");
+  const block = await client.getBlock();
+  await pinned(client, resolver, "resolver", block.number);
+  let birth = resolverBirths.get(resolver.toLowerCase());
+  if (birth === undefined || birth > block.number) {
+    const floor = block.number > 200_000n ? block.number - 200_000n : 0n;
+    for (let end = block.number; end >= floor; ) {
+      const start = end - floor >= 4999n ? end - 4999n : floor;
+      const logs = await client.getLogs({
+        address: currentDeployment.factory,
+        event: delegateEvents[0],
+        args: { proxyAddress: resolver },
+        fromBlock: start,
+        toBlock: end,
+        strict: true,
+      });
+      const deployed = logs.find(
+        (log) =>
+          log.args.implementation.toLowerCase() ===
+          currentDeployment.resolverImplementation.toLowerCase(),
+      );
+      if (deployed) {
+        birth = deployed.blockNumber;
+        break;
+      }
+      if (start === floor) break;
+      end = start - 1n;
+    }
+    if (birth === undefined)
+      throw Error(
+        "Resolver history exceeds the supported scan window. Current delegates could not be verified.",
+      );
+    resolverBirths.set(resolver.toLowerCase(), birth);
+  }
+  if (block.number - birth > 200_000n)
+    throw Error("Resolver history exceeds the supported scan window");
+  const candidates = new Set<Address>();
+  for (let start = birth; start <= block.number; start += 5000n) {
+    const logs = await client.getLogs({
+      address: resolver,
+      event: delegateEvents[1],
+      fromBlock: start,
+      toBlock: start + 4999n < block.number ? start + 4999n : block.number,
+      strict: true,
+    });
+    for (const log of logs)
+      candidates.add(log.args.account.toLowerCase() as Address);
+    if (candidates.size > 128)
+      throw Error(
+        "Resolver has too many historical delegates for the demo reader",
+      );
+  }
+  const accounts = await Promise.all(
+    [...candidates].map(async (account) => {
+      const grants = await Promise.all(
+        [0n, ...keys.map(resource)].map((resourceId) =>
+          client.readContract({
+            address: resolver,
+            abi: managementAbi,
+            functionName: "roles",
+            args: [resourceId, account],
+            blockNumber: block.number,
+          }),
+        ),
+      );
+      const selected = keys.filter((_, i) => (grants[i + 1]! & text) !== 0n);
+      const narrow =
+        grants[0] === 0n &&
+        grants.slice(1).every((role) => (role & ~text) === 0n);
+      return { account, root: grants[0]!, selected, narrow };
+    }),
+  );
+  return {
+    resolver,
+    observedBlock: String(block.number),
+    ops: accounts
+      .filter(
+        (a) =>
+          a.narrow &&
+          a.selected.length === 4 &&
+          keys.slice(0, 4).every((k) => a.selected.includes(k)),
+      )
+      .map((a) => a.account),
+    treasury: accounts
+      .filter(
+        (a) =>
+          a.narrow &&
+          a.selected.length === 1 &&
+          a.selected[0] === "ens402.payment",
+      )
+      .map((a) => a.account),
+    admins: accounts
+      .filter((a) => (a.root & textAdmin) !== 0n)
+      .map((a) => a.account),
   };
 }

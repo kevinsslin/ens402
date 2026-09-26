@@ -1,3 +1,4 @@
+import { batchNativePermissions } from "../../../../../../../scripts/ens/batch-permissions";
 import { prepareSetupStep } from "@/server/setup-transaction";
 import { planProvider, type ProviderSetup } from "@/server/provider-plan";
 export const runtime = "nodejs";
@@ -14,24 +15,44 @@ export async function POST(request: Request) {
   try {
     const input = JSON.parse(raw) as ProviderSetup & { prepare?: boolean };
     const { prepare, ...setup } = input;
-    const result = await planProvider(setup);
+    const planned = await planProvider(setup);
+    const result = {
+      ...planned,
+      transactions: batchNativePermissions(
+        planned.transactions,
+        [planned.setup.resolver].filter(
+          (address) => address !== undefined,
+        ),
+      ),
+    };
     if (prepare && result.transactions[0]) {
       result.transactions[0] = await prepareSetupStep(result.transactions[0]);
     }
     return Response.json(result, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    const throttled = error instanceof Error && /rate.?limit|429|too many requests/i.test(error.message);
+    const throttled =
+      error instanceof Error &&
+      /rate.?limit|429|too many requests/i.test(error.message);
     const reverted = error instanceof Error && /revert/i.test(error.message);
     return Response.json(
       {
-        error: throttled ? "Sepolia RPC providers are busy. Your setup is saved. Wait a moment, then continue this step." : reverted ? "This setup transaction was rejected by the ENS contract during simulation. No new transaction was sent. Your existing provider is unchanged." :
-          error instanceof Error &&
-          error.message.length < 300 &&
-          !error.message.includes("http")
-            ? error.message
-            : "Could not read or simulate the next setup step on Sepolia. Your existing provider and saved progress are unchanged. Try Continue setup again.",
+        error: throttled
+          ? "Sepolia RPC providers are busy. Your setup is saved. Wait a moment, then continue this step."
+          : reverted
+            ? "This setup transaction was rejected by the ENS contract during simulation. No new transaction was sent. Your existing provider is unchanged."
+            : error instanceof Error &&
+                error.message.length < 300 &&
+                !error.message.includes("http")
+              ? error.message
+              : "Could not read or simulate the next setup step on Sepolia. Your existing provider and saved progress are unchanged. Try Continue setup again.",
       },
-      { status: throttled ? 503 : 400, headers: { "Cache-Control": "no-store", ...(throttled ? { "Retry-After": "5" } : {}) } },
+      {
+        status: throttled ? 503 : 400,
+        headers: {
+          "Cache-Control": "no-store",
+          ...(throttled ? { "Retry-After": "5" } : {}),
+        },
+      },
     );
   }
 }

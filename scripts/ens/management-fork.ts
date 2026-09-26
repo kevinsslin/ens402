@@ -1,6 +1,7 @@
 /** Disposable fork smoke test. Only localhost impersonated accounts sign. */
 import {
   prepareDelegateRotation,
+  readResolverDelegates,
   verifyDelegateRotation,
   prepareAdminHandover,
   adminAcceptanceMessage,
@@ -271,10 +272,7 @@ try {
     }),
   });
   const newTreasury: Address = "0x0000000000000000000000000000000000001005";
-  await client.request({
-    method: "anvil_setCode" as never,
-    params: [newTreasury, "0x00"] as never,
-  });
+  assert.equal(await client.getCode({address:newTreasury}), undefined);
   const treasuryRotation = {
     ...rotation,
     outgoing: treasury,
@@ -290,6 +288,13 @@ try {
     (await verifyDelegateRotation(client, treasuryRotation)).passed,
     true,
   );
+  // Fixture contracts were created after this fork block. Never query upstream logs for their local addresses.
+  const fixtureReader = {...client, getLogs: (args: any) => client.getLogs({...args, fromBlock: args.fromBlock < 11783988n ? 11783988n : args.fromBlock})} as typeof client;
+  const observedDelegates = await readResolverDelegates(fixtureReader, p.sharedResolver.resolver);
+  assert.deepEqual(observedDelegates.ops,[rotation.incoming.toLowerCase()]);
+  assert.deepEqual(observedDelegates.treasury,[newTreasury.toLowerCase()]);
+  assert.deepEqual(observedDelegates.admins,[admin.toLowerCase()]);
+  console.log("PASS: current delegates reconstructed from native events and roles; old holders/publisher excluded; EOA Treasury rotation succeeds");
   const incoming = privateKeyToAccount(generatePrivateKey());
   await client.request({
     method: "anvil_impersonateAccount" as never,

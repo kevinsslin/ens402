@@ -134,12 +134,12 @@ export function MerchantHandover({
     }
   }
   return (
-    <details className="mt-5 border-t pt-4">
-      <summary className="cursor-pointer text-sm">
+    <section className="rounded-xl border border-amber-200 bg-card p-5">
+      <h3 className="font-sans text-lg font-semibold">
         {registry
           ? "Transfer provider administration"
           : "Transfer service name ownership"}
-      </summary>
+      </h3>
       <p className="mt-2 text-xs text-muted-foreground">
         {registry
           ? "Moves this provider name, registry governance and selected shared resolver administration. Existing service name owners stay unchanged."
@@ -180,6 +180,6 @@ export function MerchantHandover({
           {notice}
         </p>
       )}
-    </details>
+    </section>
   );
 }

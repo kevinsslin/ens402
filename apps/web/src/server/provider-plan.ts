@@ -283,7 +283,7 @@ export async function planProvider(input: ProviderSetup) {
         >[10],
       );
       txs.push(...registrar.transactions);
-      if (!txs.length && input.previousRegistrar && input.registrar) {
+      if (input.previousRegistrar && input.registrar) {
         if (
           registrationMode !== "direct" ||
           input.previousRegistrar.toLowerCase() ===

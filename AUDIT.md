@@ -181,3 +181,10 @@ The browser verification did not sign in as the real owner or execute wallet tra
 - Anvil: `scripts/ens/provider-plan-fork.ts --shared` deployed and authorized the current publisher, registered a name directly, deployed the archived legacy publisher, revoked all seven legacy grants through the retirement planner, then registered another name. Existing ownership remained unchanged.
 - Browser preview: one Register service action, no finish/reveal action, shared roles displayed without editable address inputs. Preview addresses were fixtures; this is not evidence of a public wallet transaction.
 - Public migration requires owner signatures. The setup planner accepts only the compiled current or archived legacy runtime and verifies constructor bindings before issuing permissions. Existing registries/resolvers and human delegates are retained.
+
+## Permission management and native batches (2026-09-27)
+
+- Current delegate candidates are reconstructed from native resolver deployment/EAC events and verified with current resource roles at one Sepolia block. Root administrators and six-key publisher contracts are excluded from narrow Ops/Treasury rotation candidates. Unsupported history or RPC failures block selection instead of asking for an unverified outgoing address.
+- Browser QA used the live weather.demo.ens402.eth resolver: Ops and Treasury role switching populated read-only current wallets; Ownership opened separately; 390px viewport had no horizontal overflow. No public mutation was signed.
+- The native rotation integration test covers an EOA Treasury replacement, event-derived current holders after rotation, exclusion of revoked holders and publisher contracts, and existing atomic rotation/handover postchecks.
+- Setup batching wraps consecutive zero-value calls to verified native Resolver targets in their own multicall. Deployment, target and signer boundaries are preserved. The UI lists every operation in a batch. The pinned Registry does not support this multicall; its grants and revocations remain separate transactions.

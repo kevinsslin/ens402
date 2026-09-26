@@ -2,6 +2,7 @@ import { configuredProviderGroups } from "@ens402/server/config";
 import { ensClient } from "@ens402/server";
 import {
   prepareDelegateRotation,
+  readResolverDelegates,
   verifyDelegateRotation,
   prepareAdminHandover,
   adminAcceptanceMessage,
@@ -9,6 +10,7 @@ import {
 } from "../../../../../../../packages/sdk/src/ens/management";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 export async function POST(request: Request) {
   if (
     request.headers.get("origin") &&
@@ -22,7 +24,8 @@ export async function POST(request: Request) {
     const { action, input, acceptance } = JSON.parse(raw);
     const client = ensClient();
     let result;
-    if (action === "rotate")
+    if (action === "delegates") result = await readResolverDelegates(client, input.resolver);
+    else if (action === "rotate")
       result = await prepareDelegateRotation(client, input);
     else if (action === "verify-rotation")
       result = await verifyDelegateRotation(client, input);

@@ -33,6 +33,7 @@ type Plan = {
     to?: string;
     data: string;
     description: string;
+    actions?: string[];
     gas?: string;
   }[];
 };
@@ -796,6 +797,9 @@ export function ProviderConsole({
                   treasury: setup.treasury,
                   registrar: setup.registrar,
                 }}
+                actions={
+                  pending?.step.actions ?? plan?.transactions[0]?.actions
+                }
                 stepDescription={
                   pending?.step.description ??
                   plan?.transactions[0]?.description

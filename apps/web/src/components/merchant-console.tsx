@@ -8,6 +8,14 @@ import { Plus, Search, RefreshCw, ArrowUpRight } from "lucide-react";
 import { Spinner } from "./ui/spinner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 import { Button } from "./ui/button";
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "./ui/dialog";
 import type { merchantDashboard } from "@/server/merchant-dashboard";
 type Dashboard = Awaited<ReturnType<typeof merchantDashboard>>;
 export function MerchantConsole({
@@ -277,51 +285,71 @@ export function MerchantConsole({
                           {row.controlled ? "Manage service" : "Open service"}
                           <ArrowUpRight className="size-3" />
                         </a>
-                        <details className="mt-4 border-t pt-3 text-sm">
-                          <summary className="cursor-pointer text-muted-foreground">
-                            Permissions and ownership
-                          </summary>
-                          <p className="mt-3 break-all text-xs">
-                            Name owner: {row.owner}
-                          </p>
-                          <p className="mt-2 break-all text-xs">
-                            Resolver: {row.service.resolver}
-                          </p>
-                          <p className="mt-2 break-all text-xs">
-                            Payment recipient: {row.service.payment.payTo}
-                          </p>
-                          {row.textAdmin && row.resolverMode === "shared" && (
-                            <p className="mt-4 rounded-lg border border-amber-200 p-3 text-sm">
-                              Provider-wide permissions: changing these wallets
-                              affects every service using this shared resolver,
-                              not only this service.
-                            </p>
-                          )}
-                          {row.textAdmin && (
-                            <MerchantPermissions
-                              name={row.name}
-                              resolver={row.service.resolver}
-                              nameRegistry={row.service.parentRegistry}
-                              walletAddress={walletAddress}
-                              getProvider={getProvider}
-                              onChanged={() => void load()}
-                            />
-                          )}
-                          {row.resolverMode !== "unknown" && (
-                            <MerchantHandover
-                              name={row.name}
-                              nameRegistry={row.service.parentRegistry}
-                              owner={row.owner}
-                              resolver={
-                                row.resolverMode === "dedicated"
-                                  ? row.service.resolver
-                                  : undefined
-                              }
-                              getProvider={getProvider}
-                              onChanged={() => void load()}
-                            />
-                          )}
-                        </details>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" className="mt-4 w-full">
+                              Permissions and ownership
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl p-6">
+                            <DialogHeader>
+                              <DialogTitle>{row.name}</DialogTitle>
+                              <DialogDescription>
+                                View current authority and manage access or
+                                ownership.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <Tabs defaultValue="permissions">
+                              <TabsList>
+                                <TabsTrigger value="permissions">
+                                  Permissions
+                                </TabsTrigger>
+                                <TabsTrigger value="ownership">
+                                  Ownership
+                                </TabsTrigger>
+                              </TabsList>
+                              <TabsContent
+                                value="ownership"
+                                className="space-y-5"
+                              >
+                                <p className="mt-3 break-all text-xs">
+                                  Name owner: {row.owner}
+                                </p>
+                                <p className="mt-2 break-all text-xs">
+                                  Resolver: {row.service.resolver}
+                                </p>
+                                <p className="mt-2 break-all text-xs">
+                                  Payment recipient: {row.service.payment.payTo}
+                                </p>
+                                {row.resolverMode !== "unknown" && (
+                                  <MerchantHandover
+                                    name={row.name}
+                                    nameRegistry={row.service.parentRegistry}
+                                    owner={row.owner}
+                                    resolver={
+                                      row.resolverMode === "dedicated"
+                                        ? row.service.resolver
+                                        : undefined
+                                    }
+                                    getProvider={getProvider}
+                                    onChanged={() => void load()}
+                                  />
+                                )}
+                              </TabsContent>
+                              <TabsContent value="permissions" className="mt-5">
+                                <MerchantPermissions
+                                  name={row.name}
+                                  resolver={row.service.resolver}
+                                  nameRegistry={row.service.parentRegistry}
+                                  walletAddress={walletAddress}
+                                  getProvider={getProvider}
+                                  canManage={row.textAdmin}
+                                  onChanged={() => void load()}
+                                />
+                              </TabsContent>
+                            </Tabs>
+                          </DialogContent>
+                        </Dialog>
                       </>
                     )}
                   </article>
