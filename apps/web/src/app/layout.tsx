@@ -25,7 +25,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <Link href="/console" className="hover:text-foreground">Console</Link>
           <Link href="/docs" className="hover:text-foreground">Docs</Link><Link href="/register" className="hover:text-foreground">Register</Link>
         </nav>
-        <Button asChild variant="outline" className="hidden justify-self-end sm:inline-flex"><Link href="/#architecture">Architecture <ArrowUpRight aria-hidden="true"/></Link></Button>
+        <Button asChild variant="outline" className="hidden justify-self-end sm:inline-flex"><Link href="/console">Console <ArrowUpRight aria-hidden="true"/></Link></Button>
       </div>
     </header>
     <main id="main-content">{children}</main>
