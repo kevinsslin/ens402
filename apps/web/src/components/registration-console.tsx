@@ -1,6 +1,6 @@
 "use client";
 import { selectedWallet } from "./wallet-session";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   bytesToHex,
   formatUnits,
@@ -23,6 +23,8 @@ import {
   validateEndpoint,
   validatePicture,
 } from "@ens402/sdk/ens";
+import { ServiceImageField } from "./service-image-field";
+import { inspectServiceEndpoint } from "./endpoint-inspection";
 import { Button } from "./ui/button";
 import { Spinner } from "./ui/spinner";
 
@@ -129,7 +131,7 @@ export function RegistrationConsole({
         : "",
     ),
     [picture, setPicture] = useState(""),
-    [price, setPrice] = useState("0.01");
+    [price, setPrice] = useState(example ? "0.01" : "");
   const [method, setMethod] = useState<"GET" | "POST">("GET");
   const [inputSchema, setInputSchema] = useState("");
   const [exampleInput, setExampleInput] = useState("");
@@ -218,48 +220,58 @@ export function RegistrationConsole({
     if (!response.ok) throw Error(result.error || "Endpoint check failed");
     return result;
   }
-  async function inspectEndpoint() {
-    setBusy(true);
-    setMessage("");
-    setPreview(null);
+  const probeId = useRef(0);
+  const [inspecting, setInspecting] = useState(false);
+  const [probeMessage, setProbeMessage] = useState("");
+  async function inspectEndpoint(signal?: AbortSignal) {
+    const id = ++probeId.current;
+    setInspecting(true);
+    setProbeMessage("Reading your endpoint's public metadata…");
     try {
       if (!getToken) throw Error("Sign in before inspecting the endpoint.");
-      const response = await fetch("/api/provider/probe", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${await getToken()}`,
+      const result = await inspectServiceEndpoint(
+        validateEndpoint(endpoint),
+        {
+          method,
+          ...(exampleInput.trim() ? { example: JSON.parse(exampleInput) } : {}),
         },
-        body: JSON.stringify({
-          mode: "inspect",
-          endpoint: validateEndpoint(endpoint),
-          callConfig: JSON.stringify({
-            method,
-            ...(exampleInput.trim()
-              ? { example: JSON.parse(exampleInput) }
-              : {}),
-          }),
-        }),
-      });
-      const result = await response.json();
-      if (!response.ok)
-        throw Error(result.error || "Endpoint inspection failed");
+        getToken,
+        signal,
+      );
+      if (signal?.aborted || id !== probeId.current) return;
+      applyPreview(result);
       setPreview(result);
-      setMessage(
-        "Review the endpoint fields below before applying them. No payment was signed.",
+      setProbeMessage(
+        "Endpoint checked. Call schema filled automatically. No payment was signed.",
       );
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Inspection failed");
+      if (!signal?.aborted && id === probeId.current)
+        setProbeMessage(
+          error instanceof Error ? error.message : "Inspection failed",
+        );
     } finally {
-      setBusy(false);
+      if (id === probeId.current) setInspecting(false);
     }
   }
-  function applyPreview() {
-    if (!preview) return;
-    const { metadata, offer } = preview;
+  useEffect(() => {
+    if (example || pending || !endpoint.startsWith("https://")) return;
+    const controller = new AbortController();
+    const timer = setTimeout(
+      () => void inspectEndpoint(controller.signal),
+      700,
+    );
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+      probeId.current++;
+      setInspecting(false);
+    };
+  }, [endpoint, method]);
+  function applyPreview(result: NonNullable<typeof preview>) {
+    const { metadata, offer } = result;
     invalidateDraft();
-    setDescription(metadata.description);
-    setPrice(formatUnits(BigInt(offer.amount), 6));
+    setDescription((current) => current || metadata.description);
+    setPrice((current) => current || formatUnits(BigInt(offer.amount), 6));
     setMethod(metadata.call.method);
     setInputSchema(JSON.stringify(metadata.call.inputSchema, null, 2));
     setOutputSchema(JSON.stringify(metadata.call.outputSchema, null, 2));
@@ -277,7 +289,7 @@ export function RegistrationConsole({
         : {}),
     });
     setMessage(
-      "Endpoint metadata applied. Its description and call schemas will be checked again at commit and reveal.",
+      "Call schema loaded. Your edited description and price must match the API before publication.",
     );
   }
   async function run(reveal: boolean) {
@@ -678,6 +690,17 @@ export function RegistrationConsole({
                 </span>
               </label>
               <label className="text-sm">
+                HTTP method (required)
+                <select
+                  className={field}
+                  value={method}
+                  onChange={(e) => setMethod(e.target.value as "GET" | "POST")}
+                >
+                  <option value="GET">GET</option>
+                  <option value="POST">POST</option>
+                </select>
+              </label>
+              <label className="text-sm">
                 Public HTTPS API endpoint
                 <input
                   className={field}
@@ -687,65 +710,30 @@ export function RegistrationConsole({
                   required
                 />
               </label>
-              <div className="sm:col-span-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={busy || example || !endpoint}
-                  onClick={inspectEndpoint}
-                >
-                  Inspect endpoint and prefill
-                </Button>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Choose GET or POST first. This reads an unsigned HTTP 402
-                  challenge with the ENS402 service metadata extension.
-                </p>
-              </div>
-              {preview && (
-                <div className="sm:col-span-2 rounded-lg border p-4">
-                  <h2 className="font-medium">Review endpoint metadata</h2>
-                  <dl className="mt-3 space-y-3 text-sm">
-                    {[
-                      [
-                        "Description",
-                        description,
-                        preview.metadata.description,
-                      ],
-                      [
-                        "Price (USDC)",
-                        price,
-                        formatUnits(BigInt(preview.offer.amount), 6),
-                      ],
-                      ["Method", method, preview.metadata.call.method],
-                      [
-                        "Input schema",
-                        inputSchema,
-                        JSON.stringify(preview.metadata.call.inputSchema),
-                      ],
-                      [
-                        "Output schema",
-                        outputSchema,
-                        JSON.stringify(preview.metadata.call.outputSchema),
-                      ],
-                    ].map(([name, before, after]) => (
-                      <div key={name}>
-                        <dt className="font-medium">{name}</dt>
-                        <dd className="break-words text-muted-foreground">
-                          Current: {before || "empty"}
-                        </dd>
-                        <dd className="break-words">Endpoint: {after}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                  <p className="mt-3 break-all text-xs">
-                    Endpoint recipient: {preview.offer.payTo}. Must match the
-                    connected name-owner wallet at publication.
+              <div className="sm:col-span-2 rounded-xl bg-primary/5 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p role="status" className="flex items-center gap-2 text-sm">
+                    {inspecting && <Spinner />}
+                    {probeMessage ||
+                      "Paste your endpoint to automatically read its call schema and suggested settings."}
                   </p>
-                  <Button className="mt-4" type="button" onClick={applyPreview}>
-                    Apply reviewed metadata
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={busy || inspecting || example || !endpoint}
+                    onClick={() => void inspectEndpoint()}
+                  >
+                    Refresh from endpoint
                   </Button>
                 </div>
-              )}
+                {preview && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Endpoint price:{" "}
+                    {formatUnits(BigInt(preview.offer.amount), 6)} USDC per
+                    request. Description and price must match when published.
+                  </p>
+                )}
+              </div>
               <label className="text-sm sm:col-span-2">
                 Service description (required)
                 <textarea
@@ -762,58 +750,68 @@ export function RegistrationConsole({
                   usually use 3 bytes each.
                 </span>
               </label>
-              <label className="text-sm">
-                HTTP method (required)
-                <select
-                  className={field}
-                  value={method}
-                  onChange={(e) => setMethod(e.target.value as "GET" | "POST")}
-                >
-                  <option value="GET">GET</option>
-                  <option value="POST">POST</option>
-                </select>
-              </label>
-              <label className="text-sm sm:col-span-2">
-                Input schema (required JSON object)
-                <textarea
-                  className={field}
-                  value={inputSchema}
-                  onChange={(e) => setInputSchema(e.target.value)}
-                  placeholder='{"type":"object","properties":{}}'
-                />
-              </label>
-              <label className="text-sm sm:col-span-2">
-                Output schema (required JSON object)
-                <textarea
-                  className={field}
-                  value={outputSchema}
-                  onChange={(e) => setOutputSchema(e.target.value)}
-                  required
-                />
-              </label>
-              <label className="text-sm sm:col-span-2">
-                Example input (optional JSON object)
-                <textarea
-                  className={field}
-                  value={exampleInput}
-                  onChange={(e) => setExampleInput(e.target.value)}
-                  placeholder="{}"
-                />
-              </label>
-              <label className="text-sm">
-                Picture URL (optional)
-                <input
-                  className={field}
-                  type="url"
+              <div className="sm:col-span-2 rounded-xl border p-4">
+                <p className="font-medium text-sm">
+                  Call schema{" "}
+                  <span className="ml-2 text-xs font-normal text-muted-foreground">
+                    Read from endpoint
+                  </span>
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  No JSON editing needed. If metadata is missing, update your
+                  API and refresh.
+                </p>
+                <details className="mt-3 text-sm">
+                  <summary className="cursor-pointer">
+                    View input and output schemas
+                  </summary>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <div className="min-w-0">
+                      <p className="text-xs text-muted-foreground">INPUT</p>
+                      <pre className="mt-2 max-h-48 overflow-auto rounded-lg bg-muted/40 p-3 text-xs">
+                        {inputSchema || "Not detected yet"}
+                      </pre>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs text-muted-foreground">OUTPUT</p>
+                      <pre className="mt-2 max-h-48 overflow-auto rounded-lg bg-muted/40 p-3 text-xs">
+                        {outputSchema || "Not detected yet"}
+                      </pre>
+                    </div>
+                  </div>
+                </details>
+              </div>
+              <details className="sm:col-span-2 text-sm">
+                <summary className="cursor-pointer text-muted-foreground">
+                  Request input for endpoint detection (optional)
+                </summary>{" "}
+                <label className="text-sm sm:col-span-2">
+                  Example input (optional JSON object)
+                  <textarea
+                    className={field}
+                    value={exampleInput}
+                    onChange={(e) => setExampleInput(e.target.value)}
+                    placeholder="{}"
+                  />
+                </label>
+              </details>
+              <div className="sm:col-span-2">
+                <p className="text-sm font-medium">
+                  Service image{" "}
+                  <span className="font-normal text-muted-foreground">
+                    (optional)
+                  </span>
+                </p>
+                <ServiceImageField
                   value={picture}
-                  onChange={(e) => setPicture(e.target.value)}
-                  maxLength={2048}
-                  placeholder="https://example.com/icon.png"
+                  getToken={getToken}
+                  disabled={busy || example}
+                  onChange={(url) => {
+                    invalidateDraft();
+                    setPicture(url);
+                  }}
                 />
-                <span className="mt-1 block text-xs text-muted-foreground">
-                  Leave blank or use HTTPS, up to 2048 encoded UTF-8 bytes.
-                </span>
-              </label>
+              </div>
               <label className="text-sm">
                 Fixed price per request (USDC)
                 <input
@@ -919,7 +917,10 @@ export function RegistrationConsole({
                     ? "One Sepolia transaction registers your name and publishes all service records. We check the endpoint before requesting your signature. No extra waiting period."
                     : "This older registrar requires two Sepolia transactions: start registration, wait at least 60 seconds after confirmation, then finish registration. The first transaction alone does not publish your service."}
                 </p>
-                <Button className="mt-5" disabled={busy || example}>
+                <Button
+                  className="mt-5"
+                  disabled={busy || inspecting || example}
+                >
                   {direct ? "Register service" : "1. Start registration"}
                 </Button>
                 {!direct && (

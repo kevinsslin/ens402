@@ -24,29 +24,33 @@ export async function providerDirectory(wallet: string, client = ensClient()) {
   let registry: Address = currentDeployment.rootRegistry;
   let platformOwner: Address = zeroAddress;
   for (const label of parent.split(".").reverse()) {
-    platformOwner = await client.readContract({
-      address: registry,
-      abi: currentRegistryAbi,
-      functionName: "findOwner",
-      args: [label],
-      blockNumber: block.number,
-    });
-    const expiry = await client.readContract({
-      address: registry,
-      abi,
-      functionName: "findExpiry",
-      args: [label],
-      blockNumber: block.number,
-    });
+    const [owner, expiry, child] = await Promise.all([
+      client.readContract({
+        address: registry,
+        abi: currentRegistryAbi,
+        functionName: "findOwner",
+        args: [label],
+        blockNumber: block.number,
+      }),
+      client.readContract({
+        address: registry,
+        abi,
+        functionName: "findExpiry",
+        args: [label],
+        blockNumber: block.number,
+      }),
+      client.readContract({
+        address: registry,
+        abi: currentRegistryAbi,
+        functionName: "getSubregistry",
+        args: [label],
+        blockNumber: block.number,
+      }),
+    ]);
+    platformOwner = owner;
     if (platformOwner === zeroAddress || expiry <= block.timestamp)
       throw Error("The platform name needs registration or renewal");
-    registry = await client.readContract({
-      address: registry,
-      abi: currentRegistryAbi,
-      functionName: "getSubregistry",
-      args: [label],
-      blockNumber: block.number,
-    });
+    registry = child;
     if (registry === zeroAddress)
       return {
         parent,
@@ -151,25 +155,27 @@ export async function providerDirectory(wallet: string, client = ensClient()) {
       expiry <= block.timestamp
     )
       continue;
-    const implementation = await client.readContract({
-      address: currentDeployment.factory,
-      abi: factoryAbi,
-      functionName: "verifyContract",
-      args: [child],
-      blockNumber: block.number,
-    });
+    const [implementation, canPublish] = await Promise.all([
+      client.readContract({
+        address: currentDeployment.factory,
+        abi: factoryAbi,
+        functionName: "verifyContract",
+        args: [child],
+        blockNumber: block.number,
+      }),
+      client.readContract({
+        address: child,
+        abi,
+        functionName: "hasRootRoles",
+        args: [1n, wallet as Address],
+        blockNumber: block.number,
+      }),
+    ]);
     if (
       implementation.toLowerCase() !==
       currentDeployment.registryImplementation.toLowerCase()
     )
       continue;
-    const canPublish = await client.readContract({
-      address: child,
-      abi,
-      functionName: "hasRootRoles",
-      args: [1n, wallet as Address],
-      blockNumber: block.number,
-    });
     const isOwner = owner.toLowerCase() === wallet.toLowerCase();
     if (isOwner || canPublish) {
       const serviceNames: string[] = [];

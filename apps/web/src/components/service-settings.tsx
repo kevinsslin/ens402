@@ -11,6 +11,15 @@ import {
 } from "viem";
 import { sepolia } from "viem/chains";
 import { serializePaymentRecord } from "@ens402/sdk/ens";
+import { ServiceImageField } from "./service-image-field";
+import { inspectServiceEndpoint } from "./endpoint-inspection";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Spinner } from "./ui/spinner";
 import { selectedWallet } from "./wallet-session";
@@ -41,7 +50,7 @@ const fields = [
   [
     "ens402.payment",
     "Payment terms",
-    "Fixed price in token atomic units. USDC uses 6 decimals: 10000 = 0.01 USDC.",
+    "The price per request must match what your API asks agents to pay.",
   ],
   [
     "ens402.status",
@@ -83,7 +92,12 @@ export function ServiceSettings({
     [pending, setPending] = useState<PendingSetup | null>(null);
   const identity = `${name}:${walletAddress?.toLowerCase()}`;
   const mounted = useRef(true);
-  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const activeIdentity = useRef(identity);
   activeIdentity.current = identity;
   const storageKey = `ens402-service-update:${name}:${walletAddress?.toLowerCase()}`;
@@ -134,12 +148,101 @@ export function ServiceSettings({
   const changes = fields
     .filter(([key]) => canWrite(key) && values[key] !== original[key])
     .map(([key]) => ({ key, value: values[key] ?? "" }));
+  const [probeState, setProbeState] = useState("");
+  const [probing, setProbing] = useState(false);
+  const endpoint = values["agent-endpoint[x402]"] ?? "";
+  useEffect(() => {
+    if (!settings || !endpoint.startsWith("https://") || pending) return;
+    const controller = new AbortController();
+    setProbing(true);
+    const timer = setTimeout(async () => {
+      setProbeState("Reading schema from your endpoint…");
+      try {
+        const call = settings.service.call ?? { method: "GET" };
+        const result = await inspectServiceEndpoint(
+          endpoint,
+          call,
+          getToken,
+          controller.signal,
+        );
+        if (controller.signal.aborted) return;
+        if (
+          settings.permissions.some(
+            (p) => p.key === "ens402.call" && p.canWrite,
+          )
+        ) {
+          setValues((v) => ({
+            ...v,
+            "ens402.call": JSON.stringify(result.metadata.call, null, 2),
+          }));
+          setPrepared(null);
+        }
+        setProbeState(
+          "Call schema loaded from the endpoint. Your description, image and price were kept.",
+        );
+      } catch (e) {
+        if (!controller.signal.aborted)
+          setProbeState(
+            e instanceof Error ? e.message : "Could not inspect endpoint.",
+          );
+      } finally {
+        if (!controller.signal.aborted) setProbing(false);
+      }
+    }, 700);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+      setProbing(false);
+    };
+  }, [endpoint, settings, pending]);
+  function displayValue(key: string, value: string) {
+    if (!value) return "Not set";
+    if (key === "ens402.payment") {
+      try {
+        const p = JSON.parse(value);
+        return `${formatUnits(BigInt(p.pricing.amount), 6)} USDC per request`;
+      } catch {}
+    }
+    return value;
+  }
   async function prepare() {
     const started = activeIdentity.current;
     setBusy("prepare");
     setError("");
     setNotice("");
     try {
+      if (
+        changes.some((c) =>
+          [
+            "description",
+            "agent-endpoint[x402]",
+            "ens402.call",
+            "ens402.payment",
+          ].includes(c.key),
+        )
+      ) {
+        const payment = JSON.parse(values["ens402.payment"]!);
+        const check = await fetch("/api/provider/probe", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${await getToken()}`,
+          },
+          body: JSON.stringify({
+            endpoint,
+            callConfig: values["ens402.call"],
+            description: values.description,
+            price: payment.pricing?.amount,
+            payTo: settings?.service.payment.payTo,
+          }),
+          signal: AbortSignal.timeout(20000),
+        });
+        const result = await check.json();
+        if (!check.ok)
+          throw Error(
+            result.error || "Endpoint does not match these settings.",
+          );
+      }
       const r = await fetch("/api/provider/service", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -207,35 +310,6 @@ export function ServiceSettings({
       setBusy("");
     }
   }
-  async function upload(file: File) {
-    const started = activeIdentity.current;
-    setBusy("upload");
-    setError("");
-    try {
-      if (file.size > 1024 * 1024)
-        throw Error("Choose an image no larger than 1 MB.");
-      const token = await getToken();
-      if (!token) throw Error("Sign in to upload an image.");
-      const r = await fetch("/api/service-images", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": file.type,
-        },
-        body: file,
-      });
-      const data = await r.json();
-      if (!r.ok) throw Error(data.error);
-      if (!mounted.current || activeIdentity.current !== started) return;
-      setValues((v) => ({ ...v, avatar: data.url }));
-      setPrepared(null);
-      setNotice("Image uploaded. Save changes to publish its URL on ENS.");
-    } catch (e) {
-      setError(setupError(e));
-    } finally {
-      setBusy("");
-    }
-  }
   return (
     <main className="mx-auto max-w-4xl px-5 py-10 sm:px-8">
       <Link className="text-sm text-primary" href="/provider">
@@ -246,10 +320,11 @@ export function ServiceSettings({
         {name || "Select a service from your workspace."}
       </p>
       <p className="mt-4 text-sm leading-6 text-muted-foreground">
-        Editing permissions below are for the wallet selected in the navigation bar. Operations edits public details;
-        Treasury Admin edits payment terms. Changes require a Sepolia
-        transaction. Keep your API's description and payment response aligned
-        with ENS so Guard can verify them.
+        Editing permissions below are for the wallet selected in the navigation
+        bar. Operations edits public details; Treasury Admin edits payment
+        terms. Changes require a Sepolia transaction. Keep your API's
+        description and payment response aligned with ENS so Guard can verify
+        them.
       </p>
       {!walletAddress && (
         <p className="mt-5 text-sm">
@@ -303,20 +378,51 @@ export function ServiceSettings({
                   {title}
                 </label>
                 <span className="text-xs text-muted-foreground">
-                  {canWrite(key) ? "Can edit with this wallet" : "Read only for this wallet"}
+                  {canWrite(key)
+                    ? "Can edit with this wallet"
+                    : "Read only for this wallet"}
                 </span>
               </div>
               <p className="mt-1 text-sm text-muted-foreground">{hint}</p>
-              {key === "avatar" && values[key] && (
-                <img
-                  src={values[key]}
-                  referrerPolicy="no-referrer"
-                  alt="Current service image preview"
-                  className="mt-4 size-24 rounded-xl border object-cover"
+              {key === "avatar" ? (
+                <ServiceImageField
+                  value={values[key] ?? ""}
+                  getToken={getToken}
+                  disabled={!canWrite(key) || !!busy || !!pending}
+                  onChange={(url) => {
+                    setValues((v) => ({ ...v, avatar: url }));
+                    setPrepared(null);
+                  }}
                 />
-              )}
-              {key === "ens402.payment" &&
-              settings.service.payment.version !== 1 ? (
+              ) : key === "ens402.call" ? (
+                <div className="mt-4">
+                  <p role="status" className="text-sm text-muted-foreground">
+                    {probeState ||
+                      "Schema is read from the endpoint automatically."}
+                  </p>
+                  <details className="mt-3 text-sm">
+                    <summary className="cursor-pointer font-medium">
+                      View detected call schema
+                    </summary>
+                    <pre className="mt-3 max-h-64 overflow-auto rounded-lg bg-muted/40 p-4 text-xs">
+                      {values[key]}
+                    </pre>
+                  </details>
+                </div>
+              ) : key === "agent-endpoint[x402]" ? (
+                <input
+                  id={`setting-${key}`}
+                  type="url"
+                  className={field}
+                  value={values[key] ?? ""}
+                  disabled={!canWrite(key) || !!busy || !!pending}
+                  onChange={(e) => {
+                    setValues((v) => ({ ...v, [key]: e.target.value }));
+                    setPrepared(null);
+                  }}
+                />
+              ) : key === "ens402.payment" &&
+                settings.service.payment.version !== 1 ? (
                 <div className="mt-4">
                   <label className="text-sm">
                     USDC per request
@@ -368,7 +474,7 @@ export function ServiceSettings({
               ) : (
                 <textarea
                   id={`setting-${key}`}
-                  className={`${field} ${key === "ens402.call" || key === "ens402.payment" ? "min-h-40 font-mono text-xs" : key === "description" ? "min-h-28" : "min-h-16"}`}
+                  className={`${field} ${key === "ens402.payment" ? "min-h-40 font-mono text-xs" : key === "description" ? "min-h-28" : "min-h-16"}`}
                   disabled={!canWrite(key) || !!busy || !!pending}
                   value={values[key] ?? ""}
                   onChange={(e) => {
@@ -377,30 +483,72 @@ export function ServiceSettings({
                   }}
                 />
               )}
-              {key === "avatar" && canWrite(key) && (
-                <label className="mt-3 block text-sm">
-                  Upload PNG, JPEG or WebP · max 1 MB
-                  <input
-                    aria-label="Upload service image"
-                    className="mt-2 block text-sm"
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    disabled={!!busy || !!pending}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) void upload(file);
-                      e.target.value = "";
-                    }}
-                  />
-                </label>
-              )}
             </section>
           ))}
         </div>
       )}
+      <Dialog
+        open={!!prepared}
+        onOpenChange={(open) => {
+          if (!open && !busy) setPrepared(null);
+        }}
+      >
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Review service updates</DialogTitle>
+            <DialogDescription>
+              Check what will change on ENS. These updates use one Sepolia
+              transaction.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {changes.map(({ key, value }) => (
+              <div key={key} className="rounded-xl border p-4">
+                <h3 className="font-medium">
+                  {fields.find((f) => f[0] === key)?.[1]}
+                </h3>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div className="min-w-0 rounded-lg bg-muted/40 p-3">
+                    <p className="mb-2 text-xs text-muted-foreground">
+                      CURRENT
+                    </p>
+                    <pre className="max-h-32 overflow-auto whitespace-pre-wrap break-all font-sans text-sm">
+                      {displayValue(key, original[key] ?? "")}
+                    </pre>
+                  </div>
+                  <div className="min-w-0 rounded-lg bg-primary/5 p-3">
+                    <p className="mb-2 text-xs text-primary">AFTER SAVING</p>
+                    <pre className="max-h-32 overflow-auto whitespace-pre-wrap break-all font-sans text-sm">
+                      {displayValue(key, value)}
+                    </pre>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          {error && (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          )}
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="outline"
+              disabled={!!busy}
+              onClick={() => setPrepared(null)}
+            >
+              Back to editing
+            </Button>
+            <Button disabled={!!busy} onClick={() => void submit()}>
+              {busy && <Spinner />}
+              {busy ? "Waiting for wallet…" : "Confirm in wallet"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       {settings && (
-        <div className="sticky bottom-4 mt-6 rounded-xl border bg-background p-4 shadow-sm">
-          <p className="mb-3 text-sm">
+        <div className="sticky bottom-4 mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-background p-4 shadow-sm">
+          <p className="text-sm">
             {pending
               ? "Your update was submitted. No new signature is needed."
               : prepared
@@ -408,7 +556,9 @@ export function ServiceSettings({
                 : `${changes.length} unsaved changes`}
           </p>
           <Button
-            disabled={!!busy || (!pending && !prepared && !changes.length)}
+            disabled={
+              !!busy || probing || (!pending && !prepared && !changes.length)
+            }
             onClick={() =>
               prepared || pending ? void submit() : void prepare()
             }

@@ -168,7 +168,7 @@ export function ProviderConsole({
     }
     fetch(
       `/api/provider/directory?wallet=${encodeURIComponent(walletAddress)}`,
-      { signal: controller.signal },
+      { signal: AbortSignal.any([controller.signal, AbortSignal.timeout(25_000)]) },
     )
       .then(async (response) => {
         const data = await response.json();
@@ -190,7 +190,9 @@ export function ProviderConsole({
       .catch((error) => {
         if (!controller.signal.aborted)
           setDirectoryError(
-            error instanceof Error
+            error instanceof Error && error.name === "TimeoutError"
+              ? "Sepolia is taking too long to return your workspaces. Retry the lookup or open a known provider. No transaction was sent."
+              : error instanceof Error
               ? error.message
               : "Provider lookup unavailable",
           );
@@ -503,7 +505,7 @@ export function ProviderConsole({
           className="mt-8 flex items-center gap-2 text-sm text-muted-foreground"
         >
           <RefreshCw className="size-4 animate-spin" />
-          Checking your providers on Sepolia…
+          Reading your workspaces and services from Sepolia. No signature needed…
         </p>
       )}
       {directoryError && (
