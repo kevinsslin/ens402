@@ -1,4 +1,5 @@
 "use client";
+import { serviceLabelError } from "./registration-validation";
 import { selectedWallet } from "./wallet-session";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -151,6 +152,10 @@ export function RegistrationConsole({
     walletAddress ||
     (example ? "0x1111111111111111111111111111111111111111" : "");
   const [phase, setPhase] = useState("draft");
+  const [labelTouched, setLabelTouched] = useState(false);
+  const labelInput = useRef<HTMLInputElement>(null);
+  const feedback = useRef<HTMLDivElement>(null);
+  const labelError = labelTouched ? serviceLabelError(label) : null;
   const [pending, setPending] = useState<Pending | null>(null),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
@@ -303,6 +308,20 @@ export function RegistrationConsole({
   }
   async function run(reveal: boolean) {
     if (example) return;
+    if (!reveal && !pending?.registrationHash) {
+      const error = serviceLabelError(label);
+      if (error) {
+        setLabelTouched(true);
+        setPhase("Check service name");
+        setMessage(error);
+        labelInput.current?.focus();
+        labelInput.current?.scrollIntoView({
+          block: "center",
+          behavior: "smooth",
+        });
+        return;
+      }
+    }
     setBusy(true);
     setMessage("");
     setPhase("Checking registration");
@@ -423,8 +442,8 @@ export function RegistrationConsole({
       }
       const storageKey = `ens402-registration-call-v1:${registrar}:${owner.toLowerCase()}`;
       if (!reveal) {
-        if (!/^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$/.test(label))
-          throw new Error("Use 3-32 lowercase letters, numbers or hyphens.");
+        const invalidLabel = serviceLabelError(label);
+        if (invalidLabel) throw new Error(invalidLabel);
         const normalizedEndpoint = validateEndpoint(endpoint);
         for (const a of [owner, operator, treasury])
           if (!/^0x[0-9a-fA-F]{40}$/.test(a) || /^0x0{40}$/.test(a))
@@ -590,8 +609,16 @@ export function RegistrationConsole({
         );
       }
     } catch (e) {
-      setPhase("needs attention");
-      setMessage(e instanceof Error ? e.message : "Registration failed.");
+      setPhase("Registration could not continue");
+      setMessage(
+        e instanceof Error ? e.message : "Registration failed. Please retry.",
+      );
+      requestAnimationFrame(() =>
+        feedback.current?.scrollIntoView({
+          block: "center",
+          behavior: "smooth",
+        }),
+      );
     } finally {
       setBusy(false);
     }
@@ -690,20 +717,41 @@ export function RegistrationConsole({
               className="contents"
             >
               <label className="text-sm">
-                Subname (required)
+                Service name
                 <input
-                  className={field}
+                  ref={labelInput}
+                  aria-invalid={!!labelError}
+                  aria-describedby="service-name-help service-name-error"
+                  className={`${field} ${labelError ? "border-destructive focus:ring-destructive/20" : ""}`}
                   value={label}
-                  onChange={(e) => setLabel(e.target.value)}
+                  onChange={(e) => {
+                    setLabel(e.target.value);
+                    setLabelTouched(true);
+                  }}
+                  onBlur={() => setLabelTouched(true)}
+                  onInvalid={() => setLabelTouched(true)}
                   placeholder="weather"
                   minLength={3}
                   maxLength={32}
-                  pattern="[a-z0-9][a-z0-9-]{1,30}[a-z0-9]"
+                  pattern={"[a-z0-9][a-z0-9\\-]{1,30}[a-z0-9]"}
                   required
                 />
+                <span
+                  id="service-name-help"
+                  className="mt-2 block break-all text-xs text-muted-foreground"
+                >
+                  {label || "weather"}.{parent}
+                </span>
                 <span className="mt-1 block text-xs text-muted-foreground">
-                  .{parent} · 3-32 lowercase letters, numbers or internal
-                  hyphens
+                  Enter just the name. Use 3-32 lowercase letters, numbers or
+                  internal hyphens.
+                </span>
+                <span
+                  id="service-name-error"
+                  role={labelError ? "alert" : undefined}
+                  className="mt-2 block text-sm text-destructive"
+                >
+                  {labelError}
                 </span>
               </label>
               <label className="text-sm">
@@ -953,6 +1001,33 @@ export function RegistrationConsole({
                 )}
               </div>
             </fieldset>
+            {(phase === "Registration could not continue" ||
+              phase === "Check service name") && (
+              <div
+                ref={feedback}
+                role="alert"
+                className="sm:col-span-2 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm"
+              >
+                <p className="font-semibold">{phase}</p>
+                <p className="mt-2 break-words">{message}</p>
+                {phase === "Check service name" && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="mt-3"
+                    onClick={() => {
+                      labelInput.current?.focus();
+                      labelInput.current?.scrollIntoView({
+                        block: "center",
+                        behavior: "smooth",
+                      });
+                    }}
+                  >
+                    Edit service name
+                  </Button>
+                )}
+              </div>
+            )}
             {pending?.registrationHash && (
               <div role="status" className="mt-4 rounded-lg border p-4 text-sm">
                 <p>
@@ -988,22 +1063,26 @@ export function RegistrationConsole({
           )}
         </>
       )}
-      {phase !== "draft" && (
-        <p
-          role="status"
-          className="mt-4 flex items-center gap-2 text-sm text-muted-foreground"
-        >
-          {busy && <Spinner />} {phase}
-        </p>
-      )}
-      {message && (
-        <p
-          role="status"
-          className="mt-5 break-words rounded-lg border p-4 text-sm"
-        >
-          {message}
-        </p>
-      )}
+      {phase !== "draft" &&
+        phase !== "Registration could not continue" &&
+        phase !== "Check service name" && (
+          <p
+            role="status"
+            className="mt-4 flex items-center gap-2 text-sm text-muted-foreground"
+          >
+            {busy && <Spinner />} {phase}
+          </p>
+        )}
+      {message &&
+        phase !== "Registration could not continue" &&
+        phase !== "Check service name" && (
+          <p
+            role="status"
+            className="mt-5 break-words rounded-lg border p-4 text-sm"
+          >
+            {message}
+          </p>
+        )}
     </section>
   );
 }
