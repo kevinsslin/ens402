@@ -33,7 +33,7 @@ export function ServiceLayers() {
             Resolve current terms from one public source.
           </p>
           <p className="mt-4 text-xs font-medium text-primary">
-            Resolution built · catalog indexer planned
+            Public records · independently rebuildable catalog
           </p>
         </section>
         <section className={card}>
