@@ -33,6 +33,7 @@ export function DiscoveryConsole({
   const [ceiling, setCeiling] = useState("");
   const [result, setResult] = useState<DiscoveryResponse | null>(null);
   const [busy, setBusy] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [catalogNotReady, setCatalogNotReady] = useState(false);
   const [error, setError] = useState("");
   async function search(event: FormEvent) {
@@ -55,10 +56,25 @@ export function DiscoveryConsole({
               ? { maxPricePerRequestAtomic: parseUnits(ceiling, 6).toString() }
               : {}),
           },
-          { apiUrl: new URL("/api/discover", window.location.origin).href },
+          { apiUrl: new URL("/api/discover", window.location.origin).href,
+            fetch: async (url, init) => {
+              for (let attempt = 0; ; attempt++) {
+                const response = await fetch(url, { ...init, signal: AbortSignal.timeout(15_000) });
+                if (response.status !== 503 || attempt >= 12) return response;
+                const body = await response.clone().json().catch(() => null);
+                if (body?.code !== "CATALOG_REFRESHING") return response;
+                setRefreshing(true);
+                await new Promise(resolve => setTimeout(resolve, 5000));
+              }
+            },
+          },
         ),
       );
     } catch (cause) {
+      if (cause instanceof DiscoveryApiError && cause.code === "CATALOG_REFRESHING") {
+        setError("Updating service listings from ENS. Please search again in a moment.");
+        return;
+      }
       if (cause instanceof DiscoveryApiError && cause.code === "CATALOG_NOT_READY") {
         setCatalogNotReady(true);
         return;
@@ -72,6 +88,7 @@ export function DiscoveryConsole({
       );
     } finally {
       setBusy(false);
+      setRefreshing(false);
     }
   }
   return (
@@ -140,6 +157,7 @@ export function DiscoveryConsole({
         </details>
       </form>
       <AgentSetup search={{ query, valid: !ceiling || /^\d+(\.\d{1,6})?$/.test(ceiling), ...(/^\d+(\.\d{1,6})?$/.test(ceiling) ? { maxPricePerRequestAtomic: parseUnits(ceiling, 6).toString() } : {}) }} />
+      {refreshing && <p role="status" className="mt-4 flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" />Updating listings from ENS. Search will retry automatically.</p>}
       {!result && !busy && !error && !catalogNotReady && (
         <div className="mt-4 flex flex-wrap gap-2" aria-label="Example prompts">
           {[

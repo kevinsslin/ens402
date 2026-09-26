@@ -7,7 +7,7 @@ Start with [README.md](README.md) for current scope and status. This file contai
 1. Open `/provider` and connect the wallet that manages your provider. Existing workspaces appear automatically. An email-created Privy wallet does not automatically control an existing ENS name.
 2. Open the workspace to publish or manage services. Providers assign Admin, Ops and Treasury roles; the same wallet may hold multiple roles. Treasury Admin can be an EOA, multisig or MPC wallet; it controls payment records, not service-name ownership.
 3. Use **Publish service -> Start with a demo**, inspect endpoint metadata, then confirm registration. Older publishers must be upgraded once for single-transaction publication; see the publisher section below.
-4. Use **Refresh listings** after Sepolia finality. The default demo sync runs in Next.js on Vercel; no separate host or Cron is required.
+4. Use **Refresh listings** after Sepolia finality. The demo sync runs in Next.js on Vercel. Search schedules a leased background refresh after 20 minutes; expired catalogs return a retryable status while rebuilding. No separate host or Cron is required.
 5. Search for the service, review Guard checks, and fund the displayed buyer with **Base Sepolia USDC** for a purchase. Sepolia gas and Base Sepolia USDC are different balances.
 
 Platform initialization is a one-time owner action, not a repeated onboarding step. The recorded platform registry is `0xf537B10228b82726c9B0216d8a51097f6554e4CD`; `demo.ens402.eth` has a provider registry and shared resolver. Recheck live permissions before writes. Remaining public rehearsal steps are in [TODO.md](TODO.md).
@@ -397,6 +397,8 @@ For a reviewed isolated service resolver only, set `ENS_MANAGEMENT_RESOLVER_POLI
 When Solidity sources change, run `pnpm provider:artifact` and commit the regenerated public deployment artifact. Hosted web builds verify its source digest without requiring Forge.
 
 ## Default: synchronize inside Next.js
+
+Public API and MCP searches refresh catalogs older than 20 minutes in the background using the same database lease. The one-hour API/SDK freshness limit still rejects stale results. The web UI retries `CATALOG_REFRESHING` for up to 12 waits of five seconds; agents can follow the same Retry-After guidance. After a long idle period, the first search may need to wait for reconstruction. Refresh failures preserve the previous snapshot.
 
 For the demo, an authenticated merchant clicks **Refresh listings**, which calls `POST /api/discovery/sync` in the existing Next.js app. There is no cron schedule or separate host to configure. The API uses a database lease and cooldown, and configured roots only. A bounded run reconstructs finalized ENS state, publishes a complete catalog and updates description embeddings. It never signs a transaction. Errors retain the previous catalog; stale search results still fail freshness checks.
 

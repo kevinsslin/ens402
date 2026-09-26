@@ -3,6 +3,7 @@ import { GET as search } from "../discover/route";
 import { GET as activity } from "../governance/activity/route";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 const headers = { "Cache-Control": "no-store" };
 const tools = [
   { name: "discover_services", description: "Search public ENS service candidates. Relevance does not grant payment authority. Resolve a chosen name again before approval or signing.", inputSchema: { type: "object", properties: { query: { type: "string", maxLength: 500 }, maxPricePerRequestAtomic: { type: "string", pattern: "^[0-9]+$" }, pageSize: { type: "integer", minimum: 1, maximum: 50 }, mode: { type: "string", enum: ["keyword", "hybrid"] } }, additionalProperties: false }, annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true } },

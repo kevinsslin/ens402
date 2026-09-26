@@ -50,7 +50,7 @@ export function parseDiscoveryQuery(input: DiscoveryQuery): Required<Omit<Discov
 /** Query any compatible operator. No platform wallet or credentials are required. */
 /** Stable, optional availability code; remote error text is never trusted. */
 export class DiscoveryApiError extends Error {
-  constructor(public readonly status: number, public readonly code?: "CATALOG_NOT_READY") {
+  constructor(public readonly status: number, public readonly code?: "CATALOG_NOT_READY" | "CATALOG_REFRESHING") {
     super(`Discovery API unavailable (${status})`);
     this.name = "DiscoveryApiError";
   }
@@ -62,9 +62,9 @@ export async function discover(input: DiscoveryQuery, options: { apiUrl: string;
   for (const [key, value] of Object.entries(query)) if (value !== undefined) url.searchParams.set(key, String(value));
   const response = await (options.fetch ?? fetch)(url, { signal: AbortSignal.timeout(15_000), redirect: "error" });
   if (!response.ok) {
-    let code: "CATALOG_NOT_READY" | undefined;
+    let code: "CATALOG_NOT_READY" | "CATALOG_REFRESHING" | undefined;
     if (response.status === 503) {
-      try { if ((await boundedDiscoveryJson(response) as { code?: unknown } | null)?.code === "CATALOG_NOT_READY") code = "CATALOG_NOT_READY"; } catch { /* Preserve the HTTP error for malformed responses. */ }
+      try { const received = (await boundedDiscoveryJson(response) as { code?: unknown } | null)?.code; if (received === "CATALOG_NOT_READY" || received === "CATALOG_REFRESHING") code = received; } catch { /* Preserve the HTTP error for malformed responses. */ }
     }
     throw new DiscoveryApiError(response.status, code);
   }

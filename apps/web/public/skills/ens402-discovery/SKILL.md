@@ -47,6 +47,8 @@ For a successful skill test, a sufficient reply is: "Search works: weather.demo.
 
 Do not volunteer schemas, raw JSON, scores, wallet/token addresses, block numbers, expiry/index timestamps, architecture explanations or setup instructions. Show those only when they answer the user's question. Do not add a repeated safety checklist or follow-up sales pitch.
 
+If search returns HTTP 503 with `CATALOG_REFRESHING`, the server is rebuilding its ENS catalog. Wait 5 seconds and retry, at most 12 times; report that indexing is still in progress if it remains unavailable. Do not treat this as an empty result.
+
 Empty results: say no service matched in this catalog. A request error is a failed search, not an empty catalog. If `semantic` is `unavailable`, briefly say keyword search was used. Fixture data cannot answer a request for real current conditions; state that directly instead of presenting it as live weather.
 
 ## When the user chooses to use a service
