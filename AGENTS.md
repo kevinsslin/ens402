@@ -1,6 +1,6 @@
 # AGENTS.md
 
-ENS402 (formerly HuFu) is an ENS-based public service configuration and payment verification stack for x402. Read `docs/IDEA.md` first; it points to `README.md`, the single current product/scope/status overview. Use `SETUP.md` for operator steps, native roles and demo flow, `AUDIT.md` for evidence, and `TODO.md` for the single actionable backlog. Obsolete proposals were removed. `docs/` is local only and ignored by Git.
+ENS402 (formerly HuFu) is an ENS-based public service configuration and payment verification stack for x402. Read `README.md` first for the current product scope and status. Use `SETUP.md` for operator steps, native roles and demo flow, `AUDIT.md` for evidence, and `TODO.md` for the single actionable backlog. Obsolete proposals were removed. `docs/` is local only and ignored by Git.
 
 ## Rules
 

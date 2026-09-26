@@ -2,24 +2,17 @@
 
 Start with [README.md](README.md) for current scope and status. This file contains operator actions only. No mainnet funds or transactions.
 
-## What Kevin needs to do next
+## Demo workflow
 
-1. Open `/provider`, sign in with **Continue with a wallet**, and select the wallet that owns `ens402.eth`. An email-created Privy wallet does not automatically control an existing ENS name.
-2. Open **Platform owner setup**, then **Read Sepolia setup**. Review and confirm the two transactions: create the native Platform Registry, then attach it to `ens402.eth`. The UI verifies each receipt and can resume. No CLI or private-key export is required. Current bootstrap supports direct EOA transactions, not Safe internal deployment receipts.
-3. Choose a **Treasury Admin** address: an EOA, multisig or MPC wallet. Contract deployment is not required. Provider Admin, Ops and Treasury must be distinct. Treasury is the shared payment-record writer; each service-name holder is its own payout recipient.
-4. Complete provider setup below, publish a service, and send the confirmed provider name to the operator so its registry/resolver binding can be added to hosted Guard.
-5. For the buyer demo, log in to Console and fund its displayed payer with **Base Sepolia USDC**. Sepolia gas and Base Sepolia USDC are different balances.
+1. Open `/provider` and connect the wallet that manages your provider. Existing workspaces appear automatically. An email-created Privy wallet does not automatically control an existing ENS name.
+2. Open the workspace to publish or manage services. New providers choose distinct Provider Admin, Ops and Treasury Admin wallets. Treasury Admin can be an EOA, multisig or MPC wallet; it controls payment records, not service-name ownership.
+3. Use **Publish service -> Start with a demo**, inspect endpoint metadata, then confirm registration. Older publishers must be upgraded once for single-transaction publication; see the publisher section below.
+4. Use **Refresh listings** after Sepolia finality. The default demo sync runs in Next.js on Vercel; no separate host or Cron is required.
+5. Search for the service, review Guard checks, and fund the displayed buyer with **Base Sepolia USDC** for a purchase. Sepolia gas and Base Sepolia USDC are different balances.
 
-The operator can prepare infrastructure, tests and unsigned plans while wallet confirmation is pending. You do not need to create a Railway service for the default demo. Browser automation can fill forms and verify results; wallet prompts and login verification require the user.
+Platform initialization is a one-time owner action, not a repeated onboarding step. The recorded platform registry is `0xf537B10228b82726c9B0216d8a51097f6554e4CD`; `demo.ens402.eth` has a provider registry and shared resolver. Recheck live permissions before writes. Remaining public rehearsal steps are in [TODO.md](TODO.md).
 
-### Observed setup on September 27, 2026
-
-- Live Sepolia read: `ens402.eth` owner is `0x0D2FDDee5b84540A9766c025ad26dCaFb9FeF380`; child registry still zero at block 11787614. The owner had approximately 4.56 Sepolia ETH earlier in this check.
-- Vercel has Privy, Intercepta, RPC and the existing account database.
-- A separate empty hosted `ens402_discovery` database and dedicated `ens402_catalog` role are created. Discovery and analytics migrations passed; that role can read zero private account tables.
-- Production `DISCOVERY_DATABASE_URL`, `ANALYTICS_DATABASE_URL`, all three embedding variables and `ENS_PARENT_NAME` are configured. A deployment is required to load changes.
-- The local fixture database remains separate. The hosted connection is saved privately as `PRODUCTION_DISCOVERY_DATABASE_URL` in root `.env`; it is an operator convenience, not a runtime setting.
-- Public catalog population, real Safe setup and public wallet transactions remain pending. The default synchronization host is the existing Next.js app on Vercel; Railway is optional.
+Keep local fixture databases separate from production. Browser automation can prepare forms and inspect results; the connected wallet confirms transactions.
 
 ## 1. Environment configuration
 
@@ -182,9 +175,9 @@ Start with the ordered checklist in [AUDIT.md](AUDIT.md). `pnpm ens:namespace:pl
 
 ## Remaining public demo setup
 
-The last recorded Sepolia check, block 11786000, showed the parent is owned but its child registry is zero. This is a dated observation, not continuous monitoring.
+The platform namespace is already linked. This section describes the optional paid-name endpoint and legacy direct-service setup, not normal provider onboarding.
 
-For the paid-name demo, set `ENS_PARENT_NAME` and `ENS_OWNER_ADDRESS` locally and run `pnpm ens:namespace:plan --native-only`. Review `docs/setup/namespace-transactions.json`: the owner creates an official UserRegistry instance, points the parent to it, then grants only `ROLE_REGISTRAR` to a dedicated worker. No transaction has been sent. Fund the worker with Sepolia ETH.
+For the paid-name demo, set `ENS_PARENT_NAME` and `ENS_OWNER_ADDRESS` locally and run `pnpm ens:namespace:plan --native-only`. Review `docs/setup/namespace-transactions.json`: the owner creates an official UserRegistry instance, points the parent to it, then grants only `ROLE_REGISTRAR` to a dedicated worker. Only submit missing setup steps after checking current state. Fund the worker with Sepolia ETH.
 
 Configure `ENS_PURCHASE_REGISTRY`, `ENS_PURCHASE_EXPIRY`, server-only `ENS_REGISTRATION_PRIVATE_KEY`, and `ENS_REGISTRATION_RESOURCE_URL` in Vercel. The worker wallet is separate from Admin, Ops, Treasury and the buyer.
 
@@ -305,7 +298,7 @@ npm test
 npm run dev
 ```
 
-Envio 3.12.1 watches the pinned Sepolia factory/root from block 11700000 and discovers native registries/resolvers dynamically. Factory discovery covers initializer logs earlier in the same block. Raw events retain registration, links, mutable token IDs, role and record changes; rollback is enabled. Configure an Envio HyperSync token or supported RPC source and the host's database requirements. Local `dev` needs Docker. A bounded Sepolia RPC run completed locally and its Hasura IndexedHead query succeeded; this is not a full-history or hosted deployment test. Default HyperSync requires `ENVIO_API_TOKEN` from https://envio.dev/app/api-tokens. Hosted Envio/GraphQL ingestion remains an external setup and verification step. The default demo uses a bounded Next.js synchronization route triggered by the merchant Refresh listings button. Vercel does not run the indefinite worker loop. A persistent Railway/Render/VM worker and hosted Envio remain optional for larger workloads.
+Envio 3.12.1 watches the pinned Sepolia factory/root from block 11700000 and discovers native registries/resolvers dynamically. Factory discovery covers initializer logs earlier in the same block. Raw events retain registration, links, mutable token IDs, role and record changes; rollback is enabled. Configure an Envio HyperSync token or supported RPC source and the host's database requirements. Local `dev` needs Docker. A bounded Sepolia RPC run completed locally and its Hasura IndexedHead query succeeded; this is not a full-history or hosted deployment test. Default HyperSync requires `ENVIO_API_TOKEN` from https://envio.dev/app/api-tokens. Hosted Envio/GraphQL ingestion remains an external setup and verification step. The default demo uses a bounded Next.js synchronization route triggered by the merchant Refresh listings button. Vercel does not run the indefinite worker loop. Hosted Envio is optional; the CLI sync commands below also support independent indexers.
 
 From repository root, set:
 
@@ -407,31 +400,7 @@ When Solidity sources change, run `pnpm provider:artifact` and commit the regene
 
 For the demo, an authenticated merchant clicks **Refresh listings**, which calls `POST /api/discovery/sync` in the existing Next.js app. There is no cron schedule or separate host to configure. The API uses a database lease and cooldown, and configured roots only. A bounded run reconstructs finalized ENS state, publishes a complete catalog and updates description embeddings. It never signs a transaction. Errors retain the previous catalog; stale search results still fail freshness checks.
 
-Set `INDEXER_ROOTS=ens402.eth`, `INDEXER_FROM_BLOCK=11700000`, the hosted catalog/embedding values and the existing Sepolia RPC on Vercel. Analytics starts at Base Sepolia block `47337056`; earlier transfers are outside this observation window. These values are configured for this project. No Railway login or Envio deployment is required for the initial demo. A newly mined registration can remain `awaiting-index` until Sepolia finality; manual refresh cannot bypass that delay.
-
-## Optional: deploy the persistent discovery worker
-
-Build from the repository root:
-
-```sh
-docker build -f indexer/Dockerfile.worker -t ens402-discovery-worker .
-```
-
-On Railway, Render or a VM, run this image as one persistent background worker. No HTTP port is needed. Environment values are injected by the host; the image contains no `.env` or private key. Migrate the hosted database separately before starting it.
-
-| Worker variable | Value/source |
-| --- | --- |
-| `DISCOVERY_DATABASE_URL` | The hosted public catalog connection, same database as the web API |
-| `SEPOLIA_RPC_URL` | Existing Sepolia historical-state/log RPC |
-| `INDEXER_ROOTS` | `ens402.eth`, after its namespace is initialized |
-| `INDEXER_FROM_BLOCK` | `11700000`, before native registrations in this deployment |
-| `INDEXER_POLL_SECONDS` | `60` |
-| `DISCOVERY_EMBEDDING_API_KEY`, `DISCOVERY_EMBEDDING_ENDPOINT`, `DISCOVERY_EMBEDDING_MODEL` | Same configured embedding provider as web |
-| `ANALYTICS_DATABASE_URL` | Hosted public catalog database, if enabling analytics |
-| `BASE_SEPOLIA_RPC_URL`, `ANALYTICS_FROM_BLOCK` | Existing RPC and an explicit scan-start block before demo payments |
-| `ENVIO_GRAPHQL_URL`, `ENVIO_GRAPHQL_ADMIN_SECRET` | Optional hosted Envio journal. Without it the worker reconstructs from RPC logs |
-
-Run one cycle with `node_modules/.bin/tsx indexer/src/worker.ts --once` before enabling the default continuous command. Verify finalized checkpoints and a real service listing after registration. `ANALYTICS_LEDGER_DATABASE_URL` is optional and must be a separate read-only account-ledger credential if verified local settlement classification is needed. Do not give private account credentials to Envio.
+Set `INDEXER_ROOTS=ens402.eth`, `INDEXER_FROM_BLOCK=11700000`, the hosted catalog/embedding values and the existing Sepolia RPC on Vercel. Analytics starts at Base Sepolia block `47337056`; earlier transfers are outside this observation window. These values are configured for this project. No separate indexer deployment is required for the initial demo. A newly mined registration can remain `awaiting-index` until Sepolia finality; manual refresh cannot bypass that delay.
 
 ## Endpoint metadata required by new publication
 

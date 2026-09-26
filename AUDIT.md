@@ -1,5 +1,7 @@
 # ENS402 implementation audit
 
+Historical validation log. Counts, missing environment variables and deployment observations below describe their recorded runs, not current setup. Use README.md for scope, SETUP.md for operations and TODO.md for remaining work.
+
 Updated 2026-09-26. Scope: SDK, hosted API, merchant, console, native ENS setup and custom registrar. This is an engineering review with executable tests, not an independent security certification.
 
 ## September 27: owner UI, metadata alignment and in-app indexing

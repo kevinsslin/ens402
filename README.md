@@ -98,7 +98,7 @@ Merchant flow: `/provider` prepares wallet-signed native setup and service publi
 
 Envio can dynamically add supported registries/resolvers discovered from configured roots. It cannot observe arbitrary HTTP requests or infer the purchased endpoint from a token transfer. First-release analytics aggregate observed supported settlements by chain/token/payTo with explicit facilitator/verification coverage. Dedicated service addresses enable simpler separate accounting; shared addresses show shared totals and must not be double-counted. Transfer plus AuthorizationUsed is not uniquely x402, and a known facilitator transaction sender is a classification heuristic. Preserve historical address mappings and never treat all USDC deposits as x402 revenue. Exact endpoint attribution through request-to-settlement correlation is deferred.
 
-Prepare several named, callable test services with explicit fixture labels and published input/output examples before presenting. See TODO.md for the catalog, complete journey and acceptance cases. No public names have been registered by this implementation.
+Prepare several named, callable test services with explicit fixture labels and published input/output examples before presenting. See TODO.md for the catalog, complete journey and acceptance cases. The demo provider has published service names; catalog indexing and funded payment rehearsal are separate checks.
 
 ## Remaining work
 
@@ -108,7 +108,7 @@ Use [TODO.md](TODO.md) for the single actionable backlog, including discovery im
 
 Earlier payment baseline validation passed **98 unit tests, 28 PostgreSQL integration tests and 32 Solidity fork tests**, the dual-Anvil flow, typecheck and production build. Subsequent discovery/provider evidence is recorded separately in AUDIT.md. Actual USDC contract decimals were read as 6. Live Intercepta clean scan/cache and live Privy signing/policy-denial checks passed. Browser checks covered public forms and diagrams, including 390px layout.
 
-Public funded end-to-end purchase and deployed service roles remain unverified. Latest recorded parent read: Sepolia block 11786000, `ens402.eth` owned but child registry unset. See AUDIT.md for evidence scope; this table does not imply a fresh chain read on every documentation edit.
+The platform registry is linked and `demo.ens402.eth` has published `hello`, `weather` and `usd-jpy-rates` services. A public funded end-to-end purchase remains a separate verification gate. See TODO.md for remaining checks and AUDIT.md for historical evidence; this is not a fresh chain read.
 
 Latest discovery evidence: native Anvil registration and deterministic reconstruction, isolated PostgreSQL keyword search and expiry removal, generated Envio handler tests, three live OpenAI fixture embeddings and a semantic-only currency query. These do not prove hosted Envio ingestion or public service deployment.
 
@@ -137,6 +137,6 @@ The landing page compares publication and governance guarantees. Decentralizatio
 | Separate Ops/Treasury permissions enforced onchain | Native key-scoped writer roles | Not specified by the discovery specification | Not specified by the discovery specification |
 | Public, verifiable configuration edit history | Chain transactions and events | Not specified by the discovery specification | Not specified by the discovery specification |
 
-ENS402 hosted search is operator-run; namespace admission and Admin powers remain. Public testnet setup is pending. Bazaar's open extension does not prescribe storage or governance, and x402scan is open source. Independent implementations can add controls; “not specified” does not mean impossible. This table describes configuration edit history, not payment history, which other explorers also index.
+ENS402 hosted search is operator-run; namespace admission and Admin powers remain. Public testnet setup exists; full purchase rehearsal remains a separate gate. Bazaar's open extension does not prescribe storage or governance, and x402scan is open source. Independent implementations can add controls; “not specified” does not mean impossible. This table describes configuration edit history, not payment history, which other explorers also index.
 
 Sources checked September 27, 2026: [Bazaar specification](https://github.com/coinbase/x402/blob/main/specs/extensions/bazaar.md), [x402scan discovery specification](https://github.com/Merit-Systems/x402scan/blob/main/docs/DISCOVERY.md), and [x402scan README](https://github.com/Merit-Systems/x402scan). Bazaar is an open extension with facilitator-side cataloging. x402scan is open source, supports OpenAPI/well-known discovery and URL submission, and its discovery spec treats runtime 402 as authoritative over static metadata. Neither should be described as manual-only or impossible to self-host. Absence from these specifications is not evidence that third-party integrations cannot add the feature.
