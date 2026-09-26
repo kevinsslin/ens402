@@ -25,7 +25,7 @@ export async function prepareExternal(input: Record<string, unknown>) {
     finally { await response.body?.cancel(); }
     const now = Math.floor(Date.now()/1000);
     const requirement = challenge.accepts.find(r=>verifyRequest(service,service.endpoint,r,row.approval,now).outcome === 'continue');
-    if (!requirement) throw new Error('No matching payment requirement');
+    if (!requirement) return store.finish(id,{state:'rejected',reason:'No offered payment matches ENS and buyer approval',service,offeredRequirements:challenge.accepts,steps:[{stage:'resolve',detail:`Read ${service.name} at block ${service.block}`},{stage:'verify',detail:'HTTP 402 payment options do not match ENS and your approval. No signature requested.'}]});
     const evidence = await screenRecipient(service.payment.payTo);
     if (evaluateRisk(evidence,service.payment.payTo,now).outcome !== 'continue') throw new Error('Screening did not pass');
     const authorization: PublicAuthorization = { from:row.payer,to:requirement.payTo,value:requirement.amount,validAfter:'0',validBefore:String(now+requirement.maxTimeoutSeconds),nonce:`0x${randomBytes(32).toString('hex')}` };

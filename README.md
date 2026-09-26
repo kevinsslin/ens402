@@ -67,3 +67,5 @@ Privy is the default demo signer. Its policy is designed to restrict each author
 Intercepta returns address-risk evidence, not service quality. Its bounded one-hour cache never substitutes expired evidence after failure. Ethereum mainnet evidence is supplementary to Base Sepolia payments. World identity and ERC-8004 reputation remain future inputs and pitch context.
 
 Vercel project `ens402` uses root `apps/web`. ENS uses Sepolia; payments use Base Sepolia only. Local research, decisions and validation receipts are under Git-ignored `docs/`.
+
+For the presentation sequence and prerequisites, see [DEMO.md](DEMO.md).

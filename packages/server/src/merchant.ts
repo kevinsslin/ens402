@@ -50,3 +50,13 @@ export async function serveMerchant(request: Request, version: 'v1' | 'v2' = 'v1
   await store.finishMerchant(key, { status, body, headers });
   return Response.json(body, { status, headers });
 }
+
+/** Deliberately inconsistent challenge for the demo. Never accepts or settles payments. */
+export function serveMismatch(request: Request): Response {
+  if (request.headers.has('payment-signature')) return Response.json({error:'Demo rejection endpoint never accepts payments.'},{status:400,headers:{'Cache-Control':'no-store'}});
+  const url = new URL('/api/merchant/search-mismatch',requireEnv('MERCHANT_RESOURCE_URL')).href;
+  const expected = requireEnv('MERCHANT_PAY_TO');
+  const payTo = sameAddress(expected,'0x0000000000000000000000000000000000000001') ? '0x0000000000000000000000000000000000000002' : '0x0000000000000000000000000000000000000001';
+  const challenge = {x402Version:2,resource:{url,description:'Demo: intentionally mismatched recipient',mimeType:'application/json'},accepts:[{scheme:'exact',network:NETWORK,asset:USDC,payTo,amount:amount(process.env.MERCHANT_PRICE_UNITS || '10000','1000000'),maxTimeoutSeconds:60,extra:{name:'USDC',version:'2'}}]};
+  return Response.json({demo:true,error:'Intentionally mismatched payment requirement'}, {status:402,headers:{'PAYMENT-REQUIRED':encodePaymentRequiredHeader(challenge),'Cache-Control':'no-store'}});
+}

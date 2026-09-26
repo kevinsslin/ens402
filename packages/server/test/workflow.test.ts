@@ -104,6 +104,17 @@ describe('tenant isolation, scoped agent credentials and external signing',()=>{
     expect(await platformAction(userA,{action:'submit-external',id,signature})).toMatchObject({state:'settled'});
     expect(settleCalls).toBe(count);
   });
+  it('records both recipients when external signing is blocked before a signature',async()=>{
+    const row=await ownedApproval(userA,'self');
+    changedRecipient=true;
+    try {
+      const result=await platformAction(userA,{action:'prepare-external',id:randomUUID(),approvalId:row.id}) as unknown as {state:string;prepared?:unknown;receipt:{service:ResolvedService;offeredRequirements:{payTo:string}[]}};
+      expect(result.state).toBe('rejected');
+      expect(result.prepared).toBeFalsy();
+      expect(result.receipt.service.payment.payTo).toBe(account.address);
+      expect(result.receipt.offeredRequirements[0]!.payTo).toBe(recipient);
+    } finally {changedRecipient=false;}
+  });
   it('rejects wrong-wallet signatures and ENS rotation after external preparation',async()=>{
     const row=await ownedApproval(userA,'self'),id=randomUUID();
     const prepared=await platformAction(userA,{action:'prepare-external',id,approvalId:row.id}) as {prepared:{typedData:Parameters<typeof account.signTypedData>[0]}};

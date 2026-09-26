@@ -53,7 +53,7 @@ describe('actual HTTP payment exchange', () => {
   });
   it('rejects a changed payee without screening or signing', async () => {
     const args = options(); args.transport.mockReset().mockResolvedValue(new Response(null, { status: 402, headers: { 'PAYMENT-REQUIRED': encodePaymentRequiredHeader({ ...challenge, accepts: [{ ...requirement, payTo: payer.address }] }) } }));
-    expect((await purchaseResource(args)).state).toBe('rejected'); expect(args.signer.signTypedData).not.toHaveBeenCalled(); expect(args.screen).not.toHaveBeenCalled();
+    const receipt = await purchaseResource(args); expect(receipt.state).toBe('rejected'); expect(receipt.offeredRequirements?.[0]?.payTo).toBe(payer.address); expect(receipt.requirement).toBeUndefined(); expect(args.signer.signTypedData).not.toHaveBeenCalled(); expect(args.screen).not.toHaveBeenCalled();
   });
   it('rechecks ENS immediately before signing', async () => {
     const args = options(); args.resolve.mockResolvedValueOnce(service).mockResolvedValue({ ...service, authority: 'changed-owner' });

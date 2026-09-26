@@ -9,7 +9,7 @@ export type PublicAuthorization = { from: string; to: string; value: string; non
 export type PaymentReceipt = {
   state: 'rejected' | 'held' | 'settled' | 'paid_delivery_failed' | 'uncertain';
   reason: string; steps: { stage: string; detail: string }[];
-  service?: ServiceSnapshot; requirement?: PaymentRequirements; evidence?: RiskEvidence;
+  service?: ServiceSnapshot; requirement?: PaymentRequirements; offeredRequirements?: PaymentRequirements[]; evidence?: RiskEvidence;
   authorization?: PublicAuthorization; settlement?: SettleResponse; resource?: string;
 };
 export function parseChallenge(header: string | null, endpoint: string): PaymentRequired {
@@ -60,7 +60,7 @@ export async function purchaseResource(options: {
     const challenge = parseChallenge(response.headers.get('payment-required'), service.endpoint);
     await response.body?.cancel();
     const selected = challenge.accepts.find(r => verifyRequest(service, service.endpoint, r, approval, clock()).outcome === 'continue');
-    if (!selected) { receipt.state = 'rejected'; receipt.reason = 'No offered payment matches ENS and buyer approval'; step('verify', receipt.reason); return receipt; }
+    if (!selected) { receipt.offeredRequirements = structuredClone(challenge.accepts); receipt.state = 'rejected'; receipt.reason = 'No offered payment matches ENS and buyer approval'; step('verify', receipt.reason); return receipt; }
     const requirement = structuredClone(selected); receipt.requirement = requirement;
     step('verify', 'Actual HTTP 402 matches ENS recipient, token, network and buyer limits');
     const guardedSigner: ClientEvmSigner = {
