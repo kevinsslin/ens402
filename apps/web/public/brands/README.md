@@ -15,4 +15,4 @@ Discovery comparison assets retrieved September 27, 2026:
 - x402scan mark: https://raw.githubusercontent.com/Merit-Systems/x402scan/main/apps/scan/public/logo.svg (used by its official Logo component).
 - x402 wordmark for the Bazaar extension: https://raw.githubusercontent.com/coinbase/x402/main/typescript/site/app/assets/x402_wordmark_light.svg. This identifies x402, not a separate Bazaar logo.
 
-Curvegrid wordmark retrieved September 27, 2026 from its official documentation: https://docs.curvegrid.com/img/logo-dark.svg. The original red mark and dark wordmark are preserved for the light landing page; it identifies the MultiBaas governance event integration.
+Curvegrid wordmark retrieved September 27, 2026 from the navigation logo at https://www.curvegrid.com/ (inline SVG, viewBox 0 0 167 34). The standalone asset preserves the official shapes and colors, with CSS variables resolved to their original fallback colors. This replaces the documentation-specific "Curvegrid Docs" logo and identifies the MultiBaas governance event integration.

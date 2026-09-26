@@ -35,10 +35,10 @@ export function DiscoveryComparison() {
     <section aria-labelledby="comparison-title">
       <div className="mb-5">
         <h2 id="comparison-title" className="text-xl font-medium">
-          Who controls the service configuration?
+          ENS402 Discovery Comparison
         </h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Where it lives. Who can edit it. What agents can verify.
+          Compare service discovery and configuration.
         </p>
       </div>
       <div
@@ -62,7 +62,7 @@ export function DiscoveryComparison() {
               >
                 <span className="inline-flex items-center gap-2">
                   <Layers3 size={21} aria-hidden="true" />
-                  ENS402*
+                  ENS402
                 </span>
               </th>
               <th scope="col" className="p-5 text-center font-medium">
@@ -143,22 +143,8 @@ export function DiscoveryComparison() {
           </tbody>
         </table>
       </div>
-      <div className="mt-4 grid gap-3 text-xs leading-6 text-muted-foreground sm:grid-cols-2">
-        <p>
-          Bazaar has an open extension; x402scan is open source. Both support
-          custom discovery. “Not specified” means their referenced discovery
-          specifications do not define this guarantee; providers can add their
-          own controls.
-        </p>
-        <p>
-          * ENS402 decentralizes the configuration source, not every component.
-          Hosted search remains operator-run; namespace admission and Admin
-          powers remain. Testnet implementation covers configured roots; public
-          setup is pending.
-        </p>
-      </div>
       <p className="mt-3 text-xs text-muted-foreground">
-        Bazaar uses the x402 mark. Sources:{" "}
+        Sources:{" "}
         <a
           className="underline underline-offset-4"
           href="https://docs.cdp.coinbase.com/x402/bazaar"

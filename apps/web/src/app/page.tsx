@@ -55,7 +55,7 @@ export default function Home() {
             aria-label="Curvegrid MultiBaas: ENS governance event indexing"
             className="flex items-center"
           >
-            <Image src="/brands/curvegrid.svg" alt="Curvegrid" width={185} height={28} className="h-auto w-[148px]" />
+            <Image src="/brands/curvegrid.svg" alt="Curvegrid" width={167} height={34} className="h-auto w-[132px]" />
           </a>
           <span className="text-sm font-medium text-muted-foreground">
             x402 payments
