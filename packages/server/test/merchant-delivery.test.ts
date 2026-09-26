@@ -1,0 +1,27 @@
+import {afterEach,expect,it,vi} from 'vitest';
+import {privateKeyToAccount} from 'viem/accounts';
+import {authorizationTypes} from '@x402/evm';
+import {decodePaymentRequiredHeader,encodePaymentSignatureHeader} from '@x402/core/http';
+import {USDC} from '@ens402/sdk';
+const f=vi.hoisted(()=>({verify:vi.fn(),settle:vi.fn(),verifySettlement:vi.fn(),response:vi.fn(),claim:vi.fn(),finish:vi.fn()}));
+vi.mock('../src/index',()=>({baseClient:()=>({}),getStore:()=>({merchantResponse:f.response,claimMerchant:f.claim,finishMerchant:f.finish})}));
+vi.mock('@ens402/sdk/settlement',()=>({verifySettlement:f.verifySettlement}));
+vi.mock('@x402/core/http',async original=>({...await original<typeof import('@x402/core/http')>(),HTTPFacilitatorClient:class{verify=f.verify;settle=f.settle;}}));
+import {serveMerchant} from '../src/merchant';
+import {fixtureCall,fixtureDefinitions} from '../src/fixture-metadata';
+afterEach(()=>{vi.unstubAllEnvs();vi.resetAllMocks();});
+it('delivers Hello World only after signature verification and verified settlement',async()=>{
+ const account=privateKeyToAccount(`0x${'11'.repeat(32)}`);const payTo='0x2222222222222222222222222222222222222222';const url='https://merchant.example/api/merchant/fixtures/hello';
+ vi.stubEnv('MERCHANT_PAY_TO',payTo);vi.stubEnv('MERCHANT_PRICE_UNITS','10000');
+ const deliver=vi.fn(async()=>({fixture:true,liveData:false,service:'hello',...fixtureDefinitions.hello.data}));
+ const resource={url,description:fixtureDefinitions.hello.description,call:fixtureCall('hello'),deliver};
+ const unpaid=await serveMerchant(new Request(url),'v1',resource);expect(unpaid.status).toBe(402);expect(deliver).not.toHaveBeenCalled();
+ const challenge=decodePaymentRequiredHeader(unpaid.headers.get('payment-required')!);const accepted=challenge.accepts[0]!;
+ const authorization={from:account.address,to:payTo,value:'10000',validAfter:'0',validBefore:String(Math.floor(Date.now()/1000)+50),nonce:`0x${'ab'.repeat(32)}`};
+ const signature=await account.signTypedData({domain:{name:'USDC',version:'2',chainId:84532,verifyingContract:USDC},types:authorizationTypes,primaryType:'TransferWithAuthorization',message:{...authorization,to:payTo as `0x${string}`,nonce:authorization.nonce as `0x${string}`,value:10000n,validAfter:0n,validBefore:BigInt(authorization.validBefore)}});
+ const header=encodePaymentSignatureHeader({x402Version:2,resource:challenge.resource,accepted,payload:{authorization,signature}});
+ f.response.mockResolvedValue(null);f.claim.mockResolvedValue({claimed:true});f.verify.mockResolvedValue({isValid:true,payer:account.address});f.settle.mockResolvedValue({success:true,payer:account.address,network:'eip155:84532',transaction:`0x${'cd'.repeat(32)}`});f.verifySettlement.mockResolvedValue(undefined);
+ const response=await serveMerchant(new Request(url,{headers:{'payment-signature':header}}),'v1',resource);
+ expect(response.status).toBe(200);expect(await response.json()).toMatchObject({message:'Hello, world!',fixture:true,liveData:false});expect(f.verifySettlement).toHaveBeenCalledOnce();expect(deliver).toHaveBeenCalledOnce();
+ f.verifySettlement.mockRejectedValueOnce(Error('Receipt mismatch'));const failed=await serveMerchant(new Request(url,{headers:{'payment-signature':header}}),'v1',resource);expect(failed.status).toBe(503);expect(deliver).toHaveBeenCalledOnce();
+});

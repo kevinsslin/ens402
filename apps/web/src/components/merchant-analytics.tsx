@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { formatUnits } from "viem";
 import type { AnalyticsReport } from "@ens402/server/analytics";
 import { Button } from "./ui/button";
@@ -25,15 +25,19 @@ export function MerchantAnalytics({ provider }: { provider: string }) {
       setBusy(false);
     }
   }
+  useEffect(() => {
+    setReport(null);
+    void load();
+  }, [provider]);
   return (
-    <section className="mt-10 border-t pt-8">
-      <h2 className="text-2xl">Observed receipts</h2>
+    <section className="rounded-xl border bg-card p-6">
+      <h2 className="text-2xl">Payments received</h2>
       <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
         Last 30 days on Base Sepolia. Shared recipients appear once; these
         totals are not exact endpoint revenue or profit.
       </p>
       <Button variant="outline" className="mt-4" disabled={busy} onClick={load}>
-        Load address analytics
+        Refresh payment data
       </Button>
       {error && (
         <p role="status" className="mt-4 text-sm">
@@ -45,7 +49,9 @@ export function MerchantAnalytics({ provider }: { provider: string }) {
           <p className="mt-4 text-xs text-muted-foreground">
             {new Date(report.window.since * 1000).toLocaleDateString()} to{" "}
             {new Date(report.window.until * 1000).toLocaleDateString()} ·
-            Finalized block {report.checkpoint?.blockNumber ?? "not ingested"}
+            {report.checkpoint
+              ? `Synced through block ${report.checkpoint.blockNumber}`
+              : "Payment history has not been synced yet"}
           </p>
           <div className="mt-4 grid gap-4 lg:grid-cols-2">
             {report.groups.map((group) => (
@@ -116,15 +122,19 @@ export function MerchantAnalytics({ provider }: { provider: string }) {
           </div>
           {report.groups.length === 0 && (
             <p className="mt-4 text-sm">
-              No associated receipts in this observation window.
+              {report.checkpoint
+                ? "No payments found in this period."
+                : "Payment history is not available yet. Publish and index a service first, then sync its payment history."}
             </p>
           )}
           <details className="mt-5 text-xs text-muted-foreground">
             <summary>Coverage and attribution</summary>
             <ul className="mt-2 list-disc space-y-2 pl-5">
-              {report.warnings.map((note) => (
-                <li key={note}>{note}</li>
-              ))}
+              {report.warnings
+                .filter((note) => note.trim())
+                .map((note) => (
+                  <li key={note}>{note}</li>
+                ))}
             </ul>
           </details>
         </>

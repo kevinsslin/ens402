@@ -2,6 +2,15 @@
 
 Current scope: **Discover, Govern, Guard**. Namespace: **Platform Registry -> Provider Registry -> Service**, with one shared native resolver per provider. Start with [README.md](README.md); operator steps are in [SETUP.md](SETUP.md), test evidence in [AUDIT.md](AUDIT.md).
 
+## Demo services and rehearsal
+
+- Publish `hello.demo.ens402.eth` first: `/api/merchant/fixtures/hello` returns a paid JSON greeting.
+- Then publish weather, FX and research fixtures for distinct search intents. All are explicitly sample data, not live market/weather feeds.
+- Demo endpoints share the configured `MERCHANT_PAY_TO` and cost `10000` atomic units (0.01 Base Sepolia USDC). The registering name owner must match that recipient.
+- Use **Publish service -> Start with a demo**, review the prefilled metadata, then commit/reveal in the wallet. Publication still requires the user's signatures.
+- Rehearse: semantic search -> resolve ENS -> verify metadata/payment terms -> pay -> receive JSON. Use the existing mismatch endpoint to demonstrate a refused payment.
+- Mocked settlement tests prove the delivery gate; a public funded purchase and final catalog sync remain required before claiming an end-to-end public demo.
+
 ## Demo critical path
 
 - Production database is reachable but has no catalog snapshot or services (verified September 27). Search cannot return real results until the first publication and sync.

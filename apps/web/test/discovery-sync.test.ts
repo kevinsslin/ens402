@@ -67,3 +67,9 @@ it("sanitizes refresh failures", async () => {
   expect(response.status).toBe(503);
   expect(await response.text()).not.toContain("private-secret");
 });
+
+it("accepts an empty POST body exposed as a stream by the browser runtime", async()=>{
+ const response=await POST(post({}, ""));
+ expect(response.status).toBe(200);
+ expect(refresh).toHaveBeenCalledOnce();
+});

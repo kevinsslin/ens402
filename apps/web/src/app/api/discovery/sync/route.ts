@@ -34,7 +34,7 @@ export async function POST(request: Request) {
       { error: "Same-origin request required" },
       { status: 403, headers },
     );
-  if (new URL(request.url).search || request.body !== null)
+  if (new URL(request.url).search || (await request.text()).length !== 0)
     return Response.json(
       { error: "Refresh accepts no targets or request body" },
       { status: 400, headers },

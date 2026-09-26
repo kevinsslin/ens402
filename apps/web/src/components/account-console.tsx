@@ -93,9 +93,9 @@ function AccountWorkspace({
     );
   return (
     <>
-      <div className="section-shell flex flex-wrap items-center justify-between gap-3 border-b py-5">
+      <div className="section-shell flex flex-wrap items-center justify-between gap-3 border-b py-3">
         <p className="text-sm">
-          {user?.email?.address || "Your private workspace"}
+          {user?.email?.address || "Account"}
         </p>
         <div className="flex flex-wrap items-center gap-2">
           {wallets.length > 0 && (

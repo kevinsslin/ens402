@@ -64,6 +64,47 @@ export function RegistrationConsole({
   restricted?: boolean;
   shared?: { resolver: string; ops: string; treasury: string };
 }) {
+  const [demos, setDemos] = useState<
+    Array<{
+      id: string;
+      description: string;
+      endpoint: string;
+      payTo: string;
+      amount: string;
+      call: Record<string, unknown>;
+    }>
+  >([]);
+  useEffect(() => {
+    if (example) return;
+    let active = true;
+    fetch("/api/merchant/demo-services")
+      .then(async (r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (active && data?.services) setDemos(data.services);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [example]);
+  function useDemo(demo: (typeof demos)[number]) {
+    invalidateDraft();
+    setLabel(demo.id === "fx" ? "rates" : demo.id);
+    setEndpoint(demo.endpoint);
+    setDescription(demo.description);
+    setPrice(formatUnits(BigInt(demo.amount), 6));
+    setMethod("GET");
+    setInputSchema(JSON.stringify(demo.call.inputSchema));
+    setOutputSchema(JSON.stringify(demo.call.outputSchema));
+    setExampleInput(JSON.stringify(demo.call.example));
+    setPicture("");
+    setCallExtra({ outputExample: demo.call.outputExample, fixture: true });
+    setMessage(
+      demo.payTo.toLowerCase() !== walletAddress?.toLowerCase()
+        ? "This demo pays its configured owner. Connect that wallet before registering, or use your own endpoint."
+        : "Demo filled in. Review the fields; we will verify the live endpoint again before registration.",
+    );
+  }
   const [label, setLabel] = useState(example ? "weather" : ""),
     [endpoint, setEndpoint] = useState(
       example ? "https://api.example.com/weather" : "",
@@ -246,7 +287,19 @@ export function RegistrationConsole({
       )) as Address;
       const client = createPublicClient({
           chain: sepolia,
-          transport: fallback([http("https://ethereum-sepolia-rpc.publicnode.com", { batch: true, retryCount: 0 }), http("https://rpc.sepolia.ethpandaops.io", { batch: true, retryCount: 0 })], { retryCount: 1 }),
+          transport: fallback(
+            [
+              http("https://ethereum-sepolia-rpc.publicnode.com", {
+                batch: true,
+                retryCount: 0,
+              }),
+              http("https://rpc.sepolia.ethpandaops.io", {
+                batch: true,
+                retryCount: 0,
+              }),
+            ],
+            { retryCount: 1 },
+          ),
           pollingInterval: 5000,
         }),
         wallet = createWalletClient({
@@ -376,9 +429,18 @@ export function RegistrationConsole({
         sessionStorage.setItem(storageKey, JSON.stringify(draft));
         setPending(draft);
         setPhase("awaiting signature");
-        const commitRequest = { account: owner, address, abi: serviceRegistrarAbi, functionName: "commit" as const, args: [commitment] as const };
+        const commitRequest = {
+          account: owner,
+          address,
+          abi: serviceRegistrarAbi,
+          functionName: "commit" as const,
+          args: [commitment] as const,
+        };
         const gas = await client.estimateContractGas(commitRequest);
-        const hash = await wallet.writeContract({ ...commitRequest, gas: gas * 120n / 100n });
+        const hash = await wallet.writeContract({
+          ...commitRequest,
+          gas: (gas * 120n) / 100n,
+        });
         setPhase("registering");
         const receipt = await client.waitForTransactionReceipt({ hash });
         if (receipt.status !== "success")
@@ -421,7 +483,10 @@ export function RegistrationConsole({
         });
         setPhase("awaiting signature");
         const gas = await client.estimateContractGas(simulation.request);
-        const hash = await wallet.writeContract({ ...simulation.request, gas: gas * 120n / 100n });
+        const hash = await wallet.writeContract({
+          ...simulation.request,
+          gas: (gas * 120n) / 100n,
+        });
         setPhase("registering");
         const receipt = await client.waitForTransactionReceipt({ hash });
         if (receipt.status !== "success")
@@ -444,9 +509,9 @@ export function RegistrationConsole({
     }
   }
   return (
-    <section className="section-shell py-14">
+    <section className="py-8">
       <p className="eyebrow">Publish your service / Sepolia</p>
-      <h1 className="mt-4 text-4xl font-medium">Give your API a name.</h1>
+      <h2 className="mt-3 text-3xl font-medium">Publish a service</h2>
       <p className="mt-5 max-w-2xl leading-7 text-muted-foreground">
         {shared
           ? "Add your API and price. Existing provider delegates manage its records."
@@ -465,14 +530,39 @@ export function RegistrationConsole({
           are required.
         </p>
       </div>
-      {shared && (
-        <p className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-900">
-          Shared provider resolver. Ops and Treasury Admin below must already
-          hold their key grants. These grants apply to every service in this
-          resolver; this form does not grant new permissions. Provider Admin
-          keeps resolver governance. The payment recipient is specific to this
-          service.
-        </p>
+      {!example && demos.length > 0 && (
+        <div className="mt-6 rounded-xl border bg-card p-5">
+          <h3 className="font-semibold">Start with a demo</h3>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Working x402 endpoints with sample data. Payments use Base Sepolia
+            test USDC.
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {demos.map((demo) => (
+              <button
+                type="button"
+                disabled={busy || !!pending}
+                key={demo.id}
+                onClick={() => useDemo(demo)}
+                className="rounded-lg border p-4 text-left transition-colors hover:bg-muted disabled:opacity-50"
+              >
+                <span className="font-medium">
+                  {(
+                    {
+                      hello: "Hello World",
+                      weather: "Tokyo weather",
+                      fx: "USD / JPY",
+                      research: "Agent research",
+                    } as Record<string, string>
+                  )[demo.id] || demo.id}
+                </span>
+                <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                  {demo.description}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
       )}
       {!configured && !example ? (
         <div className="mt-8 rounded-xl border p-6">

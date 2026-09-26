@@ -1,5 +1,9 @@
 import type { CallMetadata } from "@ens402/sdk/call";
 export const fixtureDefinitions = {
+  hello: {
+    description: "Hello World: returns a greeting as JSON after an x402 testnet payment.",
+    data: { message: "Hello, world!", protocol: "x402", network: "Base Sepolia" },
+  },
   weather: {
     description: "Demo fixture: Tokyo weather forecast",
     data: { city: "Tokyo", temperatureC: 24, condition: "Partly cloudy" },

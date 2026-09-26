@@ -4,6 +4,9 @@ import { formatUnits } from "viem";
 import { MerchantAnalytics } from "./merchant-analytics";
 import { MerchantHandover } from "./merchant-handover";
 import { MerchantPermissions } from "./merchant-permissions";
+import { Plus, Search, RefreshCw, ArrowUpRight } from "lucide-react";
+import { Spinner } from "./ui/spinner";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 import { Button } from "./ui/button";
 import type { merchantDashboard } from "@/server/merchant-dashboard";
 type Dashboard = Awaited<ReturnType<typeof merchantDashboard>>;
@@ -28,19 +31,42 @@ export function MerchantConsole({
   const requestVersion = useRef(0);
   useEffect(() => {
     setResult(null);
-    if (walletAddress && new URLSearchParams(window.location.search).get("provider")) void load();
-    return () => { requestVersion.current++; };
+    if (
+      walletAddress &&
+      new URLSearchParams(window.location.search).get("provider")
+    )
+      void load();
+    return () => {
+      requestVersion.current++;
+    };
   }, [walletAddress]);
   async function refreshListings() {
-    setRefreshing(true); setRefreshNotice("Reading finalized ENS changes and updating the searchable catalog. This can take a few minutes.");
+    setRefreshing(true);
+    setRefreshNotice(
+      "Reading finalized ENS changes and updating the searchable catalog. This can take a few minutes.",
+    );
     try {
-      const token = await getToken(); if (!token) throw Error("Sign in to refresh listings");
-      const response = await fetch("/api/discovery/sync", { method:"POST", headers:{Authorization:`Bearer ${token}`} });
-      const value = await response.json(); if (!response.ok) throw Error(value.error || "Refresh unavailable");
-      setRefreshNotice(value.status === "busy" ? "A refresh is running or the refresh cooldown is active. Try again later. No new job was started." : `Catalog refresh completed${typeof value.services === "number" ? `: ${value.services} services checked` : ""}. Recent registrations can still await finality.`);
+      const token = await getToken();
+      if (!token) throw Error("Sign in to refresh listings");
+      const response = await fetch("/api/discovery/sync", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const value = await response.json();
+      if (!response.ok) throw Error(value.error || "Refresh unavailable");
+      setRefreshNotice(
+        value.status === "busy"
+          ? "A refresh is running or the refresh cooldown is active. Try again later. No new job was started."
+          : `Catalog refresh completed${typeof value.services === "number" ? `: ${value.services} services checked` : ""}. Recent registrations can still await finality.`,
+      );
       await load();
-    } catch(error) { setRefreshNotice(error instanceof Error ? error.message : "Refresh unavailable"); }
-    finally { setRefreshing(false); }
+    } catch (error) {
+      setRefreshNotice(
+        error instanceof Error ? error.message : "Refresh unavailable",
+      );
+    } finally {
+      setRefreshing(false);
+    }
   }
   async function load() {
     const version = ++requestVersion.current;
@@ -85,175 +111,298 @@ export function MerchantConsole({
       if (version === requestVersion.current) setBusy(false);
     }
   }
+  const publishUrl = `/provider?provider=${encodeURIComponent(result?.provider || provider)}#publish-first-service`;
   return (
-    <section className="section-shell py-12">
-      <p className="eyebrow">Merchant workspace</p>
-      <h1 className="mt-3 text-4xl">Your services</h1>
-      <p className="mt-4 text-muted-foreground">
-        See current ENS control and indexing separately. A successful
-        registration is not yet a searchable listing.
-      </p>
-      <div className="mt-5 rounded-xl border p-4"><Button variant="outline" disabled={refreshing} onClick={refreshListings}>{refreshing ? "Refreshing listings…" : "Refresh listings"}</Button><p className="mt-3 text-sm text-muted-foreground">Refresh checks the configured ENS roots. Sepolia finality can take about 15 minutes, so a confirmed registration may still be waiting to appear in search.</p>{refreshNotice&&<p role="status" className="mt-3 text-sm">{refreshNotice}</p>}</div>
-      <div className="mt-7 flex flex-wrap gap-3">
-        <label className="flex-1 text-sm">
-          Provider ENS
-          <input
-            className="mt-2 w-full rounded-lg border p-3"
-            placeholder="provider.ens402.eth"
-            value={provider}
-            onChange={(e) => setProvider(e.target.value)}
-          />
-        </label>
-        <label className="flex-1 text-sm">
-          Shared resolver (if configured)
-          <input
-            className="mt-2 w-full rounded-lg border p-3"
-            value={sharedResolver}
-            onChange={(e) => setSharedResolver(e.target.value)}
-            placeholder="From provider setup"
-          />
-        </label>
-        <Button
-          className="self-end"
-          disabled={busy || !walletAddress}
-          onClick={load}
-        >
-          {busy ? "Checking…" : "Check live permissions"}
-        </Button>
+    <section className="mx-auto max-w-6xl px-5 py-10 sm:px-8">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-sm text-muted-foreground">Service workspace</p>
+          <h1 className="mt-2 break-all text-3xl sm:text-4xl">
+            {result?.provider || provider || "Your services"}
+          </h1>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Publish APIs, manage their settings and track payments.
+          </p>
+        </div>
+        {provider && (
+          <Button asChild>
+            <a href={publishUrl}>
+              <Plus className="mr-2 size-4" />
+              Publish service
+            </a>
+          </Button>
+        )}
       </div>
-      <a
-        href="/provider"
-        className="mt-4 inline-block text-sm text-primary underline"
-      >
-        Set up a provider or publish another service
-      </a>
+      {!result && (
+        <form
+          className="mt-8 flex max-w-xl gap-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void load();
+          }}
+        >
+          <label className="flex-1">
+            <span className="sr-only">Provider ENS name</span>
+            <input
+              className="w-full rounded-lg border bg-card px-3 py-2 text-sm"
+              placeholder="demo.ens402.eth"
+              value={provider}
+              onChange={(e) => setProvider(e.target.value)}
+            />
+          </label>
+          <Button variant="outline" disabled={busy || !walletAddress}>
+            {busy ? <Spinner /> : "Open provider"}
+          </Button>
+        </form>
+      )}
       {error && (
-        <p role="alert" className="mt-5 text-sm">
+        <p role="alert" className="mt-5 rounded-lg border p-4 text-sm">
           {error}
         </p>
       )}
+      {busy && !result && (
+        <p
+          role="status"
+          className="mt-8 flex items-center gap-2 text-sm text-muted-foreground"
+        >
+          <Spinner />
+          Loading your services…
+        </p>
+      )}
       {result && (
-        <>
-          <p className="mt-6 text-sm">
-            Block {result.observedBlock} ·{" "}
-            {result.canPublish
-              ? "Connected wallet can publish"
-              : "Connected wallet has no provider publishing role"}
-          </p>
-          <p className="mt-2 break-all text-xs text-muted-foreground">
-            Provider owner: {result.providerOwner} · Registry: {result.registry}
-          </p>
-          {result.indexError && (
-            <p className="mt-4 text-sm">{result.indexError}</p>
-          )}
-          <div className="mt-6 grid items-start gap-4 lg:grid-cols-2">
-            {result.services.map((row) => (
-              <article
-                key={row.name}
-                className="min-w-0 rounded-2xl border p-5"
+        <Tabs defaultValue="services" className="mt-8">
+          <TabsList>
+            <TabsTrigger value="services">Services</TabsTrigger>
+            <TabsTrigger value="payments">Payments</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
+          </TabsList>
+          <TabsContent value="services" className="mt-6 space-y-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="font-sans text-lg font-semibold">
+                Published services{" "}
+                <span className="ml-1 text-muted-foreground">
+                  {result.indexError ? "" : result.services.length}
+                </span>
+              </h2>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={refreshing}
+                onClick={refreshListings}
               >
-                <h2 className="break-all text-xl">{row.name}</h2>
-                <p className="mt-2 text-sm font-medium">
-                  {row.state.replaceAll("-", " ")}
-                </p>
-                <p className="mt-2 break-all text-xs text-muted-foreground">
-                  Service name owner: {row.owner}
-                </p>
-                {"service" in row && row.service && (
-                  <>
-                    <p className="mt-4 text-sm">{row.service.description}</p>
-                    <p className="mt-2 break-all text-xs">
-                      Resolver: {row.service.resolver}
-                    </p>
-                    <p className="mt-2 break-all text-xs">
-                      Recipient: {row.service.payment.payTo}
-                    </p>
-                    {row.service.payment.version !== 1 && (
-                      <p className="mt-2 text-sm">
-                        {formatUnits(
-                          BigInt(row.service.payment.pricing.amount),
-                          6,
-                        )}{" "}
-                        USDC / request
-                      </p>
-                    )}
-                    <p className="mt-4 text-sm">
-                      Permissions at block {row.permissionsBlock}:{" "}
-                      {row.permissions
-                        .filter((p) => p.canWrite)
-                        .map((p) => p.key)
-                        .join(", ") || "None"}
-                    </p>
-                    {row.broadText && (
-                      <p className="mt-2 text-xs">
-                        This wallet has broad text write authority.
-                      </p>
-                    )}
-                    {row.textAdmin && (
-                      <p className="mt-2 text-xs">
-                        This wallet can manage text grants.
-                      </p>
-                    )}
-                    {row.resolverMode !== "unknown" && (
-                      <MerchantHandover
-                        name={row.name}
-                        nameRegistry={row.service.parentRegistry}
-                        owner={row.owner}
-                        resolver={
-                          row.resolverMode === "dedicated"
-                            ? row.service.resolver
-                            : undefined
-                        }
-                        getProvider={getProvider}
-                        onChanged={() => void load()}
-                      />
-                    )}
-                    {row.resolverMode === "unknown" && (
-                      <p className="mt-3 text-xs">
-                        Confirm the provider shared resolver or configure this
-                        dedicated service before using Admin handover.
-                      </p>
-                    )}
-                    {row.textAdmin && (
-                      <MerchantPermissions
-                        name={row.name}
-                        resolver={row.service.resolver}
-                        nameRegistry={row.service.parentRegistry}
-                        walletAddress={walletAddress}
-                        getProvider={getProvider}
-                        onChanged={() => void load()}
-                      />
-                    )}
-                    {row.controlled && (
-                      <a
-                        className="mt-4 inline-block text-sm text-primary underline"
-                        href={`/console?service=${encodeURIComponent(row.name)}&manage=1`}
-                      >
-                        Manage service in Console
-                      </a>
-                    )}
-                  </>
+                {refreshing ? (
+                  <Spinner className="mr-2" />
+                ) : (
+                  <RefreshCw className="mr-2 size-4" />
                 )}
-              </article>
-            ))}
-          </div>
-          <MerchantHandover
-            name={result.provider}
-            nameRegistry={result.nameRegistry}
-            owner={result.providerOwner}
-            registry={result.registry}
-            resolver={result.sharedResolver}
-            getProvider={getProvider}
-            onChanged={() => void load()}
-          />
-          <MerchantAnalytics provider={result.provider} />
-          {result.services.length === 0 && (
-            <p className="mt-6">
-              No indexed services in this provider yet. Open this page from a
-              confirmed registration to check its indexing progress.
-            </p>
-          )}
-        </>
+                Refresh search listings
+              </Button>
+            </div>
+            {(result.indexError || refreshNotice) && (
+              <div
+                role="status"
+                className="rounded-lg border bg-muted/40 px-4 py-3 text-sm"
+              >
+                <p>
+                  {refreshNotice ||
+                    "Search listings are not available yet. Your provider is registered on-chain."}
+                </p>
+                <details className="mt-2 text-xs text-muted-foreground">
+                  <summary className="cursor-pointer">
+                    About search visibility
+                  </summary>
+                  <p className="mt-2">
+                    Publishing and search indexing are separate. Refresh checks
+                    finalized ENS records; new registrations can take about 15
+                    minutes to appear. If refresh fails, your on-chain service
+                    remains registered.
+                  </p>
+                </details>
+              </div>
+            )}
+            {result.services.length === 0 ? (
+              <div className="rounded-xl border border-dashed bg-card px-6 py-12 text-center">
+                <Search className="mx-auto size-7 text-muted-foreground" />
+                <h3 className="mt-4 text-lg font-semibold">
+                  {result.indexError
+                    ? "Publish or find your services"
+                    : "No services listed yet"}
+                </h3>
+                <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
+                  Start with the Hello World demo, or connect your own x402
+                  endpoint. We'll check its metadata before you register its ENS
+                  name.
+                </p>
+                <Button asChild className="mt-5">
+                  <a href={publishUrl}>Publish a service</a>
+                </Button>
+                <p className="mt-4 text-xs text-muted-foreground">
+                  Already registered? Refresh search listings, or open the
+                  confirmation link from registration.
+                </p>
+              </div>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2">
+                {result.services.map((row) => (
+                  <article
+                    key={row.name}
+                    className="min-w-0 rounded-xl border bg-card p-5"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <h3 className="break-all font-semibold">{row.name}</h3>
+                      <span className="rounded-full bg-muted px-2 py-1 text-xs">
+                        {row.state === "listed"
+                          ? "Searchable"
+                          : row.state.replaceAll("-", " ")}
+                      </span>
+                    </div>
+                    {"service" in row && row.service && (
+                      <>
+                        <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                          {row.service.description}
+                        </p>
+                        {row.service.payment.version !== 1 && (
+                          <p className="mt-3 text-sm font-medium">
+                            {formatUnits(
+                              BigInt(row.service.payment.pricing.amount),
+                              6,
+                            )}{" "}
+                            USDC / request
+                          </p>
+                        )}
+                        <a
+                          className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary"
+                          href={`/console?service=${encodeURIComponent(row.name)}${row.controlled ? "&manage=1" : ""}`}
+                        >
+                          {row.controlled ? "Manage service" : "Open service"}
+                          <ArrowUpRight className="size-3" />
+                        </a>
+                        <details className="mt-4 border-t pt-3 text-sm">
+                          <summary className="cursor-pointer text-muted-foreground">
+                            Permissions and ownership
+                          </summary>
+                          <p className="mt-3 break-all text-xs">
+                            Name owner: {row.owner}
+                          </p>
+                          <p className="mt-2 break-all text-xs">
+                            Resolver: {row.service.resolver}
+                          </p>
+                          <p className="mt-2 break-all text-xs">
+                            Payment recipient: {row.service.payment.payTo}
+                          </p>
+                          {row.textAdmin && (
+                            <MerchantPermissions
+                              name={row.name}
+                              resolver={row.service.resolver}
+                              nameRegistry={row.service.parentRegistry}
+                              walletAddress={walletAddress}
+                              getProvider={getProvider}
+                              onChanged={() => void load()}
+                            />
+                          )}
+                          {row.resolverMode !== "unknown" && (
+                            <MerchantHandover
+                              name={row.name}
+                              nameRegistry={row.service.parentRegistry}
+                              owner={row.owner}
+                              resolver={
+                                row.resolverMode === "dedicated"
+                                  ? row.service.resolver
+                                  : undefined
+                              }
+                              getProvider={getProvider}
+                              onChanged={() => void load()}
+                            />
+                          )}
+                        </details>
+                      </>
+                    )}
+                  </article>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+          <TabsContent value="payments" className="mt-6">
+            <MerchantAnalytics provider={result.provider} />
+          </TabsContent>
+          <TabsContent value="settings" className="mt-6 space-y-5">
+            <div className="rounded-xl border bg-card p-5">
+              <h2 className="font-sans text-lg font-semibold">
+                Provider settings
+              </h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {result.canPublish
+                  ? "Your connected wallet can register services."
+                  : "This wallet can view the provider. Publishing requires an authorized wallet."}
+              </p>
+              <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-[140px_1fr]">
+                <dt className="text-muted-foreground">Provider owner</dt>
+                <dd className="break-all font-mono text-xs">
+                  {result.providerOwner}
+                </dd>
+                <dt className="text-muted-foreground">Provider registry</dt>
+                <dd className="break-all font-mono text-xs">
+                  {result.registry}
+                </dd>
+                <dt className="text-muted-foreground">Shared resolver</dt>
+                <dd className="break-all font-mono text-xs">
+                  {result.sharedResolver || "Not selected"}
+                </dd>
+              </dl>
+              <p className="mt-4 text-xs text-muted-foreground">
+                Verified at Sepolia block {result.observedBlock}.
+              </p>
+            </div>
+            <details className="rounded-xl border bg-card p-5">
+              <summary className="cursor-pointer text-sm font-medium">
+                Advanced: change provider or resolver
+              </summary>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <label className="text-sm">
+                  Provider ENS
+                  <input
+                    className="mt-2 w-full rounded-lg border p-3"
+                    value={provider}
+                    onChange={(e) => setProvider(e.target.value)}
+                  />
+                </label>
+                <label className="text-sm">
+                  Shared resolver
+                  <input
+                    className="mt-2 w-full rounded-lg border p-3"
+                    value={sharedResolver}
+                    onChange={(e) => setSharedResolver(e.target.value)}
+                  />
+                </label>
+              </div>
+              <Button
+                className="mt-4"
+                variant="outline"
+                disabled={busy}
+                onClick={() => void load()}
+              >
+                Check settings
+              </Button>
+            </details>
+            <details className="rounded-xl border border-amber-200 bg-card p-5">
+              <summary className="cursor-pointer text-sm font-medium">
+                Transfer provider administration
+              </summary>
+              <p className="mt-3 text-sm text-muted-foreground">
+                Use this only when changing the provider's administrator.
+              </p>
+              <MerchantHandover
+                name={result.provider}
+                nameRegistry={result.nameRegistry}
+                owner={result.providerOwner}
+                registry={result.registry}
+                resolver={result.sharedResolver}
+                getProvider={getProvider}
+                onChanged={() => void load()}
+              />
+            </details>
+          </TabsContent>
+        </Tabs>
       )}
     </section>
   );
