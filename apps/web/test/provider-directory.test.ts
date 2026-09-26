@@ -11,7 +11,9 @@ beforeEach(() => {
   vi.clearAllMocks();
   client.getBlock.mockResolvedValue({ number: 100n, timestamp: 1000n });
   client.getCode.mockImplementation(async ({ blockNumber }) => blockNumber >= 90n ? "0x01" : "0x");
-  client.getLogs.mockResolvedValue([{ args: { label: "demo" } }]);
+  client.getLogs.mockImplementation(async ({ event }) => event.name === "ProxyDeployed"
+    ? [{ blockNumber: 90n, args: { implementation: currentDeployment.registryImplementation } }]
+    : [{ args: { label: "demo" } }]);
   client.readContract.mockImplementation(async ({ functionName, args }) => {
     if (functionName === "findOwner") return owner;
     if (functionName === "findExpiry") return 2000n;
@@ -25,6 +27,7 @@ it("finds an owned provider without a catalog or browser hints", async () => {
   const result = await providerDirectory(owner);
   expect(result.providers).toEqual([{ name: "demo.ens402.eth", owner, registry, role: "Provider owner" }]);
   expect(client.getLogs).toHaveBeenCalledWith(expect.objectContaining({ address: registry, fromBlock: 90n, toBlock: 100n }));
+  expect(client.getCode).not.toHaveBeenCalled();
 });
 it("includes delegated registry publishers", async () => {
   expect((await providerDirectory(other)).providers[0]?.role).toBe("Service registrar");
@@ -49,4 +52,16 @@ it("excludes expired providers", async () => {
   const implementation = client.readContract.getMockImplementation()!;
   client.readContract.mockImplementation(async input => input.functionName === "findExpiry" && input.args[0] === "demo" ? 900n : implementation(input));
   expect((await providerDirectory(owner)).providers).toEqual([]);
+});
+
+it("works with a pruned RPC that rejects every historical code request", async () => {
+  client.getCode.mockRejectedValue(new Error("historical state is not available"));
+  expect((await providerDirectory(owner)).providers[0]?.name).toBe("demo.ens402.eth");
+  expect(client.getCode).not.toHaveBeenCalled();
+});
+it("does not present an empty directory when deployment provenance is missing", async () => {
+  vi.resetModules();
+  const { providerDirectory: coldDirectory } = await import("../src/server/provider-directory");
+  client.getLogs.mockResolvedValue([]);
+  await expect(coldDirectory(owner)).rejects.toThrow("deployment was not found");
 });

@@ -5,6 +5,7 @@ import { currentDeployment, currentRegistryAbi } from "@ens402/sdk/ens";
 import { factoryAbi } from "@ens402/sdk/ens";
 const abi = parseAbi([
   "event LabelRegistered(uint256 indexed tokenId,bytes32 indexed labelHash,string label,address owner,uint64 expiry,address indexed sender)",
+  "event ProxyDeployed(address indexed sender,address indexed proxyAddress,uint256 salt,address implementation)",
   "function hasRootRoles(uint256 roles,address account) view returns(bool)",
   "function findExpiry(string label) view returns(uint64)",
 ]);
@@ -27,27 +28,27 @@ export async function providerDirectory(wallet: string, client = ensClient()) {
   }
   const platformImplementation = await client.readContract({ address: currentDeployment.factory, abi: factoryAbi, functionName: "verifyContract", args: [registry], blockNumber: block.number });
   if (platformImplementation.toLowerCase() !== currentDeployment.registryImplementation.toLowerCase()) throw Error("Unsupported platform registry");
-  // Locate this registry's deployment so newly registered providers are visible
-  // before service indexing. Archive RPC failure is an error, never an empty list.
+  // Factory logs retain deployment history even when the RPC has pruned old
+  // contract state. Never binary-search historical eth_getCode on a public RPC.
   let from = births.get(registry.toLowerCase());
   if (from === undefined) {
-    let low = block.number, high = block.number;
-    const code = await client.getCode({ address: registry, blockNumber: high });
-    if (!code || code === "0x") throw Error("Platform registry has no code");
-    // Search backwards from the head; demo RPCs need not retain years of state.
-    for (let distance = 128n; ; distance *= 2n) {
-      low = block.number > distance ? block.number - distance : 0n;
-      const prior = await client.getCode({ address: registry, blockNumber: low });
-      if (!prior || prior === "0x") break;
-      if (low === 0n || distance >= 200_000n) throw Error("Provider history exceeds the demo scan window");
-      high = low;
+    const floor = block.number > 200_000n ? block.number - 200_000n : 0n;
+    for (let end = block.number; end >= floor;) {
+      const start = end - floor >= 4999n ? end - 4999n : floor;
+      const deployments = await client.getLogs({
+        address: currentDeployment.factory,
+        event: abi[1],
+        args: { proxyAddress: registry },
+        fromBlock: start,
+        toBlock: end,
+        strict: true,
+      });
+      const deployment = deployments.find(log => log.args.implementation?.toLowerCase() === currentDeployment.registryImplementation.toLowerCase());
+      if (deployment) { from = deployment.blockNumber; break; }
+      if (start === floor) break;
+      end = start - 1n;
     }
-    while (low < high) {
-      const middle = (low + high) / 2n;
-      const code = await client.getCode({ address: registry, blockNumber: middle });
-      if (code && code !== "0x") high = middle; else low = middle + 1n;
-    }
-    from = low;
+    if (from === undefined) throw Error("Provider registry deployment was not found in the demo scan window");
     births.set(registry.toLowerCase(), from);
   }
   if (block.number - from > 200_000n) throw Error("Provider history exceeds the demo scan window. Open a known provider from the merchant dashboard.");
