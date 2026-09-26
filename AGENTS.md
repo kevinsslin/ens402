@@ -1,6 +1,6 @@
 # AGENTS.md
 
-ENS402 (formerly HuFu) is an ENS-based public service configuration and payment verification stack for x402. Read `docs/IDEA.md` first; it points to `README.md`, the single current product/scope/status overview. Use `SETUP.md` for operator steps, `CONTRACTS.md` for native roles, `AUDIT.md` for evidence, and `DEMO.md` for presentation. Historical proposals are under `docs/archive/`. `docs/` is local only and ignored by Git.
+ENS402 (formerly HuFu) is an ENS-based public service configuration and payment verification stack for x402. Read `docs/IDEA.md` first; it points to `README.md`, the single current product/scope/status overview. Use `SETUP.md` for operator steps, native roles and demo flow, `AUDIT.md` for evidence, and `TODO.md` for the single actionable backlog. Obsolete proposals were removed. `docs/` is local only and ignored by Git.
 
 ## Rules
 
@@ -20,3 +20,7 @@ ENS402 (formerly HuFu) is an ENS-based public service configuration and payment 
 ENS402 puts x402 service configuration on ENS, governs updates with native EAC, and verifies payment requests before agents sign.
 
 Use the same three layers across the landing page, documentation, architecture diagrams and pitch: **ENS / Discovery**, **Native EAC / Governance**, **ENS402 SDK / Guard**. Explain public x402 configuration first, scoped updates second, and onchain/offchain payment comparison third. Registration is the provider entry point; the Console is the SDK reference app. Keep actual implementation status explicit. Do not revert to directory-only or recipient-comparison-only positioning. See README.md for the accepted scope, discovery direction and implementation boundaries.
+
+## UI conventions
+
+Use light ENS-inspired surfaces, Satoshi typography and existing shadcn components. Keep diagrams readable and static or manually stepped, label fixture examples, respect reduced motion, and avoid implying official endorsement. Brand asset provenance is in `apps/web/public/brands/README.md`.

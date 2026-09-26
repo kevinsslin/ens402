@@ -70,15 +70,9 @@ Keyword and semantic search are required. Exact-name matches should remain stron
 - Model/provider, dimensions, Envio-to-search synchronization, retry/backfill/reorg handling and database permissions remain implementation decisions. No embedding provider credentials or vector migration are configured by this proposal.
 - Search is an offchain view. Other operators can reproduce the supported raw catalog once the indexer is built; their model and ranking may differ. Re-resolve ENS before payment. Do not claim globally complete search, fair ranking or automatic quality verification.
 
-## Next work, in order
+## Remaining work
 
-1. Implement Envio ingestion and deterministic catalog reconstruction for explicitly supported roots, including changes, expiry and reorg handling.
-2. Add search records, keyword indexes, an embedding job and semantic retrieval. Verify updates/deletions invalidate stale results.
-3. Expose Search API, SDK `discover()` and the Console search flow. Demonstrate fresh ENS verification after candidate selection.
-4. Add MCP tools and update the existing agent Skill to use discovery. Define minimum call metadata for autonomous API use.
-5. Complete public namespace/service setup and the funded two-chain demo. Detailed actions are in SETUP.md.
-
-Buying an independent `.eth` remains a separate merchant adapter, not a requirement for discovery.
+Use [TODO.md](TODO.md) for the single actionable backlog, including discovery implementation, public demo setup and deferred features.
 
 ## Verified evidence
 
@@ -86,16 +80,16 @@ Latest implementation validation: **98 unit tests, 28 PostgreSQL integration tes
 
 Public funded end-to-end purchase and deployed service roles remain unverified. Latest recorded parent read: Sepolia block 11786000, `ens402.eth` owned but child registry unset. See AUDIT.md for evidence scope; this table does not imply a fresh chain read on every documentation edit.
 
-## Only open another document for a specific task
+## Document guide
 
 | Need | Document |
 | --- | --- |
 | What exists, what is missing, next priorities | **This README** |
-| Environment values, owner actions, funding and setup commands | [SETUP.md](SETUP.md) |
-| Exact native roles, custom contracts and deployment boundaries | [CONTRACTS.md](CONTRACTS.md) |
+| Environment, native roles, owner actions, funding and demo steps | [SETUP.md](SETUP.md) |
 | Test evidence, audit findings and recovery limitations | [AUDIT.md](AUDIT.md) |
-| Presentation sequence | [DEMO.md](DEMO.md) |
+| Remaining work and setup checklist | [TODO.md](TODO.md) |
+
 
 The filled-in form is at `/register/example`; the SDK integration guide is at `/docs`. Source lives in `apps/web`, `packages/sdk`, `packages/server` and `contracts`. SDK packages are workspace packages, not npm releases.
 
-Old discussion/proposal/status snapshots are archived under Git-ignored `docs/archive/`; provider sources and raw receipts remain under `docs/reference/` and `docs/validation/`. They do not override this current overview.
+Obsolete proposals and duplicate status files were removed. Provider source snapshots and raw evidence remain in Git-ignored `docs/reference/` and `docs/validation/`; they are reference material, not additional current scope documents.

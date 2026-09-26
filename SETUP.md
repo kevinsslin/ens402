@@ -44,7 +44,7 @@ For a managed database, set DATABASE_URL and run only `pnpm db:migrate`. Migrati
 
 ## 3. Choose the ENS setup workflow
 
-See [scripts/ens/README.md](scripts/ens/README.md). Use `pnpm ens:namespace:plan` for the platform parent. Use `/register` for a new subname, or `pnpm ens:plan` for an already registered service. These are different workflows.
+Use `pnpm ens:namespace:plan` for the platform parent. Use `/register` for a new subname, or `pnpm ens:plan` for an already registered service. These are different workflows.
 
 ### Configure one existing service
 
@@ -186,3 +186,49 @@ Use three distinct wallets:
 | Treasury payment-record writer | `0x0Ca23D06479560bb9A916c19Df5a2948a8ed3346` | Sepolia ETH for record updates |
 
 Ops and Treasury are freshly generated test-only wallets. Their keys are stored only in ignored root `.env` as `ENS_OPS_TEST_PRIVATE_KEY` and `ENS_TREASURY_TEST_PRIVATE_KEY`; the file is owner-readable/writable only. No roles have been granted and no transaction has been sent from them. The Admin key was not requested or copied. Funding these two writers does not fund the separate Base Sepolia USDC payer. The USDC receiving address remains `MERCHANT_PAY_TO`, an independent configuration.
+
+## Native contract roles
+
+ENS official contracts enforce permissions. Interfaces only declare their ABI. Each service uses a dedicated native PermissionedResolver because setter-key grants apply across records within that resolver.
+
+| Wallet | Contract and scope | Native role |
+| --- | --- | --- |
+| Namespace owner | UserRegistry root | `ROLE_REGISTRAR` + `ROLE_REGISTRAR_ADMIN` |
+| Registration worker or optional ServiceRegistrar | UserRegistry root | `ROLE_REGISTRAR` only |
+| Service Admin | Service name | `ROLE_SET_RESOLVER`, `ROLE_SET_RESOLVER_ADMIN`, `ROLE_CAN_TRANSFER_ADMIN` |
+| Service Admin | Resolver root | `ROLE_SET_TEXT` + `ROLE_SET_TEXT_ADMIN` |
+| Ops | Separate hashes of endpoint, description and avatar keys | `ROLE_SET_TEXT` |
+| Treasury writer | Hash of `ens402.payment` key | `ROLE_SET_TEXT` |
+
+Ops must differ from Admin and Treasury. Treasury may equal Admin but then retains broader authority. A payout recipient gains no ENS role by receiving USDC. These are intended grants, not a live audit.
+
+Our optional `contracts/src/ServiceRegistrar.sol` uses commit/reveal to deploy a native resolver, publish records, grant delegates, hand root text administration to the service registrant and remove its own resolver privileges in one reverting transaction. Commitments wait 60 seconds and expire after one day. It has reentrancy protection, narrow ASCII labels and bounded inputs. Native role constants and deployment pins are in `contracts/src/libraries/`; external ABIs are in `contracts/src/interfaces/`.
+
+The paid subname worker instead calls native register directly with no resolver and no separate transfer. Parent/root authority and expiry remain trust boundaries. Name transfer does not transfer an existing resolver's administration. ENS role revocation cannot cancel a previously issued payment authorization. See AUDIT.md for deployment inventory and recovery limits.
+
+## Setup command reference
+
+| Goal | Command | Unsigned output |
+| --- | --- | --- |
+| Enable native paid-name issuance | `pnpm ens:namespace:plan --native-only` | `docs/setup/namespace-transactions.json` |
+| Enable optional full-service registrar | `pnpm ens:namespace:plan` | Same output, includes custom registrar deployment |
+| Configure one existing service | `pnpm ens:plan` | `docs/setup/ens-transactions.json` |
+| Verify named-wallet text roles | `pnpm ens:permissions:check` | Read-only report in `docs/validation/live-text-permissions.json` |
+
+Namespace planners refuse to replace an existing child registry. They simulate the initial factory deployment only; later steps depend on earlier confirmed transactions. Plans never sign or broadcast. Use the existing-service planner for a service, not the parent namespace.
+
+The service planner needs `SERVICE_ENS_NAME`, `ENS_OWNER_ADDRESS`, `ENS_OPERATOR_ADDRESS`, `ENS_TREASURY_ADDRESS`, `MERCHANT_RESOURCE_URL`, `MERCHANT_PAY_TO`, `MERCHANT_PRICE_UNITS`, `SERVICE_DESCRIPTION`, optional `SERVICE_PICTURE_URL` and `SEPOLIA_RPC_URL`. Publish the resolver pointer last. Recheck roles after changes. The audit checks named wallets' effective text roles, not every administrator or ancestor power.
+
+## Presentation walkthrough
+
+Prepare namespace, worker, service resolver, grants, expiry and gas first. Sign in to Console, approve the exact endpoint and fixed price, and fund the shown payer with Base Sepolia USDC. Contract recipients must accept ERC1155 transfers.
+
+1. Show the service's ENS records and separate Admin/Ops/Treasury responsibilities.
+2. Choose a fresh label and recipient. Each order uses a fresh UUID v4; the signature binds the endpoint and exact JSON body.
+3. Show Guard checking ENS versus HTTP 402, buyer consent and Intercepta evidence before signing.
+4. Pay once and verify the Base Sepolia receipt plus Sepolia recipient ownership. The current endpoint sells subnames, not arbitrary `.eth` names.
+5. Inspect `/api/merchant/registration-orders/<orderId>`. Recover pending delivery without paying again; undeliverable paid orders require manual refund review.
+
+For governance scenes use a separate sample-data service: `/api/merchant/search`, `/api/merchant/search-v2` and `/api/merchant/search-mismatch`. Approve their exact URLs for the controlled demo. Show an allowed Ops endpoint update, a rejected Ops payment edit, an HTTP recipient mismatch blocked before signing, and Treasury price changes requiring renewed approval. Restore normal settings afterward. These sample Search routes are not the planned discovery Search API.
+
+Fork and provider checks do not replace a public funded rehearsal. Catalog indexing and the provider registry tree remain planned.
