@@ -111,6 +111,7 @@ export function ProviderConsole({
   const [directoryVersion, setDirectoryVersion] = useState(0);
   const [creating, setCreating] = useState(false);
   const [publicationMode, setPublicationMode] = useState(false);
+  const [showPlatformSettings, setShowPlatformSettings] = useState(false);
   useEffect(() => {
     setPublicationMode(window.location.hash === "#publish-first-service");
   }, []);
@@ -543,14 +544,38 @@ export function ProviderConsole({
           </Link>
         </p>
       )}
-      {directory?.platformOwner.toLowerCase() ===
-        walletAddress?.toLowerCase() && (
-        <PlatformBootstrap
-          parent={parent}
-          walletAddress={walletAddress}
-          getProvider={getProvider}
-        />
-      )}
+      {directory &&
+        directory.platformOwner.toLowerCase() ===
+          walletAddress?.toLowerCase() && (
+          <>
+            {directory.platformReady && !publicationMode && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mt-3 text-muted-foreground"
+                onClick={() => setShowPlatformSettings((value) => !value)}
+              >
+                {showPlatformSettings
+                  ? "Hide platform settings"
+                  : "Platform settings"}
+              </Button>
+            )}
+            {(!directory.platformReady ||
+              (showPlatformSettings && !publicationMode)) && (
+              <PlatformBootstrap
+                parent={parent}
+                walletAddress={walletAddress}
+                getProvider={getProvider}
+                onReady={() => {
+                  setShowPlatformSettings(false);
+                  setDirectory((current) =>
+                    current ? { ...current, platformReady: true } : current,
+                  );
+                }}
+              />
+            )}
+          </>
+        )}
       {(creating ||
         hasSetupProgress ||
         busy ||
