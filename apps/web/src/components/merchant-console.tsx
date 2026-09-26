@@ -213,7 +213,7 @@ export function MerchantConsole({
               >
                 <p>
                   {refreshNotice ||
-                    "Search listings are not available yet. Your provider is registered on-chain."}
+                    result.indexError}
                 </p>
                 <details className="mt-2 text-xs text-muted-foreground">
                   <summary className="cursor-pointer">
@@ -261,7 +261,11 @@ export function MerchantConsole({
                       <span className="rounded-full bg-muted px-2 py-1 text-xs">
                         {row.state === "listed"
                           ? "Searchable"
-                          : row.state.replaceAll("-", " ")}
+                          : row.state === "index-error"
+                            ? "Search unavailable"
+                            : row.state === "awaiting-index"
+                              ? "Awaiting search sync"
+                              : row.state.replaceAll("-", " ")}
                       </span>
                     </div>
                     {"service" in row && row.service && (

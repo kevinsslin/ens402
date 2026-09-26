@@ -21,6 +21,7 @@ vi.mock("@ens402/server/discovery-runtime", () => ({
   configuredDiscovery: () => ({ source: { load } }),
 }));
 import { planProvider } from "../src/server/provider-plan";
+import { DiscoveryNotReadyError } from "@ens402/server/discovery";
 import { merchantDashboard } from "../src/server/merchant-dashboard";
 import { currentDeployment } from "../../../packages/sdk/src/ens/current";
 const admin = "0x1111111111111111111111111111111111111111",
@@ -105,7 +106,7 @@ it("does not infer merchant control from matching payout addresses", async () =>
     status: "active",
     endpoint: "https://example.com",
     description: "Weather",
-    call: { method: "GET" },
+    call: { method: "GET", fixture: true },
     payment: { version: 2, payTo: wallet, pricing: { amount: "10000" } },
   };
   inspect.mockResolvedValue(service);
@@ -115,7 +116,9 @@ it("does not infer merchant control from matching payout addresses", async () =>
         service: {
           ...service,
           payTo: wallet,
-          fixture: false,
+          fixture: true,
+          indexedBlock: "100",
+          call: { fixture: true, method: "GET" },
           indexedAt: 1000,
           expiresAt: 1000000,
           pricePerRequestAtomic: "10000",
@@ -158,6 +161,12 @@ it("checks a just-registered name even before catalog ingestion", async () => {
     (await merchantDashboard("demo.ens402.eth", wallet, "new.demo.ens402.eth"))
       .services[0]?.state,
   ).toBe("awaiting-index");
+  load.mockRejectedValueOnce(new DiscoveryNotReadyError());
+  const firstSync = await merchantDashboard("demo.ens402.eth", wallet, "new.demo.ens402.eth");
+  expect(firstSync.services[0]?.state).toBe("awaiting-index");
+  expect(firstSync.indexError).toContain("first search sync");
+  load.mockRejectedValueOnce(new Error("Database unavailable"));
+  expect((await merchantDashboard("demo.ens402.eth", wallet, "new.demo.ens402.eth")).services[0]?.state).toBe("index-error");
   await expect(
     merchantDashboard("demo.ens402.eth", wallet, "evil.other.eth"),
   ).rejects.toThrow("directly below");

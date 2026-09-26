@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from "node:util";
 import {
   type Address,
   parseAbi,
@@ -13,6 +14,7 @@ import {
 } from "../../../../packages/sdk/src/ens/current";
 import { factoryAbi } from "@ens402/sdk/ens";
 import { ensClient } from "@ens402/server";
+import { DiscoveryNotReadyError } from "@ens402/server/discovery";
 import { configuredDiscovery } from "@ens402/server/discovery-runtime";
 const accessAbi = parseAbi([
   "function hasRoles(uint256 resource,uint256 roleBitmap,address account) view returns(bool)",
@@ -109,11 +111,14 @@ export async function merchantDashboard(
   });
   let catalog: import("@ens402/server/discovery").Catalog | undefined;
   let indexError: string | undefined;
+  let awaitingFirstIndex = false;
   try {
     catalog = await configuredDiscovery().source.load();
-  } catch {
-    indexError =
-      "Catalog unavailable. Chain control can still be checked for a known service.";
+  } catch (error) {
+    awaitingFirstIndex = error instanceof DiscoveryNotReadyError;
+    indexError = awaitingFirstIndex
+      ? "The first search sync has not completed. Your service remains registered on ENS."
+      : "Search is temporarily unavailable. Your service remains registered on ENS.";
   }
   const names = new Set(
     (catalog?.services ?? [])
@@ -204,7 +209,7 @@ export async function merchantDashboard(
         )?.service;
         const fresh =
           indexed &&
-          !indexed.fixture &&
+          BigInt(indexed.indexedBlock ?? "0") > 0n &&
           indexed.indexedAt >= Number(block.timestamp) - 3600 &&
           indexed.expiresAt > Number(block.timestamp) &&
           indexed.status === service.status &&
@@ -213,13 +218,15 @@ export async function merchantDashboard(
           indexed.payTo.toLowerCase() === service.payment.payTo.toLowerCase() &&
           service.payment.version !== 1 &&
           indexed.pricePerRequestAtomic === service.payment.pricing.amount &&
-          JSON.stringify(indexed.call) === JSON.stringify(service.call);
+          isDeepStrictEqual(indexed.call, service.call);
         return {
           name,
           state:
             service.status === "suspended"
               ? "suspended"
-              : indexError
+              : awaitingFirstIndex
+                ? "awaiting-index"
+                : indexError
                 ? "index-error"
                 : fresh
                   ? "listed"

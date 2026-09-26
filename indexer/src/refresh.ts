@@ -1,6 +1,7 @@
 /** In-process finalized catalog refresh for Next.js routes and optional operators. */
 import { createPublicClient, http, type PublicClient } from "viem";
-import { baseSepolia, sepolia } from "viem/chains";
+import { baseSepolia } from "viem/chains";
+import { createEnsClient } from "../../packages/server/src/ens-rpc";
 import { DiscoveryStore } from "../../packages/server/src/discovery-store";
 import {
   configuredEmbeddingProvider,
@@ -155,15 +156,7 @@ export async function refreshConfiguredCatalog(): Promise<RefreshResult> {
         : {}),
       build: async (signal) => {
         const client = boundedSnapshotClient(
-          createPublicClient({
-            chain: sepolia,
-            ccipRead: false,
-            transport: http(rpc, {
-              retryCount: 0,
-              timeout: 10_000,
-              fetchOptions: { signal },
-            }),
-          }) as PublicClient,
+          createEnsClient(rpc),
           signal,
         );
         const finalized = await client.getBlock({ blockTag: "finalized" });
@@ -204,15 +197,7 @@ async function refreshConfiguredAnalytics(
   )
     throw new Error("Analytics configuration incomplete");
   const ens = boundedSnapshotClient(
-    createPublicClient({
-      chain: sepolia,
-      ccipRead: false,
-      transport: http(process.env.SEPOLIA_RPC_URL, {
-        timeout: 5000,
-        retryCount: 0,
-        fetchOptions: { signal },
-      }),
-    }) as PublicClient,
+    createEnsClient(process.env.SEPOLIA_RPC_URL!),
     signal,
     1000,
   );

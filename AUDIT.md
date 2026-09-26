@@ -188,3 +188,10 @@ The browser verification did not sign in as the real owner or execute wallet tra
 - Browser QA used the live weather.demo.ens402.eth resolver: Ops and Treasury role switching populated read-only current wallets; Ownership opened separately; 390px viewport had no horizontal overflow. No public mutation was signed.
 - The native rotation integration test covers an EOA Treasury replacement, event-derived current holders after rotation, exclusion of revoked holders and publisher contracts, and existing atomic rotation/handover postchecks.
 - Setup batching wraps consecutive zero-value calls to verified native Resolver targets in their own multicall. Deployment, target and signer boundaries are preserved. The UI lists every operation in a batch. The pinned Registry does not support this multicall; its grants and revocations remain separate transactions.
+
+## Discovery first-sync recovery (2026-09-27)
+
+- Production PostgreSQL was reachable but had no initial catalog. The primary RPC rejected 2,000-block log ranges because its free tier permits 10 blocks. Catalog refresh now reuses the existing ENS fallback transport.
+- A live finalized reconstruction populated one service and one embedding with zero exclusions or embedding failures. Public search returned HTTP 200. Analytics was deferred and is not claimed verified by this run.
+- `hello.demo.ens402.eth` registered at block 11789056, later than observed finalized block 11789010. It correctly awaits finality and the next refresh.
+- Merchant status distinguishes first sync from catalog failure. Indexed demo services can be searchable, and schema equality ignores object-key ordering. Frontend tests (78), refresh/route tests (11), and production build passed.
