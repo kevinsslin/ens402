@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { createWalletClient, custom, type Address, type Hex } from "viem";
 import { sepolia } from "viem/chains";
+import { CheckCircle2 } from "lucide-react";
 import { Button } from "./ui/button";
 import { confirmSetup, setupError, type PendingSetup } from "./setup-flow";
 import { selectedWallet } from "./wallet-session";
@@ -38,12 +39,10 @@ export function PlatformBootstrap({
   parent,
   walletAddress,
   getProvider,
-  onReady,
 }: {
   parent: string;
   walletAddress?: string;
   getProvider: () => Promise<Provider>;
-  onReady?: () => void;
 }) {
   const key = `ens402-platform-setup:${parent}`;
   const [setup, setSetup] = useState<Setup>({ parent, salt: "" });
@@ -87,7 +86,6 @@ export function PlatformBootstrap({
     setPlan(next);
     setSetup(next.setup);
     localStorage.setItem(key, JSON.stringify(next.setup));
-    if (next.ready) onReady?.();
     return next;
   }
   async function run(sign: boolean) {
@@ -182,16 +180,17 @@ export function PlatformBootstrap({
     }
   }
   return (
-    <details className="mt-8 rounded-2xl border bg-card p-6">
-      <summary className="cursor-pointer font-medium">
-        Platform owner setup: {parent}
-      </summary>
+    <section aria-label="Platform initialization" className="mt-8 rounded-2xl border bg-card p-6">
+      <h2 className="flex items-center gap-2 font-medium">
+        {plan?.ready && <CheckCircle2 className="size-5 text-primary" />}
+        {plan?.ready ? "Platform ready" : `Initialize platform: ${parent}`}
+      </h2>
       <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
-        Initialize the platform once, before admitting provider names. Deploying
-        a registry and linking it to the ENS name are separate owner-signed
-        transactions. A saved setup never proves permissions.
+        {plan?.ready
+          ? "Your platform is configured. Continue with provider setup below."
+          : "One-time setup for the platform owner: create the directory, then connect it to your ENS name."}
       </p>
-      <div className="mt-4 flex flex-wrap gap-3">
+      {!plan?.ready && <div className="mt-4 flex flex-wrap gap-3">
         <Button
           variant="outline"
           disabled={busy || !setup.salt || !walletAddress}
@@ -213,7 +212,7 @@ export function PlatformBootstrap({
               : "Connect directory to ENS"}
           </Button>
         )}
-      </div>
+      </div>}
       {plan && (
         <div className="mt-4 space-y-2 text-sm">
           <p>
@@ -243,6 +242,6 @@ export function PlatformBootstrap({
           {notice}
         </p>
       )}
-    </details>
+    </section>
   );
 }
