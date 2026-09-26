@@ -37,6 +37,22 @@ function catalog(time: number, description = "Weather forecasts"): Catalog {
 }
 const embedding = { model: "test", embed: async () => [1, 0] };
 describe("real isolated PostgreSQL discovery store", () => {
+  it("coordinates refresh leases and cooldown across separate database connections", async () => {
+    const token = await store.acquireRefresh();
+    expect(token).toBeTruthy();
+    expect(await other.acquireRefresh()).toBeUndefined();
+    await expect(other.assertRefresh("wrong-token")).rejects.toThrow("expired");
+    await other.finishRefresh("wrong-token", 0);
+    expect(await other.acquireRefresh()).toBeUndefined();
+    await store.finishRefresh(token!, 60);
+    expect(await other.acquireRefresh()).toBeUndefined();
+    await expect(store.synchronize(catalog(999), 999, token!)).rejects.toThrow("expired");
+    await store.finishRefresh(token!, 0);
+    const next = await other.acquireRefresh();
+    expect(next).toBeTruthy(); expect(next).not.toBe(token);
+    await expect(store.assertRefresh(token!)).rejects.toThrow("expired");
+    await other.finishRefresh(next!, 0);
+  });
   it("persists snapshots and exact atomic prices across connections", async () => {
     await store.synchronize(catalog(1000), 1000);
     expect((await other.load()).checkpoint?.blockNumber).toBe("1000");

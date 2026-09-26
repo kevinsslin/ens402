@@ -10,6 +10,7 @@ import {
 import { sepolia } from "viem/chains";
 import { Button } from "./ui/button";
 import { selectedWallet } from "./wallet-session";
+import { PlatformBootstrap } from "./platform-bootstrap";
 import { RegistrationConsole } from "./registration-console";
 import type { ProviderSetup } from "@/server/provider-plan";
 type Provider = {
@@ -158,6 +159,7 @@ export function ProviderConsole({
         platform registrar admits the provider name. Connect the requested
         signer for each transaction.
       </p>
+      <PlatformBootstrap parent={parent} walletAddress={walletAddress} getProvider={getProvider} />
       <div className="mt-8 grid gap-4 rounded-2xl border p-6 sm:grid-cols-2">
         {(
           [

@@ -2,6 +2,25 @@
 
 Start with [README.md](README.md) for current scope and status. This file contains operator actions only. No mainnet funds or transactions.
 
+## What Kevin needs to do next
+
+1. Open `/provider`, sign in with **Continue with a wallet**, and select the wallet that owns `ens402.eth`. An email-created Privy wallet does not automatically control an existing ENS name.
+2. Open **Platform owner setup**, then **Read Sepolia setup**. Review and confirm the two transactions: create the native Platform Registry, then attach it to `ens402.eth`. The UI verifies each receipt and can resume. No CLI or private-key export is required. Current bootstrap supports direct EOA transactions, not Safe internal deployment receipts.
+3. Provide a real **Sepolia Treasury Safe** address. Verify its owners and threshold. Provider Admin, Ops and Treasury must be distinct. Treasury is the shared payment-record writer; each service-name holder is its own payout recipient.
+4. Complete provider setup below, publish a service, and send the confirmed provider name to the operator so its registry/resolver binding can be added to hosted Guard.
+5. For the buyer demo, log in to Console and fund its displayed payer with **Base Sepolia USDC**. Sepolia gas and Base Sepolia USDC are different balances.
+
+The operator can prepare infrastructure, tests and unsigned plans while wallet confirmation is pending. You do not need to create a Railway service for the default demo. Browser automation can fill forms and verify results; wallet prompts and login verification require the user.
+
+### Observed setup on September 27, 2026
+
+- Live Sepolia read: `ens402.eth` owner is `0x0D2FDDee5b84540A9766c025ad26dCaFb9FeF380`; child registry still zero at block 11787614. The owner had approximately 4.56 Sepolia ETH earlier in this check.
+- Vercel has Privy, Intercepta, RPC and the existing account database.
+- A separate empty hosted `ens402_discovery` database and dedicated `ens402_catalog` role are created. Discovery and analytics migrations passed; that role can read zero private account tables.
+- Production `DISCOVERY_DATABASE_URL`, `ANALYTICS_DATABASE_URL`, all three embedding variables and `ENS_PARENT_NAME` are configured. A deployment is required to load changes.
+- The local fixture database remains separate. The hosted connection is saved privately as `PRODUCTION_DISCOVERY_DATABASE_URL` in root `.env`; it is an operator convenience, not a runtime setting.
+- Public catalog population, real Safe setup and public wallet transactions remain pending. The default synchronization host is the existing Next.js app on Vercel; Railway is optional.
+
 ## 1. Environment configuration
 
 Put local values in the repository root `.env`. Never paste secrets into chat.
@@ -13,7 +32,7 @@ Put local values in the repository root `.env`. Never paste secrets into chat.
 | `SERVICE_ENS_NAME` | Optional comma-separated service suggestions; users may enter other supported ENS names |
 | `ENS_OWNER_ADDRESS` | The wallet or Safe that owns that name and can set its resolver |
 | `ENS_OPERATOR_ADDRESS` | A separate Ops wallet for endpoint, description and picture grants |
-| `MERCHANT_PAY_TO` | The Treasury address that will receive Base Sepolia USDC |
+| `MERCHANT_PAY_TO` | HTTP 402 recipient; for schema v3 it must equal the current service-name holder, not automatically the Treasury writer |
 | `DATABASE_URL` on Vercel | A durable, network-accessible PostgreSQL connection string. The local DB cannot be reached from Vercel. Use the provider's required TLS settings. |
 
 Production Privy credentials and Neon are configured; the production schema health check passed. Keep local PostgreSQL separate. Existing Intercepta and RPC settings can be reused. `DEMO_ACCESS_TOKEN` is a distinct randomly generated operator token, not a Privy credential. The local token is stored in root `.env`; enter it only into `/operator` on your own deployment. Do not publish it in the pitch.
@@ -231,7 +250,7 @@ Prepare namespace, worker, service resolver, grants, expiry and gas first. Sign 
 
 For governance scenes use a separate sample-data service: `/api/merchant/search`, `/api/merchant/search-v2` and `/api/merchant/search-mismatch`. Approve their exact URLs for the controlled demo. Show an allowed Ops endpoint update, a rejected Ops payment edit, an HTTP recipient mismatch blocked before signing, and Treasury price changes requiring renewed approval. Restore normal settings afterward. These sample Search routes are not the planned discovery Search API.
 
-Fork and provider checks do not replace a public funded rehearsal. Provider registry and shared-resolver setup scripts are locally implemented and Anvil-tested. Catalog reconstruction and sync are implemented locally. Public catalog hosting, onboarding UI and Admin handovers remain incomplete. See TODO.md for the required provider setup and role-management acceptance criteria.
+Fork and provider checks do not replace a public funded rehearsal. Provider registry and shared-resolver setup scripts are locally implemented and Anvil-tested. Catalog reconstruction and sync are implemented locally. Wallet onboarding and Admin handover planners are implemented and locally tested. Public namespace setup, worker operation and wallet rehearsal remain pending; see TODO.md.
 
 
 ## Provider namespace setup
@@ -286,7 +305,7 @@ npm test
 npm run dev
 ```
 
-Envio 3.12.1 watches the pinned Sepolia factory/root from block 11700000 and discovers native registries/resolvers dynamically. Factory discovery covers initializer logs earlier in the same block. Raw events retain registration, links, mutable token IDs, role and record changes; rollback is enabled. Configure an Envio HyperSync token or supported RPC source and the host's database requirements. Local `dev` needs Docker. A bounded Sepolia RPC run completed locally and its Hasura IndexedHead query succeeded; this is not a full-history or hosted deployment test. Default HyperSync requires `ENVIO_API_TOKEN` from https://envio.dev/app/api-tokens. Hosted Envio/GraphQL ingestion remains an external setup and verification step. Run the recurring worker on a persistent host such as Envio infrastructure plus a worker host, Railway, Render or a VM; Vercel hosts the web/API, not this indefinite process.
+Envio 3.12.1 watches the pinned Sepolia factory/root from block 11700000 and discovers native registries/resolvers dynamically. Factory discovery covers initializer logs earlier in the same block. Raw events retain registration, links, mutable token IDs, role and record changes; rollback is enabled. Configure an Envio HyperSync token or supported RPC source and the host's database requirements. Local `dev` needs Docker. A bounded Sepolia RPC run completed locally and its Hasura IndexedHead query succeeded; this is not a full-history or hosted deployment test. Default HyperSync requires `ENVIO_API_TOKEN` from https://envio.dev/app/api-tokens. Hosted Envio/GraphQL ingestion remains an external setup and verification step. The default demo uses a bounded Next.js synchronization route triggered by Vercel Cron. Vercel does not run the indefinite worker loop. A persistent Railway/Render/VM worker and hosted Envio remain optional for larger workloads.
 
 From repository root, set:
 
@@ -337,7 +356,7 @@ Local OpenAI vector generation is verified: three fixture vectors persisted, wit
 
 ## Provider onboarding and merchant management
 
-1. The owner first enables the Platform Registry beneath `ens402.eth` using `ens:namespace:plan`. This is the one prerequisite that provider onboarding cannot bypass.
+1. The owner enables the Platform Registry beneath `ens402.eth` directly in `/provider` using **Platform owner setup**. The unsigned `ens:namespace:plan` script remains an alternative. Both require the current owner wallet to sign.
 2. Open `/provider`, connect Provider Admin, and enter a provider label, Platform registrar signer, Ops EOA and deployed Treasury Safe. The page reads actual native state and presents one wallet-signed transaction at a time. Switch to the stated signer when requested. Setup progress is stored locally and revalidated onchain.
 3. Once registry, shared resolver and restricted registrar are verified, publish service description, optional image, endpoint, fixed USDC price and call metadata in the same page. Native commit/reveal waits at least 60 seconds. The registering wallet becomes the service-name holder and initial recipient.
 4. After the registration receipt, `/merchant?provider=<name>&service=<name>` checks live membership, ownership, effective writers and listing status. `awaiting-index` is distinct from `listed`. Permissions are public observations, not authenticated account data; edits require the connected wallet to sign native transactions.
@@ -372,7 +391,7 @@ Configure `ANALYTICS_DATABASE_URL` on the worker and web app. It may use the pub
 
 Optional `ANALYTICS_FACILITATORS_FILE` is a reviewed JSON file: `{ "version": "reviewed-v1", "network": "eip155:84532", "addresses": [] }`. No facilitator addresses are guessed. Transfers are unclassified by default; a known transaction sender supplies only a facilitator heuristic. Independently verified settlements have a separate category. The dashboard shows checkpoint, observation windows and integer USDC totals, grouped once per recipient. Name/address epochs preserve history, and shared addresses are not duplicated across services.
 
-Public launch still requires a hosted discovery database, indexer/worker process, verified namespace and provider setup, real Safe configuration, and a funded buyer rehearsal. None of these is implied by a successful local test.
+Hosted discovery database setup is complete. Public launch still requires verified namespace/provider setup, a successful scheduled sync, real Safe configuration and a funded buyer rehearsal.
 
 For the worker's verified category, set `ANALYTICS_LEDGER_DATABASE_URL` to a read-only credential for the ENS402 account database, or use the worker's existing `DATABASE_URL`. Only terminal local payment evidence is eligible; every match is independently checked against finalized chain receipts. No public route accepts evidence submissions or exposes the ledger. A feed outage leaves transfers conservatively classified and retries later.
 
@@ -383,3 +402,57 @@ After onboarding, configure the confirmed `PROVIDER_ENS_NAME`, `PROVIDER_REGISTR
 For a reviewed isolated service resolver only, set `ENS_MANAGEMENT_RESOLVER_POLICY=dedicated` to enable its separate governance handover. A one-bundle count is a check, not proof of exclusive resolver membership. Shared provider governance requires its configured registry/resolver binding; a service-name handover never implicitly transfers that shared governance.
 
 When Solidity sources change, run `pnpm provider:artifact` and commit the regenerated public deployment artifact. Hosted web builds verify its source digest without requiring Forge.
+
+## Default: synchronize inside Next.js
+
+The existing Vercel Pro project calls `/api/discovery/sync` every five minutes. `CRON_SECRET` authenticates scheduled requests. Authenticated merchants can also request a listing refresh. Both use the same database lease and cooldown, and configured roots only. A bounded run reconstructs finalized ENS state, publishes a complete catalog and updates description embeddings. It never signs a transaction. Errors retain the previous catalog; stale search results still fail freshness checks.
+
+Set `INDEXER_ROOTS=ens402.eth`, `INDEXER_FROM_BLOCK=11700000`, the hosted catalog/embedding values and the existing Sepolia RPC on Vercel. Analytics starts at Base Sepolia block `47337056`; earlier transfers are outside this observation window. These values are configured for this project. No Railway login or Envio deployment is required for the initial demo. A newly mined registration can remain `awaiting-index` until Sepolia finality; manual refresh cannot bypass that delay.
+
+## Optional: deploy the persistent discovery worker
+
+Build from the repository root:
+
+```sh
+docker build -f indexer/Dockerfile.worker -t ens402-discovery-worker .
+```
+
+On Railway, Render or a VM, run this image as one persistent background worker. No HTTP port is needed. Environment values are injected by the host; the image contains no `.env` or private key. Migrate the hosted database separately before starting it.
+
+| Worker variable | Value/source |
+| --- | --- |
+| `DISCOVERY_DATABASE_URL` | The hosted public catalog connection, same database as the web API |
+| `SEPOLIA_RPC_URL` | Existing Sepolia historical-state/log RPC |
+| `INDEXER_ROOTS` | `ens402.eth`, after its namespace is initialized |
+| `INDEXER_FROM_BLOCK` | `11700000`, before native registrations in this deployment |
+| `INDEXER_POLL_SECONDS` | `60` |
+| `DISCOVERY_EMBEDDING_API_KEY`, `DISCOVERY_EMBEDDING_ENDPOINT`, `DISCOVERY_EMBEDDING_MODEL` | Same configured embedding provider as web |
+| `ANALYTICS_DATABASE_URL` | Hosted public catalog database, if enabling analytics |
+| `BASE_SEPOLIA_RPC_URL`, `ANALYTICS_FROM_BLOCK` | Existing RPC and an explicit scan-start block before demo payments |
+| `ENVIO_GRAPHQL_URL`, `ENVIO_GRAPHQL_ADMIN_SECRET` | Optional hosted Envio journal. Without it the worker reconstructs from RPC logs |
+
+Run one cycle with `node_modules/.bin/tsx indexer/src/worker.ts --once` before enabling the default continuous command. Verify finalized checkpoints and a real service listing after registration. `ANALYTICS_LEDGER_DATABASE_URL` is optional and must be a separate read-only account-ledger credential if verified local settlement classification is needed. Do not give private account credentials to Envio.
+
+## Endpoint metadata required by new publication
+
+The endpoint must return an unsigned x402 HTTP 402 challenge containing `resource.description` and the **ENS402 application extension** below. This is our supported metadata format, not a claim that it is part of official Bazaar. Automatic import of arbitrary OpenAPI/Bazaar formats is not implemented.
+
+```json
+{
+  "extensions": {
+    "ens402.service": {
+      "version": 1,
+      "call": {
+        "verification": "ens402.service.v1",
+        "method": "GET",
+        "inputSchema": {"type": "object", "properties": {}, "additionalProperties": false},
+        "outputSchema": {"type": "object", "properties": {"result": {"type": "string"}}, "required": ["result"]}
+      }
+    }
+  }
+}
+```
+
+`metadataExtension(description, call)` from `@ens402/sdk/metadata` constructs this extension. The same call object is published in `ens402.call`. Descriptions are trimmed and limited to 1024 UTF-8 bytes; call metadata is limited to 16384 bytes. Both schemas are required for verified publication. Key order does not matter, array order does; `$ref` and nesting beyond the supported limit are rejected. This checks declared metadata consistency, not whether actual service output follows the schema.
+
+The registration page inspects the endpoint, lets the merchant review proposed values, and rechecks metadata/payment equality before both commit and reveal. Editing any field discards the pending draft. Guard pins verified metadata in buyer approval and rejects later changes or removal before signing. Legacy records lacking the verification marker retain their existing payment checks but do not gain a metadata-verification claim.

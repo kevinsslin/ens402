@@ -10,7 +10,9 @@ type Dashboard = Awaited<ReturnType<typeof merchantDashboard>>;
 export function MerchantConsole({
   walletAddress,
   getProvider,
+  getToken,
 }: {
+  getToken: () => Promise<string | null>;
   walletAddress?: string;
   getProvider: () => Promise<{
     request(args: { method: string; params?: unknown[] }): Promise<unknown>;
@@ -21,6 +23,19 @@ export function MerchantConsole({
   const [result, setResult] = useState<Dashboard | null>(null),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshNotice, setRefreshNotice] = useState("");
+  async function refreshListings() {
+    setRefreshing(true); setRefreshNotice("Reading finalized ENS changes and updating the searchable catalog. This can take a few minutes.");
+    try {
+      const token = await getToken(); if (!token) throw Error("Sign in to refresh listings");
+      const response = await fetch("/api/discovery/sync", { method:"POST", headers:{Authorization:`Bearer ${token}`} });
+      const value = await response.json(); if (!response.ok) throw Error(value.error || "Refresh unavailable");
+      setRefreshNotice(value.status === "busy" ? "A refresh is running or the refresh cooldown is active. Try again later. No new job was started." : `Catalog refresh completed${typeof value.services === "number" ? `: ${value.services} services checked` : ""}. Recent registrations can still await finality.`);
+      await load();
+    } catch(error) { setRefreshNotice(error instanceof Error ? error.message : "Refresh unavailable"); }
+    finally { setRefreshing(false); }
+  }
   async function load() {
     setBusy(true);
     setError("");
@@ -70,6 +85,7 @@ export function MerchantConsole({
         See current ENS control and indexing separately. A successful
         registration is not yet a searchable listing.
       </p>
+      <div className="mt-5 rounded-xl border p-4"><Button variant="outline" disabled={refreshing} onClick={refreshListings}>{refreshing ? "Refreshing listings…" : "Refresh listings"}</Button><p className="mt-3 text-sm text-muted-foreground">Refresh checks the configured ENS roots. Sepolia finality can take about 15 minutes, so a confirmed registration may still be waiting to appear in search.</p>{refreshNotice&&<p role="status" className="mt-3 text-sm">{refreshNotice}</p>}</div>
       <div className="mt-7 flex flex-wrap gap-3">
         <label className="flex-1 text-sm">
           Provider ENS

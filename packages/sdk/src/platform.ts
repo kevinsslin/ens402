@@ -1,3 +1,4 @@
+import { verifyChallengeMetadata } from "./metadata";
 import { requestNonce, type ResourceRequest } from "./request";
 import type { ClientEvmSigner } from "@x402/evm";
 import { authorizationTypes } from "@x402/evm";
@@ -150,6 +151,10 @@ export class ENS402Client {
       evaluateRisk(r.evidence, r.requirement.payTo, now).outcome !== "continue"
     )
       throw new Error("Prepared payment does not match local approval");
+    if (r.service.call?.verification || input.approval.metadataHash) {
+      if (!r.metadataChallenge) throw new Error("Prepared payment lacks verified service metadata");
+      verifyChallengeMetadata(r.service, r.metadataChallenge, input.request?.method ?? "GET", input.approval.metadataHash);
+    }
     if (
       t.domain.name !== "USDC" ||
       t.domain.version !== "2" ||

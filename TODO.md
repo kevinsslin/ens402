@@ -17,15 +17,23 @@ Current scope: **Discover, Govern, Guard**. Namespace: **Platform Registry -> Pr
 - [x] Separate unclassified/facilitator/verified categories. Trusted terminal local payment evidence is independently verified against canonical settlement receipts; no public proof submission.
 - [x] Contract interface and NatSpec, native deployment/role libraries, explicit atomic units/expiry, commitment binding, reentrancy protection and atomic rollback coverage. No duplicate custom RBAC or new upgrade system.
 
-## Registration preflight: align ENS with the live backend
+## Registration preflight: implemented
 
-- [ ] Add a probe-first authoring flow, similar in purpose to x402scan discovery: when the endpoint is entered, fetch its HTTP 402 and supported public discovery/OpenAPI metadata, then prefill description, method and input/output schema where available. Treat fetched content as untrusted data.
-- [ ] Compare the exact proposed ENS publication against the backend metadata and payment terms. Show field-level differences for endpoint, description, method/schema, network, token, holder-derived recipient and fixed atomic price. Define canonical schema comparison; missing or unsupported metadata is unverified, never an automatic match.
-- [ ] Enable frontend commit/reveal only after the current draft passes. Bind the probe result to the complete draft, invalidate it on edits, and re-probe immediately before registration. Missing metadata must be corrected/published by the merchant before the corresponding check can pass. This is an application gate, not a claim that native ENS contracts can inspect HTTP.
-- [ ] Extend SDK pre-signing verification to the agreed description/call-schema metadata contract so later ENS/backend drift also blocks integrated purchases. Current Guard already compares payment terms; it does not yet compare all descriptions or schemas. Define the supported discovery source and deterministic equality rules before implementing these additional checks. Alignment does not prove service quality or actual implementation behavior.
-- [ ] Test matching publication, mismatched and missing metadata, changed draft after successful probe, backend drift during commit/reveal, and later SDK rejection. Expose actionable differences and never silently overwrite either side.
+- [x] Probe unsigned HTTP 402 and the supported `ens402.service` v1 extension. Review backend description, method, schemas, recipient and atomic price before applying them to the form.
+- [x] Canonically compare description and complete call metadata, plus exact network/token/recipient/price. Missing schemas or unsupported metadata cannot pass as verified. Object key ordering is deterministic; array order remains significant.
+- [x] Re-probe the committed draft immediately before commit and reveal. Editing fields discards the pending draft; transaction-time edits are disabled.
+- [x] Pin metadata in buyer approvals and reject backend/ENS drift or verification removal before managed or SDK self-signing.
+- [x] Metadata, probe and signing regressions pass. This is an application gate: contracts do not inspect HTTP. Legacy records remain metadata-unverified; actual response conformance and service quality are not proven.
+- [ ] Optional compatibility: import arbitrary Bazaar/OpenAPI documents. The currently supported extension is explicitly an ENS402 format, not an official x402 standard.
 
-Existing baseline: `/api/provider/probe` already checks unsigned HTTP 402 network, asset, amount, recipient and POST request-binding support before registration. It does not yet fetch and compare the backend description or complete schema. Keep this enhancement unchecked until those gates and SDK checks are implemented and tested.
+## Platform setup and deployment preparation
+
+- [x] `/provider` includes native platform bootstrap: deploy, validate receipt, link, re-read owner/grants. Unit tests and real ENS Anvil fork passed. Direct EOA deployment receipts supported; Safe internal execution is not implemented for platform bootstrap.
+- [x] Separate hosted Neon discovery/analytics database created and migrated with a dedicated catalog role. Verified it can read zero private account tables. No local fixtures imported.
+- [x] Vercel production discovery/analytics DB, embedding provider and ENS parent configuration added.
+- [x] Persistent worker Docker image and Railway configuration prepared. Image builds and modules run as non-root; live one-cycle check correctly refuses the unlinked ENS root.
+- [x] Default Next.js sync route, authenticated merchant refresh, PostgreSQL lease/cooldown, and five-minute Vercel Cron configuration implemented. Railway is optional.
+- [ ] Verify successful finalized catalog synchronization after owner platform setup.
 
 ## Public launch: operator inputs and signatures required
 
@@ -34,9 +42,9 @@ Local tests do not complete these steps. No mainnet transactions.
 1. [ ] **Platform owner:** enable the native child registry under `ens402.eth`, sign the reviewed setup plan, and verify pointers/roles. Existing root owner: `0x0D2FDDee5b84540A9766c025ad26dCaFb9FeF380`.
 2. [ ] **Treasury:** supply the real Sepolia Safe, verify owners/threshold and rehearse its signing. Local contract fixtures are not a Safe audit. For a contract service-name holder, deploy/control its Base Sepolia wallet and publish the destination signature proof.
 3. [ ] **Provider:** complete `/provider` using the real Admin/Platform/Ops/Treasury signers. Publish fixture services and a second independent provider; verify allowed/denied writes publicly with receipts. Add confirmed provider bindings to hosted Guard configuration (`PROVIDER_*` or `PROVIDER_GROUPS_JSON`).
-4. [ ] **Discovery:** provision a separate empty hosted Neon discovery database and set `DISCOVERY_DATABASE_URL`. Do not import the local fixture catalog into the live source database. Configure the worker and API for the same live source/roots.
-5. [ ] **Indexer:** host Envio with RPC or HyperSync configuration and run `discovery:watch`; verify the live journal, finalized checkpoint and listing updates. Copy configured embedding vars to worker/web and generate live catalog embeddings.
-6. [ ] **Analytics:** configure `ANALYTICS_DATABASE_URL` (public-data DB, separate from private accounts), `ANALYTICS_FROM_BLOCK`, migrate and run scanner. Optional reviewed facilitator file and read-only `ANALYTICS_LEDGER_DATABASE_URL` enable additional coverage.
+4. [ ] **Discovery:** database and Vercel configuration are ready. Use the Next.js sync route with the same live source/roots and verify the first finalized service listing. Never import the local fixture catalog.
+5. [ ] **Indexer:** verify the in-app bounded refresh and Vercel Cron schedule. RPC reconstruction runs first; hosted Envio and the Railway worker are optional scaling paths. Verify finalized checkpoints, listing updates and live catalog embeddings.
+6. [ ] **Analytics:** hosted schema and web DB configuration are ready. Set the worker DB and `ANALYTICS_FROM_BLOCK`, then run the scanner and verify real receipts. Optional reviewed facilitator file and read-only `ANALYTICS_LEDGER_DATABASE_URL` enable additional coverage.
 7. [ ] **Paid name endpoint:** configure restricted issuance worker, fund Sepolia gas, publish its service records and align HTTP recipient/price with schema v3. Merchant namespace and service identity are separate.
 8. [ ] **Buyer:** complete Privy browser login, approve scope, fund displayed payer with Base Sepolia USDC, execute a public purchase and verify payment plus delivery receipts.
 9. [ ] **Full demo:** public onboarding -> indexed listing -> semantic search -> call instructions -> Guard -> settled purchase -> classified merchant totals. Rehearse wrong price/payTo, stale index, endpoint change, role revocation, retry and address rotation. Keep attack fixtures out of normal listings.

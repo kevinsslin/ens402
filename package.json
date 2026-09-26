@@ -43,7 +43,8 @@
     "recipient:proof": "tsx scripts/recipient-proof.ts",
     "test:ens:management": "tsx scripts/ens/management-fork.ts",
     "test:ens:recipient": "forge build --root contracts --quiet && tsx scripts/ens/recipient-fork.ts",
-    "provider:artifact": "forge build --root contracts --quiet && tsx scripts/build-provider-web-artifact.ts"
+    "provider:artifact": "forge build --root contracts --quiet && tsx scripts/build-provider-web-artifact.ts",
+    "test:discovery:refresh": "vitest run indexer/src/refresh.test.ts packages/server/test/discovery-store.test.ts apps/web/test/discovery-sync.test.ts"
   },
   "devDependencies": {
     "@privy-io/node": "0.35.0",

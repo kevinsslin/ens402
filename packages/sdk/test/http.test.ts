@@ -1,4 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
+import { canonicalMetadata, metadataExtension } from '../src/metadata';
+import type { CallMetadata } from '../src/call';
 import { createServer } from 'node:http';
 import { privateKeyToAccount } from 'viem/accounts';
 import { encodeEventTopics, encodeAbiParameters, parseAbi, verifyTypedData, type PublicClient, type Hex } from 'viem';
@@ -58,6 +60,17 @@ describe('actual HTTP payment exchange', () => {
   it('rechecks ENS immediately before signing', async () => {
     const args = options(); args.resolve.mockResolvedValueOnce(service).mockResolvedValue({ ...service, authority: 'changed-owner' });
     expect((await purchaseResource(args)).state).toBe('held'); expect(args.signer.signTypedData).not.toHaveBeenCalled(); expect(args.beforeSubmit).not.toHaveBeenCalled();
+  });
+  it.each(['backend', 'fresh ENS'])('blocks %s metadata drift before signing', async kind => {
+    const call: CallMetadata = { verification: 'ens402.service.v1', method: 'GET', inputSchema: { type: 'object' }, outputSchema: { type: 'object' } };
+    const verified = { ...service, description: 'Weather forecast', call };
+    const args = options();
+    args.approval = { ...approval, metadataHash: canonicalMetadata(verified.description, call).hash } as typeof approval;
+    args.resolve.mockResolvedValueOnce(verified).mockResolvedValue(kind === 'fresh ENS' ? { ...verified, description: 'Changed forecast' } : verified);
+    args.transport.mockReset().mockResolvedValue(new Response(null, { status: 402, headers: { 'PAYMENT-REQUIRED': encodePaymentRequiredHeader({ ...challenge, resource: { url: endpoint, description: kind === 'backend' ? 'Changed forecast' : verified.description }, extensions: metadataExtension(verified.description, call) }) } }));
+    expect((await purchaseResource(args)).state).toBe('held');
+    expect(args.signer.signTypedData).not.toHaveBeenCalled();
+    expect(args.beforeSubmit).not.toHaveBeenCalled();
   });
   it('does not transmit a signature when durable journaling fails', async () => {
     const args = options(); args.beforeSubmit.mockRejectedValue(new Error('database down'));

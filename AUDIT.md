@@ -2,6 +2,15 @@
 
 Updated 2026-09-26. Scope: SDK, hosted API, merchant, console, native ENS setup and custom registrar. This is an engineering review with executable tests, not an independent security certification.
 
+## September 27: owner UI, metadata alignment and in-app indexing
+
+- `/provider` now initializes the native platform registry, validates the exact deployment receipt and links the owned ENS name. Native Anvil bootstrap and six planner tests passed. Public signatures remain pending. Direct EOA deployment is supported; Safe-internal bootstrap receipts are not.
+- Registration requires matching HTTP 402 description/call schemas/payment terms at commit and reveal. Buyer approvals pin verified metadata. Backend drift, ENS drift and verification downgrade cannot silently reach signing. This is an ENS402 extension; arbitrary OpenAPI/Bazaar import and actual response-schema validation are not claimed.
+- Next.js performs bounded catalog reconstruction in-process. A secured Vercel Cron route and authenticated merchant refresh share a PostgreSQL lease/cooldown. Publication is atomic and fenced; failed snapshots preserve the last catalog. Optional analytics runs independently with bounded catch-up; no implicit private ledger access.
+- Vercel Pro scheduling is configured every five minutes. Separate hosted discovery/analytics schemas and runtime credentials are installed, including the refresh lease migration. The catalog role was checked against the account database and has zero readable private tables.
+- Analytics observation begins at Base Sepolia block 47337056. Earlier payments are not included. No local fixture data was imported into the hosted catalog.
+- Validation: 153 main tests, 38 web tests and 5 refresh orchestration tests passed; real PostgreSQL lease coverage passed in the discovery integration suite. Native platform fork, typecheck and production build are additional gates. Hosted catalog success and wallet purchase still require namespace setup/funding; an unlinked root correctly fails without publishing partial data.
+
 ## Implemented in this revision
 
 - ENS payment schema v2 publishes a positive fixed USDC amount per request. The SDK compares it with the actual HTTP 402. Buyer approvals bind the displayed fixed price; changed prices or a downgrade to legacy schema require renewed approval.

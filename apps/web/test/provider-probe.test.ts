@@ -13,11 +13,13 @@ vi.mock("@ens402/server/transport", () => ({
 import { POST } from "../src/app/api/provider/probe/route";
 const recipient = "0x1111111111111111111111111111111111111111",
   endpoint = "https://merchant.example/api";
+const verifiedCall = { method: "GET", verification: "ens402.service.v1", inputSchema: {type:"object"}, outputSchema: {type:"object"} };
 const input = {
   endpoint,
+  description: "API",
   price: "10000",
   payTo: recipient,
-  callConfig: JSON.stringify({ method: "GET" }),
+  callConfig: JSON.stringify(verifiedCall),
 };
 function request(value = input) {
   return new Request("https://ens402.example/api/provider/probe", {
@@ -39,6 +41,7 @@ function challenge(payTo = recipient) {
     headers: {
       "PAYMENT-REQUIRED": encodePaymentRequiredHeader({
         x402Version: 2,
+        extensions: {"ens402.service": {version:1,call:verifiedCall}},
         resource: {
           url: endpoint,
           description: "API",
@@ -95,4 +98,29 @@ it("requires explicit POST request binding", async () => {
   expect(JSON.parse(fetchResource.mock.calls[0]?.[1].body).orderId).toMatch(
     /^[0-9a-f-]{36}$/,
   );
+});
+it("returns supported metadata and offer for prefill without a submitted price", async () => {
+  fetchResource.mockResolvedValue(challenge());
+  const response = await POST(request({ ...input, mode:"inspect", price:undefined, payTo:undefined } as unknown as typeof input));
+  expect(response.status).toBe(200);
+  expect(await response.json()).toMatchObject({metadata:{description:"API",call:verifiedCall},offer:{amount:"10000",payTo:recipient}});
+});
+it("rejects edited descriptions even when payment terms still match", async () => {
+  fetchResource.mockResolvedValue(challenge());
+  const response = await POST(request({...input,description:"Another service"}));
+  expect(response.status).toBe(400);
+  expect((await response.json()).error).toContain("description or call schema");
+});
+it("rejects edited output schemas before publication", async () => {
+  fetchResource.mockResolvedValue(challenge());
+  const response = await POST(request({...input,callConfig:JSON.stringify({...verifiedCall,outputSchema:{type:"string"}})}));
+  expect(response.status).toBe(400);
+});
+it("rejects endpoints without the metadata extension instead of trusting draft text", async () => {
+  const headers = new Headers(challenge().headers);
+  const value = JSON.parse(Buffer.from(headers.get("payment-required")!, "base64").toString("utf8"));
+  delete value.extensions;
+  headers.set("payment-required", Buffer.from(JSON.stringify(value)).toString("base64"));
+  fetchResource.mockResolvedValue(new Response(null,{status:402,headers}));
+  expect((await POST(request())).status).toBe(400);
 });

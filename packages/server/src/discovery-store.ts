@@ -10,6 +10,24 @@ export class DiscoveryStore implements CatalogSource {
   constructor(databaseUrl: string) { this.pool = new Pool({ connectionString: databaseUrl, max: 4, connectionTimeoutMillis: 10_000, statement_timeout: 15_000 }); }
   async close() { await this.pool.end(); }
   async migrate() { await this.pool.query(discoverySchema); }
+  /** One global refresh lease, using database time across all server instances. */
+  async acquireRefresh(leaseSeconds = 360): Promise<string | undefined> {
+    if (!Number.isInteger(leaseSeconds) || leaseSeconds < 1 || leaseSeconds > 600) throw new Error("Invalid refresh lease");
+    const token = randomUUID();
+    const result = await this.pool.query(`INSERT INTO discovery_refresh(id,token,lease_until,next_attempt)
+      VALUES(1,$1,clock_timestamp()+$2*interval '1 second',clock_timestamp())
+      ON CONFLICT(id) DO UPDATE SET token=EXCLUDED.token,lease_until=EXCLUDED.lease_until
+      WHERE discovery_refresh.lease_until<=clock_timestamp() AND discovery_refresh.next_attempt<=clock_timestamp()
+      RETURNING token`, [token, leaseSeconds]);
+    return result.rowCount ? token : undefined;
+  }
+  async finishRefresh(token: string, cooldownSeconds = 60): Promise<void> {
+    if (!Number.isInteger(cooldownSeconds) || cooldownSeconds < 0 || cooldownSeconds > 3600) throw new Error("Invalid refresh cooldown");
+    await this.pool.query(`UPDATE discovery_refresh SET lease_until=clock_timestamp(),next_attempt=clock_timestamp()+$2*interval '1 second' WHERE id=1 AND token=$1`, [token, cooldownSeconds]);
+  }
+  async assertRefresh(token: string): Promise<void> {
+    if (!(await this.pool.query("SELECT 1 FROM discovery_refresh WHERE id=1 AND token=$1 AND lease_until>clock_timestamp()", [token])).rowCount) throw new Error("Refresh lease expired");
+  }
   async load(input?: DiscoveryQuery): Promise<Catalog> {
     const query = input ? parseDiscoveryQuery(input) : undefined;
     const terms = query ? discoveryTerms(query.query) : [];
@@ -30,7 +48,7 @@ export class DiscoveryStore implements CatalogSource {
       return { source: metadata.rows[0].source, ...(metadata.rows[0].checkpoint ? { checkpoint: metadata.rows[0].checkpoint } : {}), services: rows.rows.map(row => ({ service: row.service, ...(row.vector ? { embedding: { model: row.model, contentHash: row.content_hash, vector: row.vector } } : {}) })) };
     } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }
   }
-  async synchronize(catalog: Catalog, now = Math.floor(Date.now() / 1000)): Promise<{ services: number }> {
+  async synchronize(catalog: Catalog, now = Math.floor(Date.now() / 1000), refreshToken?: string): Promise<{ services: number }> {
     // Run the same schema, provenance, duplicate and freshness gates as the public API.
     await searchDiscovery({}, { source: { load: async () => catalog }, now });
     const hash = createHash("sha256").update(JSON.stringify({ source: catalog.source, checkpoint: catalog.checkpoint, services: [...catalog.services].sort((a,b) => a.service.name.localeCompare(b.service.name)).map(row => row.service) })).digest("hex");
@@ -38,6 +56,7 @@ export class DiscoveryStore implements CatalogSource {
     try {
       await client.query("BEGIN");
       await client.query("SELECT pg_advisory_xact_lock(4022601)");
+      if (refreshToken && !(await client.query("SELECT 1 FROM discovery_refresh WHERE id=1 AND token=$1 AND lease_until>clock_timestamp() FOR UPDATE", [refreshToken])).rowCount) throw new Error("Refresh lease expired");
       const previous = (await client.query("SELECT source,snapshot_hash,checkpoint FROM discovery_catalog WHERE id=1 FOR UPDATE")).rows[0];
       if (previous && (catalog.source.id !== previous.source.id || catalog.source.kind !== previous.source.kind || JSON.stringify(catalog.source.roots) !== JSON.stringify(previous.source.roots))) throw new Error("Catalog source scope changed; use a separate discovery database");
       if (previous && (catalog.source.updatedAt < previous.source.updatedAt || (catalog.source.updatedAt === previous.source.updatedAt && previous.snapshot_hash !== hash))) throw new Error("Outdated or conflicting catalog snapshot");
@@ -52,6 +71,7 @@ export class DiscoveryStore implements CatalogSource {
       await client.query("DELETE FROM discovery_services WHERE NOT(name=ANY($1::text[]))", [names]);
       await client.query("DELETE FROM discovery_embeddings e USING discovery_services s WHERE e.name=s.name AND e.content_hash<>s.content_hash");
       await client.query("INSERT INTO discovery_catalog(id,source,snapshot_hash,checkpoint) VALUES(1,$1,$2,$3) ON CONFLICT(id) DO UPDATE SET source=EXCLUDED.source,snapshot_hash=EXCLUDED.snapshot_hash,checkpoint=EXCLUDED.checkpoint", [catalog.source, hash, catalog.checkpoint ?? null]);
+      if (refreshToken && !(await client.query("SELECT 1 FROM discovery_refresh WHERE id=1 AND token=$1 AND lease_until>clock_timestamp()", [refreshToken])).rowCount) throw new Error("Refresh lease expired before commit");
       await client.query("COMMIT");
       return { services: names.length };
     } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }

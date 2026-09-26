@@ -62,6 +62,9 @@ export async function serveRegistration(request: Request): Promise<Response> {
       url,
       description: `Register a subname of ${gateway.parent} directly to its recipient on Sepolia. Expires at Unix ${gateway.expiry}.`,
       body: raw,
+      call: { verification: "ens402.service.v1", method: "POST",
+        inputSchema: { type: "object", properties: { orderId: {type:"string"}, label: {type:"string"}, recipient: {type:"string"} }, required:["orderId","label","recipient"], additionalProperties:false },
+        outputSchema: { type: "object" } },
       beforeSettle: async (key, authorization, requirement) => {
         await gateway.preflight(order);
         await getStore().claimRegistration(

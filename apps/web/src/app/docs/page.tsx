@@ -52,7 +52,7 @@ const candidates = await discover(
         </p>
         <p className="mt-3 text-sm leading-7 text-muted-foreground">
           Publish <code>ens402.call</code> with an explicit GET or POST method,
-          optional input schema and examples. GET calls currently use the exact
+          input/output schemas and optional examples for verified publication. GET calls currently use the exact
           published URL. POST purchases support JSON bodies up to 8192 bytes and
           require a merchant that verifies ENS402 request binding, including the
           assigned orderId.
@@ -81,6 +81,44 @@ const candidates = await discover(
           deployed wallet on Base Sepolia. Treasury role replacement alone does
           not change the recipient.
         </p>
+        <p className="mt-3 text-sm leading-7 text-muted-foreground">
+          First-time platform owners can initialize their registry in the same
+          setup page. Connect the wallet that already holds the parent ENS name,
+          then review and sign the deploy and link transactions. Email login
+          alone does not grant control of that name.
+        </p>
+        <details className="mt-5 rounded-xl border p-4">
+          <summary className="cursor-pointer text-sm font-medium">Make your endpoint ready for publication</summary>
+          <p className="mt-3 text-sm leading-7 text-muted-foreground">
+            Return resource.description and the ens402.service extension in your
+            unsigned HTTP 402 challenge. This is an ENS402 application format.
+            The form probes it before both commit and reveal; Guard compares it
+            again before payment. Missing metadata cannot pass as verified.
+          </p>
+          <pre className={code}>{`import { metadataExtension } from "@ens402/sdk/metadata";
+
+const description = "Weather forecast for Tokyo";
+const call = {
+  verification: "ens402.service.v1",
+  method: "GET",
+  inputSchema: { type: "object", properties: {}, additionalProperties: false },
+  outputSchema: { type: "object", properties: { temperatureC: { type: "number" } } }
+} as const;
+
+// Publish this same description and call object in ENS.
+const challenge = {
+  x402Version: 2,
+  resource: { url: endpoint, description, mimeType: "application/json" },
+  accepts: paymentRequirements,
+  extensions: metadataExtension(description, call)
+};`}</pre>
+          <p className="mt-3 text-sm leading-7 text-muted-foreground">
+            Description: at most 1,024 UTF-8 bytes. Call metadata: at most 16,384
+            bytes, with both schemas. Object key order is ignored; array order is
+            preserved. Schema references are not supported. This verifies declared
+            configuration consistency, not service quality or response conformance.
+          </p>
+        </details>
         <div className="mt-4 flex flex-wrap gap-5 text-sm text-primary">
           <Link href="/provider" className="underline">
             Set up a provider

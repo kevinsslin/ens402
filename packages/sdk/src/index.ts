@@ -1,3 +1,4 @@
+import { canonicalMetadata } from "./metadata";
 import type { CallMetadata } from "./call";
 /** Wallet-independent pre-signing checks. All times are Unix seconds. */
 export const NETWORK = "eip155:84532" as const;
@@ -52,6 +53,7 @@ export type ServiceSnapshot = {
   observedAt: number;
 };
 export type Approval = {
+  metadataHash?: string;
   name: string;
   authority: string;
   endpoints: readonly string[];
@@ -163,6 +165,10 @@ export function verifyRequest(
     !approval.endpoints.includes(requestUrl)
   )
     return decision("reject", "Endpoint is outside approved scope");
+  if (approval.metadataHash !== undefined) {
+    try { if (!service.call || canonicalMetadata(service.description ?? "", service.call).hash !== approval.metadataHash) return decision("hold", "Service metadata changed: approve again"); }
+    catch { return decision("hold", "Previously approved service metadata is unavailable"); }
+  }
   const p = service.payment;
   if (
     ![1, 2, 3].includes(p.version) ||

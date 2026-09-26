@@ -26,7 +26,7 @@ This is the single current scope and status overview. Updated September 27, 2026
 | Address-level merchant analytics | Implemented; hosted scanner setup pending | Finalized USDC receipts, separate evidence classifications, shared-address totals, historical control epochs and reorg replay |
 | Provider registry tree | Implemented; public setup pending | Native provider setup, shared resolver, delegate replacement and accepted Admin handovers |
 | Buy an arbitrary `.eth` | Not implemented | Requires official ETHRegistrar availability, rent, funding and commit/reveal integration |
-| Call metadata | Implemented | `ens402.call` publishes method, input schema and examples; version aliases remain deferred |
+| Call metadata | Implemented | `ens402.call` publishes method, schemas and examples; new publication verifies backend metadata before commit/reveal and Guard pins it before signing; version aliases remain deferred |
 | World, ERC-8004, session keys | Deferred | Not mandatory runtime dependencies |
 
 ## The three layers

@@ -53,6 +53,17 @@ function fixture() {
   };
 }
 describe("finalized analytics scanner", () => {
+  it("bounds work and resumes from the last completed chunk", async () => {
+    const f = fixture();
+    f.client.getLogs.mockResolvedValue([]);
+    await scanAnalytics(f.client as unknown as PublicClient, f.store as unknown as AnalyticsStore, { fromBlock: 1n, chunkSize: 2n, maxChunks: 2 });
+    expect(f.store.ingest).toHaveBeenCalledTimes(2);
+    expect(f.store.ingest.mock.calls[1]?.[1]).toEqual({ blockNumber: "4", blockHash: hash });
+    f.store.checkpoints.mockResolvedValue([{ blockNumber: "4", blockHash: hash }]);
+    f.store.ingest.mockClear();
+    await scanAnalytics(f.client as unknown as PublicClient, f.store as unknown as AnalyticsStore, { fromBlock: 1n, chunkSize: 2n, maxChunks: 1 });
+    expect(f.store.ingest.mock.calls[0]?.[1]).toEqual({ blockNumber: "6", blockHash: hash });
+  });
   it("indexes exact bigint transfers and marks only facilitator heuristic", async () => {
     const f = fixture();
     await f.run();

@@ -17,7 +17,8 @@
     "./discovery": "./src/discovery.ts",
     "./call": "./src/call.ts",
     "./recipient": "./src/recipient.ts",
-    "./ens/management": "./src/ens/management.ts"
+    "./ens/management": "./src/ens/management.ts",
+    "./metadata": "./src/metadata.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

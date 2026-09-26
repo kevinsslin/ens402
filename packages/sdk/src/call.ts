@@ -5,6 +5,8 @@ export type CallMetadata = {
   method: "GET" | "POST";
   inputSchema?: Record<string, unknown>;
   example?: Record<string, unknown>;
+  verification?: "ens402.service.v1";
+  outputSchema?: Record<string, unknown>;
   outputExample?: Record<string, unknown>;
   fixture?: boolean;
 };
@@ -12,9 +14,10 @@ export function parseCallMetadata(raw: string): CallMetadata {
   if (new TextEncoder().encode(raw).length > 16384) throw new Error("Call metadata exceeds 16384 bytes");
   const value = JSON.parse(raw) as CallMetadata;
   if (!value || !["GET", "POST"].includes(value.method)) throw new Error("Call metadata requires GET or POST");
-  for (const object of [value.inputSchema, value.example, value.outputExample]) {
+  for (const object of [value.inputSchema, value.outputSchema, value.example, value.outputExample]) {
     if (object !== undefined && (!object || typeof object !== "object" || Array.isArray(object))) throw new Error("Call schema and examples must be JSON objects");
   }
+  if (value.verification !== undefined && value.verification !== "ens402.service.v1") throw new Error("Unsupported metadata verification version");
   if (value.fixture !== undefined && typeof value.fixture !== "boolean") throw new Error("Fixture flag must be boolean");
   return value;
 }

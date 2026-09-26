@@ -3,6 +3,10 @@ import { getStore } from "@ens402/server";
 import { createResourceTransport } from "@ens402/server/transport";
 import { validateEndpoint } from "@ens402/sdk/ens";
 import { parseCallMetadata, preparePostInput } from "@ens402/sdk/call";
+import {
+  parseChallengeMetadata,
+  canonicalMetadata,
+} from "@ens402/sdk/metadata";
 import { parseChallenge } from "@ens402/sdk/http";
 import { NETWORK, USDC, sameAddress, validAmount } from "@ens402/sdk";
 export const runtime = "nodejs";
@@ -25,7 +29,10 @@ export async function POST(request: Request) {
     const input = JSON.parse(raw);
     const endpoint = validateEndpoint(input.endpoint);
     const call = parseCallMetadata(input.callConfig);
-    if (!validAmount(input.price) || !sameAddress(input.payTo, input.payTo))
+    if (
+      input.mode !== "inspect" &&
+      (!validAmount(input.price) || !sameAddress(input.payTo, input.payTo))
+    )
       throw Error("Invalid payment settings");
     const post =
       call.method === "POST"
@@ -53,6 +60,32 @@ export async function POST(request: Request) {
         response.headers.get("payment-required"),
         endpoint,
       );
+      const metadata = parseChallengeMetadata(challenge);
+      if (metadata.call.method !== call.method)
+        throw Error("Endpoint metadata method differs from the request");
+      const offered = challenge.accepts.filter(
+        (r) =>
+          r.scheme === "exact" &&
+          r.network === NETWORK &&
+          sameAddress(r.asset, USDC) &&
+          validAmount(r.amount) &&
+          (!post || r.extra?.ens402RequestBinding === "v1"),
+      );
+      if (input.mode === "inspect") {
+        if (offered.length !== 1)
+          throw Error(
+            "Endpoint must expose one unambiguous Base Sepolia USDC offer",
+          );
+        return Response.json(
+          { metadata, offer: offered[0], checkedAt: Date.now() },
+          { headers: { "Cache-Control": "no-store" } },
+        );
+      }
+      const expected = canonicalMetadata(input.description, call);
+      if (expected.hash !== metadata.hash)
+        throw Error(
+          "Endpoint description or call schema differs from the registration draft. Inspect and review the endpoint again.",
+        );
       const matches = challenge.accepts.some(
         (r) =>
           r.scheme === "exact" &&

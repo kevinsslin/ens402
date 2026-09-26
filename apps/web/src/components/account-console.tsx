@@ -110,6 +110,7 @@ function AccountWorkspace({
         />
       ) : workspace === "merchant" ? (
         <MerchantConsole
+          getToken={getAccessToken}
           walletAddress={wallet?.address}
           getProvider={async () => {
             if (!wallet) throw Error("Connect the required signing wallet");

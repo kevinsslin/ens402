@@ -1,3 +1,4 @@
+import { canonicalMetadata, verifyChallengeMetadata } from "@ens402/sdk/metadata";
 import {
   requestNonce,
   validateResourceRequest,
@@ -80,6 +81,7 @@ export async function prepareExternal(input: Record<string, unknown>) {
       await response.body?.cancel();
     }
     const now = Math.floor(Date.now() / 1000);
+    verifyChallengeMetadata(service, challenge, request?.method ?? "GET", row.approval.metadataHash);
     const requirement = challenge.accepts.find(
       (r) =>
         verifyRequest(service, service.endpoint, r, row.approval, now)
@@ -133,6 +135,7 @@ export async function prepareExternal(input: Record<string, unknown>) {
         message: authorization,
       },
       receipt: {
+        metadataChallenge: challenge,
         request,
         state: "held",
         reason: "Awaiting your wallet signature",
@@ -205,6 +208,11 @@ export async function submitExternal(
       .outcome !== "continue"
   )
     throw new Error("Payment expired or ENS settings changed");
+  const preparedMetadataHash = receipt.service?.call?.verification ? canonicalMetadata(receipt.service.description ?? "", receipt.service.call).hash : undefined;
+  if (fresh.call?.verification || row.approval.metadataHash || preparedMetadataHash) {
+    if (!receipt.metadataChallenge) throw new Error("Verified endpoint metadata is missing");
+    verifyChallengeMetadata(fresh, receipt.metadataChallenge, receipt.request?.method ?? "GET", row.approval.metadataHash ?? preparedMetadataHash);
+  }
   const evidence = await screenRecipient(requirement.payTo);
   if (evaluateRisk(evidence, requirement.payTo, now).outcome !== "continue")
     throw new Error("Screening did not pass");

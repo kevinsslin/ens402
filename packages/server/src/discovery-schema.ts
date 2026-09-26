@@ -1,5 +1,9 @@
 /** Isolated search database. No account, approval, wallet or payment tables are read. */
 export const discoverySchema = `
+CREATE TABLE IF NOT EXISTS discovery_refresh (
+ id integer PRIMARY KEY CHECK (id=1), token text NOT NULL,
+ lease_until timestamptz NOT NULL, next_attempt timestamptz NOT NULL
+);
 CREATE TABLE IF NOT EXISTS discovery_catalog (
  id integer PRIMARY KEY CHECK (id=1), source jsonb NOT NULL, snapshot_hash text NOT NULL
 );

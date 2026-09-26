@@ -1,3 +1,4 @@
+import { fixtureDefinitions, fixtureCall } from "../packages/server/src/fixture-metadata";
 import "dotenv/config";
 import { writeFile } from "node:fs/promises";
 import { NETWORK, USDC, addressPattern } from "../packages/sdk/src/index";
@@ -13,18 +14,9 @@ const parent = process.env.PROVIDER_ENS_NAME ?? "demo.ens402.eth";
 const payTo = process.env.MERCHANT_PAY_TO;
 if (!payTo || !addressPattern.test(payTo)) throw new Error("Configure MERCHANT_PAY_TO to match the merchant challenge");
 const now = Math.floor(Date.now() / 1000);
-const entries = [
-  ["weather", "Demo fixture: weather forecast for Tokyo, temperature and conditions"],
-  ["fx", "Demo fixture: USD JPY currency foreign exchange rate"],
-  ["research", "Demo fixture: agent payment verification research summary"],
-];
-const outputs: Record<string, Record<string, unknown>> = {
-  weather: { fixture: true, liveData: false, city: "Tokyo", temperatureC: 24, condition: "Partly cloudy" },
-  fx: { fixture: true, liveData: false, base: "USD", quote: "JPY", rate: "145.25" },
-  research: { fixture: true, liveData: false, title: "Agent payment verification", summary: "Compare current ENS payment terms with HTTP 402 before signing." },
-};
+const entries = Object.entries(fixtureDefinitions).map(([label, entry]) => [label, entry.description] as const);
 const services = entries.map(([label, description]) => {
-  const service: DiscoveryService = { name: `${label === "fx" ? "rates" : label}.${parent}`, description: description!, endpoint: new URL(`/api/merchant/fixtures/${label}`, origin).href, paymentNetwork: NETWORK, assetAddress: USDC, assetDecimals: 6, pricePerRequestAtomic: process.env.MERCHANT_PRICE_UNITS ?? "10000", payTo, indexedBlock: "0", indexedAt: now, expiresAt: now + 86400, status: "active", fixture: true, call: { method: "GET", fixture: true, outputExample: outputs[label!], inputSchema: { type: "object", properties: {}, additionalProperties: false }, example: {} } };
+  const service: DiscoveryService = { name: `${label === "fx" ? "rates" : label}.${parent}`, description: description!, endpoint: new URL(`/api/merchant/fixtures/${label}`, origin).href, paymentNetwork: NETWORK, assetAddress: USDC, assetDecimals: 6, pricePerRequestAtomic: process.env.MERCHANT_PRICE_UNITS ?? "10000", payTo, indexedBlock: "0", indexedAt: now, expiresAt: now + 86400, status: "active", fixture: true, call: fixtureCall(label as keyof typeof fixtureDefinitions) };
   validateDiscoveryService(service);
   return { service };
 });

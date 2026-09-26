@@ -1,62 +1,18 @@
-/** Repeat complete finalized snapshots and atomic catalog sync. No onchain writes. */
-import { spawn } from "node:child_process";
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { resolve } from "node:path";
+/** Optional long-running operator using the same leased in-process refresh as Next.js. */
 import { config } from "dotenv";
-config({ path: ".env" });
+import { refreshConfiguredCatalog } from "./refresh";
+config({ path: ".env", quiet: true });
 const once = process.argv.includes("--once");
 const interval = Number(process.env.INDEXER_POLL_SECONDS ?? 60);
-if (!Number.isInteger(interval) || interval < 15)
-  throw Error("INDEXER_POLL_SECONDS must be at least 15");
+if (!Number.isInteger(interval) || interval < 15) throw Error("INDEXER_POLL_SECONDS must be at least 15");
 let stopped = false;
-let active: ReturnType<typeof spawn> | undefined;
-for (const signal of ["SIGINT", "SIGTERM"] as const)
-  process.on(signal, () => {
-    stopped = true;
-    active?.kill(signal);
-  });
-function run(script: string, path: string) {
-  return new Promise<void>((ok, bad) => {
-    active = spawn(resolve("node_modules/.bin/tsx"), [script, path], {
-      stdio: "inherit",
-      env: process.env,
-    });
-    active.on("error", bad);
-    active.on("exit", (code) => {
-      active = undefined;
-      code === 0 ? ok() : bad(Error("Catalog stage failed"));
-    });
-  });
-}
-const directory = await mkdtemp(`${tmpdir()}/ens402-catalog-`);
-try {
-  do {
-    try {
-      const path = resolve(directory, "catalog.json");
-      await run("indexer/src/export.ts", path);
-      if (!stopped) await run("scripts/discovery-sync.ts", path);
-      if (!stopped && process.env.ANALYTICS_DATABASE_URL) {
-        try {
-          await run("scripts/analytics-sync.ts", path);
-        } catch {
-          console.error(
-            "Catalog synchronized, but analytics refresh failed. Discovery remains available; analytics will retry next cycle.",
-          );
-          if (once) process.exitCode = 1;
-        }
-      }
-    } catch {
-      console.error(
-        "Catalog refresh failed; retaining previous database snapshot. Check indexer, RPC and database configuration.",
-      );
-      if (once) process.exitCode = 1;
-    }
-    if (once || stopped) break;
-    // Small interruptible sleeps keep termination responsive and never overlap refreshes.
-    for (let i = 0; i < interval && !stopped; i++)
-      await new Promise((r) => setTimeout(r, 1000));
-  } while (!stopped);
-} finally {
-  await rm(directory, { recursive: true, force: true });
-}
+for (const signal of ["SIGINT", "SIGTERM"] as const) process.on(signal, () => { stopped = true; });
+do {
+  try { console.log(JSON.stringify(await refreshConfiguredCatalog())); }
+  catch {
+    console.error("Catalog refresh failed; check RPC and database configuration. No partial snapshot is published.");
+    if (once) process.exitCode = 1;
+  }
+  if (once || stopped) break;
+  for (let i = 0; i < interval && !stopped; i++) await new Promise(resolve => setTimeout(resolve, 1000));
+} while (!stopped);

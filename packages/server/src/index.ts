@@ -1,3 +1,4 @@
+import { canonicalMetadata } from "@ens402/sdk/metadata";
 import { checkNameOwnerRecipient } from "@ens402/sdk/recipient";
 import {
   validateResourceRequest,
@@ -155,6 +156,7 @@ export async function createApproval(
     (input.fixedPrice !== fixedPrice || BigInt(fixedPrice) > BigInt(maxAmount))
   )
     throw new Error("Review the published fixed price before approving");
+  const metadataHash = service.call?.verification ? canonicalMetadata(service.description ?? "", service.call).hash : undefined;
   const fingerprint = createHash("sha256")
     .update(
       JSON.stringify({
@@ -163,6 +165,7 @@ export async function createApproval(
         payer,
         name,
         fixedPrice,
+        metadataHash,
         authority: service.authority,
         payTo: service.payment.payTo,
         endpoints: [...endpoints].sort(),
@@ -188,6 +191,7 @@ export async function createApproval(
       payTo: service.payment.payTo,
       maxAmount,
       fixedPrice,
+      ...(metadataHash ? { metadataHash } : {}),
       expiresAt: Math.floor(Date.now() / 1000) + duration,
     },
   });

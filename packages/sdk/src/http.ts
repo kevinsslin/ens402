@@ -1,3 +1,4 @@
+import { verifyChallengeMetadata } from "./metadata";
 import { validateResourceRequest, type ResourceRequest } from "./request";
 import {
   decodePaymentRequiredHeader,
@@ -40,6 +41,7 @@ export type PublicAuthorization = {
   validBefore: string;
 };
 export type PaymentReceipt = {
+  metadataChallenge?: PaymentRequired;
   state: "rejected" | "held" | "settled" | "paid_delivery_failed" | "uncertain";
   reason: string;
   steps: { stage: string; detail: string }[];
@@ -175,6 +177,8 @@ export async function purchaseResource(options: {
       service.endpoint,
     );
     await response.body?.cancel();
+    const verifiedMetadata = verifyChallengeMetadata(service, challenge, request?.method ?? "GET", approval.metadataHash);
+    receipt.metadataChallenge = challenge;
     const selected = challenge.accepts.find(
       (r) =>
         verifyRequest(service, service.endpoint, r, approval, clock())
@@ -197,6 +201,7 @@ export async function purchaseResource(options: {
       address: options.signer.address,
       async signTypedData(data) {
         const fresh = await options.resolve(options.name);
+        verifyChallengeMetadata(fresh, challenge, request?.method ?? "GET", verifiedMetadata.hash ?? approval.metadataHash);
         if (
           fresh.authority !== service.authority ||
           fresh.endpoint !== service.endpoint ||

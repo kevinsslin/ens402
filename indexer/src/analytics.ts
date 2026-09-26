@@ -86,6 +86,7 @@ export async function scanAnalytics(
   options: {
     fromBlock: bigint;
     chunkSize?: bigint;
+    maxChunks?: number;
     facilitators?: FacilitatorList;
   },
 ) {
@@ -117,8 +118,10 @@ export async function scanAnalytics(
   const step = options.chunkSize ?? 1000n;
   if (start < 0n || step < 1n || step > 10000n)
     throw new Error("Invalid analytics scan interval");
-  let count = 0;
+  if (options.maxChunks !== undefined && (!Number.isInteger(options.maxChunks) || options.maxChunks < 1)) throw new Error("Invalid analytics chunk budget");
+  let count = 0, chunks = 0;
   for (let from = start; from <= finalized.number; from += step) {
+    if (options.maxChunks !== undefined && chunks++ >= options.maxChunks) break;
     const to =
       from + step - 1n < finalized.number ? from + step - 1n : finalized.number;
     const boundary = await client.getBlock({ blockNumber: to });

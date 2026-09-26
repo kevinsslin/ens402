@@ -1,3 +1,5 @@
+import { metadataExtension } from "@ens402/sdk/metadata";
+import type { CallMetadata } from "@ens402/sdk/call";
 import { requestNonce } from "@ens402/sdk/request";
 import { verifySettlement } from "@ens402/sdk/settlement";
 import { baseClient } from "./index";
@@ -18,6 +20,7 @@ import { amount, requireEnv } from "./config";
 export type PaidResource = {
   url: string;
   description: string;
+  call?: CallMetadata;
   body?: string;
   beforeSettle?: (
     nonceKey: string,
@@ -64,6 +67,12 @@ export async function serveMerchant(
       mimeType: "application/json",
     },
     accepts: [requirement],
+    extensions: metadataExtension(resource?.description ?? "ENS402 demonstration search result", resource?.call ?? {
+      verification: "ens402.service.v1",
+      method: resource?.body ? "POST" : "GET",
+      inputSchema: { type: "object", additionalProperties: Boolean(resource?.body) },
+      outputSchema: { type: "object" },
+    }),
   };
   const unpaid = () =>
     Response.json(
