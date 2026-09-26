@@ -4,9 +4,11 @@ import { ArrowUpRight } from "lucide-react";
 export function EnsNameLink({
   name,
   className = "",
+  label,
 }: {
   name: string;
   className?: string;
+  label?: string;
 }) {
   return (
     <a
@@ -14,9 +16,9 @@ export function EnsNameLink({
       target="_blank"
       rel="noopener noreferrer"
       className={`inline-flex max-w-full items-center gap-1 text-primary underline decoration-primary/30 underline-offset-4 hover:decoration-primary ${className}`}
-      title="View registered name on the ENSv2 Sepolia explorer"
+      title={`View ${name} on the ENSv2 Sepolia explorer`}
     >
-      <span className="min-w-0 break-all">{name}</span>
+      <span className="min-w-0 break-all">{label ?? name}</span>
       <ArrowUpRight className="size-3.5 shrink-0" aria-hidden="true" />
     </a>
   );

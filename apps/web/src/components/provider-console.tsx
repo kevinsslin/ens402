@@ -116,6 +116,7 @@ export function ProviderConsole({
         ?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [hasSetupProgress]);
   const [directory, setDirectory] = useState<Directory | null>(null);
+  const [publishTarget, setPublishTarget] = useState("");
   const [directoryError, setDirectoryError] = useState("");
   const [directoryLoading, setDirectoryLoading] = useState(true);
   const [directoryVersion, setDirectoryVersion] = useState(0);
@@ -604,41 +605,39 @@ export function ProviderConsole({
             </div>
           </section>
           <section aria-labelledby="registered-services-heading">
-            <h2 id="registered-services-heading" className="text-2xl">
-              Registered services
-            </h2>
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <h2 id="registered-services-heading" className="text-2xl">Registered services</h2>
+              <div className="flex flex-wrap items-center gap-2">
+                {directory.providers.length > 1 && <select
+                  aria-label="Workspace to publish in"
+                  className="h-10 max-w-full rounded-lg border bg-background px-3 text-sm"
+                  value={directory.providers.some(p => p.name === publishTarget) ? publishTarget : directory.providers[0]?.name}
+                  onChange={event => setPublishTarget(event.target.value)}
+                >{directory.providers.map(provider => <option key={provider.name} value={provider.name}>{provider.name}</option>)}</select>}
+                <Button variant="outline" disabled={!directory.providers.length} onClick={() => {
+                  const target = directory.providers.find(provider => provider.name === publishTarget) ?? directory.providers[0];
+                  if (target) setPublishing(target.name);
+                }}><Plus className="mr-2 size-4" />Publish service</Button>
+              </div>
+            </div>
             <p className="mt-2 text-sm text-muted-foreground">
-              Open a service to edit its endpoint, payment terms and public
-              details. Newly registered services appear here before search
-              indexing.
+              Edit your services or publish a new endpoint.
             </p>
             <div className="mt-5 space-y-3">
-              {directory.providers.flatMap((provider) =>
-                provider.serviceNames.map((name) => (
-                  <article
-                    key={name}
-                    className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border bg-card p-5"
-                  >
-                    <div>
-                      <h3 className="break-all font-semibold">
-                        <EnsNameLink name={name} />
-                      </h3>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        <EnsNameLink name={provider.name} />
-                      </p>
-                      <RegistrationTransactionLink
-                        name={name}
-                        hash={provider.serviceTransactions?.[name]}
-                      />
-                    </div>
-                    <Button asChild variant="outline">
-                      <Link href={`/service?name=${encodeURIComponent(name)}`}>
-                        Manage service <ArrowRight className="ml-2 size-4" />
-                      </Link>
-                    </Button>
-                  </article>
-                )),
-              )}
+              {directory.providers.filter(provider => provider.serviceNames.length > 0).map(provider => (
+                <div key={provider.name} className="space-y-3">
+                  <p className="pt-2 text-sm text-muted-foreground"><EnsNameLink name={provider.name} /></p>
+                  {provider.serviceNames.map(name => (
+                    <article key={name} className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border bg-card p-5">
+                      <div>
+                        <h3 className="break-all font-semibold"><EnsNameLink name={name} label={name.endsWith(`.${provider.name}`) ? name.slice(0, -provider.name.length - 1) : name} /></h3>
+                        <RegistrationTransactionLink name={name} hash={provider.serviceTransactions?.[name]} />
+                      </div>
+                      <Button asChild variant="outline"><Link href={`/service?name=${encodeURIComponent(name)}`}>Manage service <ArrowRight className="ml-2 size-4" /></Link></Button>
+                    </article>
+                  ))}
+                </div>
+              ))}
               {directory.providers.some(
                 (provider) => provider.servicesUnavailable,
               ) && (
@@ -657,19 +656,6 @@ export function ProviderConsole({
                   workspace.
                 </p>
               )}
-            </div>
-            <div className="mt-4 flex flex-wrap gap-3">
-              {directory.providers.map((provider) => (
-                <Button
-                  key={provider.name}
-                  variant="ghost"
-                  onClick={() => setPublishing(provider.name)}
-                >
-                  <Plus className="mr-2 size-4" />
-                  Publish service
-                  {directory.providers.length > 1 ? ` · ${provider.name}` : ""}
-                </Button>
-              ))}
             </div>
           </section>
         </div>
