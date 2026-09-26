@@ -64,10 +64,10 @@ export default function RootLayout({
               <p>Prototype · ETHGlobal Tokyo 2026</p>
               <p className="mt-1">ENS Sepolia / payments on Base Sepolia</p>
               <Link
-                href="/architecture"
+                href="/#architecture"
                 className="mt-2 inline-block underline underline-offset-4"
               >
-                Architecture & status
+                Architecture
               </Link>
             </div>
           </div>

@@ -17,6 +17,16 @@ Current scope: **Discover, Govern, Guard**. Namespace: **Platform Registry -> Pr
 - [x] Separate unclassified/facilitator/verified categories. Trusted terminal local payment evidence is independently verified against canonical settlement receipts; no public proof submission.
 - [x] Contract interface and NatSpec, native deployment/role libraries, explicit atomic units/expiry, commitment binding, reentrancy protection and atomic rollback coverage. No duplicate custom RBAC or new upgrade system.
 
+## Registration preflight: align ENS with the live backend
+
+- [ ] Add a probe-first authoring flow, similar in purpose to x402scan discovery: when the endpoint is entered, fetch its HTTP 402 and supported public discovery/OpenAPI metadata, then prefill description, method and input/output schema where available. Treat fetched content as untrusted data.
+- [ ] Compare the exact proposed ENS publication against the backend metadata and payment terms. Show field-level differences for endpoint, description, method/schema, network, token, holder-derived recipient and fixed atomic price. Define canonical schema comparison; missing or unsupported metadata is unverified, never an automatic match.
+- [ ] Enable frontend commit/reveal only after the current draft passes. Bind the probe result to the complete draft, invalidate it on edits, and re-probe immediately before registration. Missing metadata must be corrected/published by the merchant before the corresponding check can pass. This is an application gate, not a claim that native ENS contracts can inspect HTTP.
+- [ ] Extend SDK pre-signing verification to the agreed description/call-schema metadata contract so later ENS/backend drift also blocks integrated purchases. Current Guard already compares payment terms; it does not yet compare all descriptions or schemas. Define the supported discovery source and deterministic equality rules before implementing these additional checks. Alignment does not prove service quality or actual implementation behavior.
+- [ ] Test matching publication, mismatched and missing metadata, changed draft after successful probe, backend drift during commit/reveal, and later SDK rejection. Expose actionable differences and never silently overwrite either side.
+
+Existing baseline: `/api/provider/probe` already checks unsigned HTTP 402 network, asset, amount, recipient and POST request-binding support before registration. It does not yet fetch and compare the backend description or complete schema. Keep this enhancement unchecked until those gates and SDK checks are implemented and tested.
+
 ## Public launch: operator inputs and signatures required
 
 Local tests do not complete these steps. No mainnet transactions.

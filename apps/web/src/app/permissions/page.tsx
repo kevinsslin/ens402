@@ -119,7 +119,7 @@ export default function PermissionsPage() {
         <Link className="text-primary underline" href="/docs">
           Agent integration guide
         </Link>
-        <Link className="text-primary underline" href="/architecture">
+        <Link className="text-primary underline" href="/#architecture">
           Full architecture
         </Link>
       </div>
