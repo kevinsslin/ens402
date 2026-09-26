@@ -22,6 +22,8 @@ This is the single current scope and status overview. Updated September 26, 2026
 | SDK `discover()` | Not implemented | Existing SDK resolves known names; it does not search for unknown services |
 | MCP | Not implemented | Intended thin interface over the same discovery/resolve capabilities |
 | Agent Skill | Payment instructions exist | `integrations/agent-skill/SKILL.md`; discovery instructions/tools are not implemented |
+| Merchant onboarding and service dashboard | Incomplete | Registration form exists; post-registration listing sync, controlled-service inventory and merchant analytics are not implemented |
+| Service revenue attribution | Not implemented | Existing payment receipts are a starting point; endpoint-level totals require request-to-settlement correlation |
 | Provider registry tree | Planned | Direct subnames are implemented; platform/provider/service onboarding is not |
 | Buy an arbitrary `.eth` | Not implemented | Requires official ETHRegistrar availability, rent, funding and commit/reveal integration |
 | Rich call schema, version aliases | Planned | Description alone does not tell an agent every input needed to call an API |
@@ -69,6 +71,16 @@ Keyword and semantic search are required. Exact-name matches should remain stron
 - Embeddings are vectors computed from public service metadata by a selected model. Recompute when the indexed content changes; store the content hash, model/version and source block. Compute a query vector at search time. Price and roles are structured data, not facts inferred from embeddings.
 - Model/provider, dimensions, Envio-to-search synchronization, retry/backfill/reorg handling and database permissions remain implementation decisions. No embedding provider credentials or vector migration are configured by this proposal.
 - Search is an offchain view. Other operators can reproduce the supported raw catalog once the indexer is built; their model and ranking may differ. Re-resolve ENS before payment. Do not claim globally complete search, fair ranking or automatic quality verification.
+
+## Buyer and merchant product flow
+
+Target buyer flow: search a need, inspect ranked candidates with ENS identity and call instructions, choose a service, then approve and purchase through Guard. Rankings express relevance, not guaranteed quality. Search, indexing and call-schema publication still need implementation.
+
+Target merchant flow: fill service details, register/configure its ENS name, return to a controlled-service dashboard, wait for confirmed indexing and see the listing become searchable. Use explicit registration/indexing states. Verify actual wallet/role control before offering management actions.
+
+Envio can dynamically add supported registries/resolvers discovered from configured roots. It cannot observe arbitrary HTTP requests or infer the purchased endpoint from a token transfer. Revenue analytics must join confirmed settlement with SDK/backend or authenticated merchant request records. Keep historical config identity, deduplicate receipts and show attribution coverage. Same payTo does not prove the same store, and name/endpoint changes must not rewrite historical revenue. Start with confirmed gross receipts, not profit claims.
+
+Prepare several named, callable test services with explicit fixture labels and published input/output examples before presenting. See TODO.md for the catalog, complete journey and acceptance cases. No public names have been registered by this planning update.
 
 ## Remaining work
 
