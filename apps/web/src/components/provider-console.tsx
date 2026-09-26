@@ -245,7 +245,7 @@ export function ProviderConsole({
       </div>}
       {directory && <p className="mt-4 text-xs text-muted-foreground">Providers you own or can register services under. Have an Operations or Treasury Admin role? <Link href="/merchant" className="text-primary underline underline-offset-4">Open your provider by name.</Link></p>}
       {directory?.platformOwner.toLowerCase() === walletAddress?.toLowerCase() && <PlatformBootstrap parent={parent} walletAddress={walletAddress} getProvider={getProvider} />}
-      {(creating || pending || (directory && directory.providers.length === 0)) && <>
+      {(creating || hasSetupProgress || busy || (directory && directory.providers.length === 0)) && <>
       <ol aria-label="Onboarding progress" className="mt-8 grid grid-cols-3 gap-2 text-sm">
         {["Your details", "Set up on Sepolia", "Publish a service"].map((label, index) => <li key={label} aria-current={index === (plan?.ready ? 2 : plan || pending ? 1 : 0) ? "step" : undefined} className={`rounded-xl border px-3 py-3 ${index === (plan?.ready ? 2 : plan || pending ? 1 : 0) ? "border-primary/30 bg-primary/5 font-medium text-primary" : "text-muted-foreground"}`}><span className="mr-2">{index + 1}.</span>{label}</li>)}
       </ol>
