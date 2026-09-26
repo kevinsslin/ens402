@@ -63,6 +63,14 @@ contract SharedProviderServiceRegistrar is ProviderServiceRegistrar {
         treasurySafe = treasurySafe_;
     }
 
+    /// @notice Registration uses one transaction and requires native provider registration authority.
+    /// @return mode 2 denotes direct registration; older deployments use commit-reveal.
+    function registrationMode() external pure returns (uint8 mode) { return 2; }
+
+    /// @dev Native caller authorization is enforced by ProviderServiceRegistrar on every registration.
+    ///      No commitment or artificial delay is needed for this permissioned entry point.
+    function _consumeCommitment(bytes32) internal override {}
+
     /// @dev Reuse field validation without assuming that a publisher is a separate per-service Admin.
     function _validate(Service calldata service, address) internal view override {
         super._validate(service, address(0));

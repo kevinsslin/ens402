@@ -89,10 +89,30 @@ contract SharedProviderRegistrarTest {
     }
 
     function _register(string memory label) internal {
-        _commit(label, publisher);
         vm.prank(publisher);
         (address result,) = registrar.register(_service(label), secret);
         require(result == address(resolver), "not shared resolver");
+    }
+
+    function testDirectRegistrationWithoutCommitOrDelay() public {
+        uint256 before = block.timestamp;
+        vm.prank(publisher);
+        registrar.register(_service("direct"), bytes32(0));
+        require(registry.findOwner("direct") == publisher, "wrong owner");
+        require(resolver.getRecordId(_node("direct")) != 0, "missing records");
+        require(block.timestamp == before, "unexpected delay");
+        require(registrar.registrationMode() == 2, "wrong mode");
+    }
+
+    function testDirectRegistrationRejectsOutsiderAndRevokedPublisher() public {
+        vm.expectPartialRevert(ProviderServiceRegistrar.UnauthorizedPublisher.selector);
+        vm.prank(outsider);
+        registrar.register(_service("direct"), bytes32(0));
+        registry.revokeRootRoles(1, publisher);
+        vm.expectPartialRevert(ProviderServiceRegistrar.UnauthorizedPublisher.selector);
+        vm.prank(publisher);
+        registrar.register(_service("direct"), bytes32(0));
+        require(resolver.getRecordId(_node("direct")) == 0, "unauthorized records");
     }
 
     function testSeparateBundlesWithProviderWideKeyDelegatesAndNoPublisherRoot() public {

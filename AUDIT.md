@@ -172,3 +172,11 @@ The browser verification did not sign in as the real owner or execute wallet tra
 - Application setup simulation/confirmation uses server read RPCs with an independent fallback and JSON-RPC batching. Tests cover a throttled primary, pending/reverted receipts, payload mismatches, cancellation/error copy and EOA planning. Wallet submissions are never automatically retried.
 - Submitted setup transactions persist in local storage with their planned context. A resumed confirmation checks sender, destination, calldata and value before advancing.
 - The three-stage progress card was checked on desktop and mobile using explicit UI fixtures, including wallet confirmation, error/retry and completion. Wallet-internal Tenderly simulation remains outside application control.
+
+## Single-transaction provider publishing (2026-09-27)
+
+- SharedProviderServiceRegistrar now advertises registrationMode 2 and skips commitment timing only after native caller authorization. The open/isolated registrar retains its original commit-reveal behavior.
+- Forge: 57 tests passed across seven suites, including no-commit/no-delay registration, rejected outsiders and revoked publishers, existing/linked bundle protection and atomic rollback against native Sepolia deployments.
+- Anvil: `scripts/ens/provider-plan-fork.ts --shared` deployed and authorized the current publisher, registered a name directly, deployed the archived legacy publisher, revoked all seven legacy grants through the retirement planner, then registered another name. Existing ownership remained unchanged.
+- Browser preview: one Register service action, no finish/reveal action, shared roles displayed without editable address inputs. Preview addresses were fixtures; this is not evidence of a public wallet transaction.
+- Public migration requires owner signatures. The setup planner accepts only the compiled current or archived legacy runtime and verifies constructor bindings before issuing permissions. Existing registries/resolvers and human delegates are retained.

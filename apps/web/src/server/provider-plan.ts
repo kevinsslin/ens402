@@ -1,4 +1,11 @@
-import { encodeFunctionData, keccak256, stringToHex, zeroAddress, type Address, type Hex } from "viem";
+import {
+  encodeFunctionData,
+  keccak256,
+  stringToHex,
+  zeroAddress,
+  type Address,
+  type Hex,
+} from "viem";
 import { normalize } from "viem/ens";
 import { ensClient } from "@ens402/server";
 import {
@@ -13,8 +20,13 @@ import {
   providerRoles,
 } from "../../../../scripts/ens/provider-config";
 import { sharedResolverPlan } from "../../../../scripts/ens/provider-shared";
-import { providerRegistrarPlan } from "../../../../scripts/ens/provider-registrar";
+import {
+  providerRegistrarPlan,
+  matchesRuntime,
+} from "../../../../scripts/ens/provider-registrar";
 import artifact from "./provider-artifact.json";
+import legacyArtifact from "./provider-artifact-legacy.json";
+import { retireRegistrarPlan } from "../../../../scripts/ens/retire-registrar";
 export type ProviderSetup = {
   parent: string;
   label: string;
@@ -28,6 +40,7 @@ export type ProviderSetup = {
   registry?: string;
   resolver?: string;
   registrar?: string;
+  previousRegistrar?: string;
 };
 const address = (value: string) => {
   if (!/^0x[0-9a-fA-F]{40}$/.test(value) || value.toLowerCase() === zeroAddress)
@@ -53,8 +66,23 @@ export async function planProvider(input: ProviderSetup) {
   const salt = BigInt(input.salt);
   // The native factory identifies proxies by sender and salt, not implementation.
   // Domain-separate resolver creation from the registry deployment and persist it.
-  const resolverSalt = input.resolverSalt ?? BigInt(keccak256(stringToHex(`ens402:provider-resolver:${name}:${admin.toLowerCase()}:${salt}`))).toString();
-  if (!/^\d{1,78}$/.test(resolverSalt) || BigInt(resolverSalt) >= 2n ** 256n || BigInt(resolverSalt) === salt) throw Error("Resolver deployment salt must be distinct from the registry salt");
+  const resolverSalt =
+    input.resolverSalt ??
+    BigInt(
+      keccak256(
+        stringToHex(
+          `ens402:provider-resolver:${name}:${admin.toLowerCase()}:${salt}`,
+        ),
+      ),
+    ).toString();
+  if (
+    !/^\d{1,78}$/.test(resolverSalt) ||
+    BigInt(resolverSalt) >= 2n ** 256n ||
+    BigInt(resolverSalt) === salt
+  )
+    throw Error(
+      "Resolver deployment salt must be distinct from the registry salt",
+    );
   const client = ensClient();
   const block = await client.getBlock();
   let platform: Address = deployment.rootRegistry;
@@ -207,6 +235,7 @@ export async function planProvider(input: ProviderSetup) {
     });
   }
   let phase = 0;
+  let registrationMode: "direct" | "commit-reveal" = "direct";
   let resolver = input.resolver ? address(input.resolver) : undefined;
   if (!txs.length) {
     phase = 1;
@@ -224,6 +253,20 @@ export async function planProvider(input: ProviderSetup) {
     txs.push(...shared.transactions);
     if (!txs.length) {
       phase = 2;
+      const existingCode = input.registrar
+        ? await client.getCode({
+            address: address(input.registrar),
+            blockNumber: block.number,
+          })
+        : undefined;
+      const legacy =
+        existingCode &&
+        matchesRuntime(
+          existingCode,
+          legacyArtifact.deployedBytecode.object as Hex,
+          legacyArtifact.deployedBytecode.immutableReferences,
+        );
+      registrationMode = legacy ? "commit-reveal" : "direct";
       const registrar = await providerRegistrarPlan(
         client,
         admin,
@@ -235,9 +278,46 @@ export async function planProvider(input: ProviderSetup) {
         resolver,
         ops,
         treasury,
-        artifact as unknown as Parameters<typeof providerRegistrarPlan>[10],
+        (legacy ? legacyArtifact : artifact) as unknown as Parameters<
+          typeof providerRegistrarPlan
+        >[10],
       );
       txs.push(...registrar.transactions);
+      if (!txs.length && input.previousRegistrar && input.registrar) {
+        if (
+          registrationMode !== "direct" ||
+          input.previousRegistrar.toLowerCase() ===
+            input.registrar.toLowerCase()
+        )
+          throw Error(
+            "Replacement registrar must be distinct and support direct registration",
+          );
+        await providerRegistrarPlan(
+          client,
+          admin,
+          registry!,
+          name,
+          expiry,
+          block.number,
+          address(input.previousRegistrar),
+          resolver,
+          ops,
+          treasury,
+          legacyArtifact as unknown as Parameters<
+            typeof providerRegistrarPlan
+          >[10],
+        );
+        txs.push(
+          ...(await retireRegistrarPlan(
+            client,
+            admin,
+            registry!,
+            resolver!,
+            address(input.previousRegistrar),
+            block.number,
+          )),
+        );
+      }
     }
   }
   return {
@@ -251,6 +331,7 @@ export async function planProvider(input: ProviderSetup) {
       expiry: String(expiry),
     },
     name,
+    registrationMode,
     observedBlock: String(block.number),
     ready: !txs.length,
     phase: txs.length ? phase : 3,

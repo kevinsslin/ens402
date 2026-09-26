@@ -4,10 +4,12 @@ Current scope: **Discover, Govern, Guard**. Namespace: **Platform Registry -> Pr
 
 ## Demo services and rehearsal
 
+- [ ] In provider setup, choose **Set up one-transaction publishing**, deploy and authorize the replacement, and revoke the old registrar permissions. Existing Registry, Resolver and names are preserved. Owner signatures are required; public migration is not yet verified.
+
 - Publish `hello.demo.ens402.eth` first: `/api/merchant/fixtures/hello` returns a paid JSON greeting.
 - Then publish weather, FX and research fixtures for distinct search intents. All are explicitly sample data, not live market/weather feeds.
 - Demo endpoints share the configured `MERCHANT_PAY_TO` and cost `10000` atomic units (0.01 Base Sepolia USDC). The registering name owner must match that recipient.
-- Use **Publish service -> Start with a demo**, review the prefilled metadata, then commit/reveal in the wallet. Publication still requires the user's signatures.
+- Use **Publish service -> Start with a demo**, review the prefilled metadata, then register with one transaction after upgrading the provider publisher. Older deployments retain commit/reveal until replaced.
 - Rehearse: semantic search -> resolve ENS -> verify metadata/payment terms -> pay -> receive JSON. Use the existing mismatch endpoint to demonstrate a refused payment.
 - Mocked settlement tests prove the delivery gate; a public funded purchase and final catalog sync remain required before claiming an end-to-end public demo.
 

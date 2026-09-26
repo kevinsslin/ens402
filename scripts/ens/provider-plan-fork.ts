@@ -9,6 +9,9 @@ import { createPublicClient, createWalletClient, http, encodeFunctionData, parse
 import { sepolia } from "viem/chains";
 import { currentDeployment as d } from "../../packages/sdk/src/ens/current";
 import { factoryAbi } from "../../packages/sdk/src/ens/abi";
+import { serviceRegistrarAbi } from "../../packages/sdk/src/ens/registration";
+import { providerRegistrarPlan } from "./provider-registrar";
+import { retireRegistrarPlan } from "./retire-registrar";
 import { providerInitialization, providerRegistryAbi } from "./provider-config";
 const shared = process.argv.includes("--shared");
 const ops: Address = "0x0000000000000000000000000000000000001002";
@@ -69,6 +72,28 @@ try {
   process.env.PROVIDER_SERVICE_REGISTRAR_ADDRESS = receipt.contractAddress!;
   await run(); p = await plan(); assert.equal(p.registrarPlan.verified, true); assert.equal(p.registrarPlan.transactions.length, shared ? 7 : 1);
   for (const tx of p.registrarPlan.transactions) await send(tx); await run(); p = await plan(); assert.equal(p.registrarPlan.transactions.length, 0);
+  if (shared) {
+    const current = process.env.PROVIDER_SERVICE_REGISTRAR_ADDRESS as Address;
+    const service = {label:"direct",endpoint:"https://example.com/api",payTo:admin,endpointOperator:ops,treasury,description:"Direct publication",picture:"",price:10000n,callConfig:'{"method":"GET"}'};
+    const zeroSecret = `0x${"00".repeat(32)}` as `0x${string}`;
+    assert.equal(await client.readContract({address:current,abi:serviceRegistrarAbi,functionName:"registrationMode"}),2);
+    await client.waitForTransactionReceipt({hash:await wallet.writeContract({account:admin,address:current,abi:serviceRegistrarAbi,functionName:"register",args:[service,zeroSecret]})});
+    const registryAbi = parseAbi(["function findOwner(string) view returns(address)"]);
+    assert.equal((await client.readContract({address:p.registry,abi:registryAbi,functionName:"findOwner",args:["direct"]})).toLowerCase(),admin.toLowerCase());
+    const legacyArtifact=JSON.parse(await readFile(resolve(cwd,"apps/web/src/server/provider-artifact-legacy.json"),"utf8"));
+    const legacyPlan = await providerRegistrarPlan(client,admin,p.registry,p.name,BigInt(p.expiry),await client.getBlockNumber(),undefined,p.sharedResolver.resolver,ops,treasury,legacyArtifact);
+    const oldReceipt=await send(legacyPlan.transactions[0]);
+    const old=oldReceipt.contractAddress!;
+    const oldGrants=await providerRegistrarPlan(client,admin,p.registry,p.name,BigInt(p.expiry),await client.getBlockNumber(),old,p.sharedResolver.resolver,ops,treasury,legacyArtifact);
+    for(const tx of oldGrants.transactions) await send(tx);
+    const retirement=await retireRegistrarPlan(client,admin,p.registry,p.sharedResolver.resolver,old,await client.getBlockNumber());
+    assert.equal(retirement.length,7);
+    for(const tx of retirement) await send(tx);
+    assert.equal((await retireRegistrarPlan(client,admin,p.registry,p.sharedResolver.resolver,old,await client.getBlockNumber())).length,0);
+    await client.waitForTransactionReceipt({hash:await wallet.writeContract({account:admin,address:current,abi:serviceRegistrarAbi,functionName:"register",args:[{...service,label:"after"},zeroSecret]})});
+    assert.equal((await client.readContract({address:p.registry,abi:registryAbi,functionName:"findOwner",args:["direct"]})).toLowerCase(),admin.toLowerCase());
+    console.log("PASS: direct single-transaction registration, seven old publisher grants revoked, new publishing and existing names preserved");
+  }
   console.log(shared ? "SHARED RESOLVER" : "ISOLATED RESOLVERS");
   console.log("PASS: provider plan deployment, resume, native link, restricted registrar runtime verification and grant");
 } finally { node.kill(); await rm(dir, { recursive: true, force: true }); }

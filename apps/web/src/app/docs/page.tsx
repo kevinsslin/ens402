@@ -52,10 +52,10 @@ const candidates = await discover(
         </p>
         <p className="mt-3 text-sm leading-7 text-muted-foreground">
           Publish <code>ens402.call</code> with an explicit GET or POST method,
-          input/output schemas and optional examples for verified publication. GET calls currently use the exact
-          published URL. POST purchases support JSON bodies up to 8192 bytes and
-          require a merchant that verifies ENS402 request binding, including the
-          assigned orderId.
+          input/output schemas and optional examples for verified publication.
+          GET calls currently use the exact published URL. POST purchases
+          support JSON bodies up to 8192 bytes and require a merchant that
+          verifies ENS402 request binding, including the assigned orderId.
         </p>
         <Link
           href="/discover"
@@ -88,14 +88,18 @@ const candidates = await discover(
           alone does not grant control of that name.
         </p>
         <details className="mt-5 rounded-xl border p-4">
-          <summary className="cursor-pointer text-sm font-medium">Make your endpoint ready for publication</summary>
+          <summary className="cursor-pointer text-sm font-medium">
+            Make your endpoint ready for publication
+          </summary>
           <p className="mt-3 text-sm leading-7 text-muted-foreground">
             Return resource.description and the ens402.service extension in your
             unsigned HTTP 402 challenge. This is an ENS402 application format.
             The form probes it before both commit and reveal; Guard compares it
             again before payment. Missing metadata cannot pass as verified.
           </p>
-          <pre className={code}>{`import { metadataExtension } from "@ens402/sdk/metadata";
+          <pre
+            className={code}
+          >{`import { metadataExtension } from "@ens402/sdk/metadata";
 
 const description = "Weather forecast for Tokyo";
 const call = {
@@ -113,10 +117,11 @@ const challenge = {
   extensions: metadataExtension(description, call)
 };`}</pre>
           <p className="mt-3 text-sm leading-7 text-muted-foreground">
-            Description: at most 1,024 UTF-8 bytes. Call metadata: at most 16,384
-            bytes, with both schemas. Object key order is ignored; array order is
-            preserved. Schema references are not supported. This verifies declared
-            configuration consistency, not service quality or response conformance.
+            Description: at most 1,024 UTF-8 bytes. Call metadata: at most
+            16,384 bytes, with both schemas. Object key order is ignored; array
+            order is preserved. Schema references are not supported. This
+            verifies declared configuration consistency, not service quality or
+            response conformance.
           </p>
         </details>
         <div className="mt-4 flex flex-wrap gap-5 text-sm text-primary">
@@ -322,19 +327,21 @@ Content-Type: application/json
             platform.
           </li>
           <li>
-            Each user commits, waits at least 60 seconds, then registers their
-            service. The transaction publishes records, grants the separate
-            operators, and relinquishes the registrar’s resolver privileges
-            atomically.
+            For the default shared-provider flow, an authorized publisher
+            registers the name and initializes its records in one transaction.
+            Existing provider delegates retain their native permissions. Older
+            isolated ServiceRegistrar deployments still use commit-reveal with a
+            60-second delay.
           </li>
         </ol>
         <p className="mt-4 text-sm leading-7 text-muted-foreground">
           Current native setter permissions are per key within a resolver. Every
-          service gets its own resolver. Owners retain text administration and
-          resolver-pointer authority; parent administrators and ancestor expiry
-          remain trust boundaries. Registrations have a fixed namespace expiry
-          and no platform renewal flow yet. These names do not certify service
-          quality.
+          provider shares a resolver by default; isolated deployments remain
+          available. Provider Admin retains text administration and name owners
+          retain resolver-pointer authority; parent administrators and ancestor
+          expiry remain trust boundaries. Registrations have a fixed namespace
+          expiry and no platform renewal flow yet. These names do not certify
+          service quality.
         </p>
         <Link
           href="/register"

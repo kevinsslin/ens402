@@ -24,6 +24,7 @@ import {
   validatePicture,
 } from "@ens402/sdk/ens";
 import { Button } from "./ui/button";
+import { Spinner } from "./ui/spinner";
 
 type Provider = {
   request(args: { method: string; params?: unknown[] }): Promise<unknown>;
@@ -32,6 +33,7 @@ type Pending = {
   owner: Address;
   secret: Hex;
   commitment: Hex;
+  registrationHash?: Hex;
   service: {
     label: string;
     endpoint: string;
@@ -52,6 +54,7 @@ export function RegistrationConsole({
   getToken,
   walletAddress,
   example = false,
+  direct = false,
   restricted = false,
   shared,
 }: {
@@ -61,6 +64,7 @@ export function RegistrationConsole({
   getToken?: () => Promise<string | null>;
   walletAddress?: string;
   example?: boolean;
+  direct?: boolean;
   restricted?: boolean;
   shared?: { resolver: string; ops: string; treasury: string };
 }) {
@@ -184,7 +188,9 @@ export function RegistrationConsole({
         ...(call.fixture !== undefined ? { fixture: call.fixture } : {}),
       });
       setPending(saved);
-      setPhase("committed draft restored");
+      setPhase(
+        direct ? "Saved registration restored" : "Committed draft restored",
+      );
     } catch {
       sessionStorage.removeItem(storageKey);
     }
@@ -278,6 +284,7 @@ export function RegistrationConsole({
     if (example) return;
     setBusy(true);
     setMessage("");
+    setPhase("Checking registration");
     try {
       const provider = await getProvider();
       const owner = (await selectedWallet(
@@ -308,6 +315,38 @@ export function RegistrationConsole({
           account: owner,
         }),
         address = registrar as Address;
+      async function finishRegistration(draft: Pending, hash: Hex) {
+        setPhase("Waiting for Sepolia confirmation");
+        const receipt = await client.waitForTransactionReceipt({ hash });
+        if (receipt.status !== "success") {
+          const retry = { ...draft, registrationHash: undefined };
+          sessionStorage.setItem(storageKey, JSON.stringify(retry));
+          setPending(retry);
+          throw Error(
+            "Registration reverted. No service was published. Review the fields before trying again.",
+          );
+        }
+        sessionStorage.removeItem(storageKey);
+        setPending(null);
+        window.location.assign(
+          `/merchant?provider=${encodeURIComponent(parent)}&service=${encodeURIComponent(`${draft.service.label}.${parent}`)}`,
+        );
+      }
+      if (direct && pending?.registrationHash) {
+        await finishRegistration(pending, pending.registrationHash);
+        return;
+      }
+      if (
+        direct &&
+        (await client.readContract({
+          address,
+          abi: serviceRegistrarAbi,
+          functionName: "registrationMode",
+        })) !== 2
+      )
+        throw Error(
+          "This publisher does not support one-transaction registration. Refresh provider setup.",
+        );
       if (
         !(await client.readContract({
           address,
@@ -428,6 +467,30 @@ export function RegistrationConsole({
         const draft = { owner, secret, commitment, service };
         sessionStorage.setItem(storageKey, JSON.stringify(draft));
         setPending(draft);
+        if (direct) {
+          const request = {
+            account: owner,
+            address,
+            abi: serviceRegistrarAbi,
+            functionName: "register" as const,
+            args: [
+              { ...service, price: BigInt(service.price) },
+              secret,
+            ] as const,
+          };
+          setPhase("Checking registration");
+          const gas = await client.estimateContractGas(request);
+          setPhase("Confirm registration in your wallet");
+          const hash = await wallet.writeContract({
+            ...request,
+            gas: (gas * 120n) / 100n,
+          });
+          const submitted = { ...draft, registrationHash: hash };
+          sessionStorage.setItem(storageKey, JSON.stringify(submitted));
+          setPending(submitted);
+          await finishRegistration(submitted, hash);
+          return;
+        }
         setPhase("awaiting signature");
         const commitRequest = {
           account: owner,
@@ -593,7 +656,10 @@ export function RegistrationConsole({
               void run(false);
             }}
           >
-            <fieldset disabled={busy} className="contents">
+            <fieldset
+              disabled={busy || !!pending?.registrationHash}
+              className="contents"
+            >
               <label className="text-sm">
                 Subname (required)
                 <input
@@ -849,29 +915,53 @@ export function RegistrationConsole({
                   registration.
                 </p>
                 <p className="mt-4 text-sm leading-6">
-                  Two Sepolia transactions are required: first submit a hidden
-                  commitment to your name and settings, wait at least 60 seconds
-                  after confirmation, then register the name and publish its
-                  records. Each transaction requires a wallet confirmation and
-                  gas. The first transaction alone does not publish your
-                  service.
+                  {direct
+                    ? "One Sepolia transaction registers your name and publishes all service records. We check the endpoint before requesting your signature. No extra waiting period."
+                    : "This older registrar requires two Sepolia transactions: start registration, wait at least 60 seconds after confirmation, then finish registration. The first transaction alone does not publish your service."}
                 </p>
                 <Button className="mt-5" disabled={busy || example}>
-                  1. Start registration
+                  {direct ? "Register service" : "1. Start registration"}
                 </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="ml-3 mt-5"
-                  disabled={busy || example}
-                  onClick={() => run(true)}
-                >
-                  2. Finish registration
-                </Button>
+                {!direct && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="ml-3 mt-5"
+                    disabled={busy || example}
+                    onClick={() => run(true)}
+                  >
+                    2. Finish registration
+                  </Button>
+                )}
               </div>
             </fieldset>
+            {pending?.registrationHash && (
+              <div role="status" className="mt-4 rounded-lg border p-4 text-sm">
+                <p>
+                  Your registration transaction is saved. Checking it does not
+                  send another transaction.
+                </p>
+                <a
+                  className="mt-2 block text-primary underline"
+                  href={`https://sepolia.etherscan.io/tx/${pending.registrationHash}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  View transaction
+                </a>
+                <Button
+                  className="mt-3"
+                  type="button"
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() => run(false)}
+                >
+                  Check registration
+                </Button>
+              </div>
+            )}
           </form>
-          {pending && (
+          {pending && !direct && (
             <p className="mt-4 text-sm">
               Pending: {pending.service.label}.{parent}. The reveal uses these
               committed settings. Editing any field discards this draft and
@@ -880,9 +970,14 @@ export function RegistrationConsole({
           )}
         </>
       )}
-      <p role="status" className="mt-4 text-sm text-muted-foreground">
-        Status: {phase}
-      </p>
+      {phase !== "draft" && (
+        <p
+          role="status"
+          className="mt-4 flex items-center gap-2 text-sm text-muted-foreground"
+        >
+          {busy && <Spinner />} {phase}
+        </p>
+      )}
       {message && (
         <p
           role="status"

@@ -21,6 +21,7 @@ type Provider = {
   request(args: { method: string; params?: unknown[] }): Promise<unknown>;
 };
 type Plan = {
+  registrationMode?: "direct" | "commit-reveal";
   setup: ProviderSetup;
   name: string;
   observedBlock: string;
@@ -880,8 +881,55 @@ export function ProviderConsole({
               >
                 Open merchant dashboard
               </a>
+              {plan.registrationMode === "commit-reveal" && (
+                <div className="mt-6 rounded-xl border p-5 text-sm">
+                  <h3 className="font-semibold">
+                    Switch to one-transaction publishing
+                  </h3>
+                  <p className="mt-2 text-muted-foreground">
+                    This provider still uses the earlier two-transaction
+                    registrar. Replace only the publisher contract, authorize
+                    it, then remove the old publisher's permissions. Your ENS
+                    names, registry, resolver and service records stay in place.
+                    This one-time setup requires multiple wallet confirmations.
+                    Finish any pending service registration first.
+                  </p>
+                  <Button
+                    className="mt-4"
+                    variant="outline"
+                    disabled={
+                      busy ||
+                      !!pending ||
+                      walletAddress?.toLowerCase() !== setup.admin.toLowerCase()
+                    }
+                    onClick={() => {
+                      const next = {
+                        ...setup,
+                        previousRegistrar: setup.registrar,
+                        registrar: undefined,
+                      };
+                      localStorage.setItem(storageKey, JSON.stringify(next));
+                      localStorage.setItem(
+                        `ens402-provider:${plan.name}`,
+                        JSON.stringify(next),
+                      );
+                      setSetup(next);
+                      setPlan(null);
+                      setCreating(true);
+                      setPublicationMode(false);
+                      setMessage(
+                        "Publisher replacement prepared. Continue setup to deploy, authorize and retire the old publisher.",
+                      );
+                    }}
+                  >
+                    Set up one-transaction publishing
+                  </Button>
+                </div>
+              )}
               <div id="publish-first-service" className="scroll-mt-28">
                 <RegistrationConsole
+                  key={setup.registrar}
+                  direct={plan.registrationMode === "direct"}
                   getToken={getToken}
                   registrar={setup.registrar}
                   parent={plan.name}

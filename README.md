@@ -29,11 +29,11 @@ The human demo confirms the current fixed price and payment wallet. It does not 
 | MCP | Implemented and route-tested | Read-only discovery and resolution at `/api/mcp`; no signing or approval tools |
 | Curvegrid MultiBaas | Root contracts linked on Sepolia; event ingestion pending live activity | Read-only indexed Registry/Resolver history through Governance UI, API and MCP; initial free-plan backfill spans only 100 blocks and does not index every provider resolver |
 | Agent Skill | Implemented | Discovery, source validation, fresh resolution and approved payment instructions in `integrations/agent-skill/SKILL.md` |
-| Merchant onboarding and service dashboard | Implemented; public wallet rehearsal pending | Resumable provider setup, service commit/reveal, listing states and live native permission checks |
+| Merchant onboarding and service dashboard | Implemented; public wallet rehearsal pending | Resumable provider setup, single-transaction shared-provider publication (older registrars retain commit/reveal), listing states and live native permission checks |
 | Address-level merchant analytics | Implemented; hosted scanner setup pending | Finalized USDC receipts, separate evidence classifications, shared-address totals, historical control epochs and reorg replay |
 | Provider registry tree | Implemented; public setup pending | Native provider setup, shared resolver, delegate replacement and accepted Admin handovers |
 | Buy an arbitrary `.eth` | Not implemented | Requires official ETHRegistrar availability, rent, funding and commit/reveal integration |
-| Call metadata | Implemented | `ens402.call` publishes method, schemas and examples; new publication verifies backend metadata before commit/reveal and Guard pins it before signing; version aliases remain deferred |
+| Call metadata | Implemented | `ens402.call` publishes method, schemas and examples; new publication verifies backend metadata before registration and Guard pins it before signing; version aliases remain deferred |
 | World, ERC-8004, session keys | Deferred | Not mandatory runtime dependencies |
 
 ## The three layers

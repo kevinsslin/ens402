@@ -97,12 +97,7 @@ contract ServiceRegistrar is IServiceRegistrar {
         _validate(service, msg.sender);
         if (currentResolver && service.payTo != msg.sender) revert InvalidRecord();
         bytes32 commitment = makeCommitment(service, msg.sender, secret);
-        uint256 committedAt = commitments[commitment];
-        if (
-            committedAt == 0 || block.timestamp < committedAt + MIN_COMMITMENT_AGE
-                || block.timestamp > committedAt + MAX_COMMITMENT_AGE
-        ) revert CommitmentNotReady();
-        delete commitments[commitment];
+        _consumeCommitment(commitment);
         bytes32 node = keccak256(abi.encodePacked(parentNode, keccak256(bytes(service.label))));
         bytes memory dns = abi.encodePacked(uint8(bytes(service.label).length), service.label, parentDNS);
         resolverAddress = _configureResolver(service, commitment, node, dns);
@@ -117,6 +112,16 @@ contract ServiceRegistrar is IServiceRegistrar {
         );
         emit ServiceRegistered(node, msg.sender, resolverAddress, tokenId, service.label);
         registrationEntered = false;
+    }
+
+    /// @dev Open registrars require a prior commitment. Permissioned variants may omit this delay.
+    function _consumeCommitment(bytes32 commitment) internal virtual {
+        uint256 committedAt = commitments[commitment];
+        if (
+            committedAt == 0 || block.timestamp < committedAt + MIN_COMMITMENT_AGE
+                || block.timestamp > committedAt + MAX_COMMITMENT_AGE
+        ) revert CommitmentNotReady();
+        delete commitments[commitment];
     }
 
     /// @dev Open registration by default. Provider-specific subclasses may check native authority.
