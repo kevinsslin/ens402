@@ -6,7 +6,7 @@
     "dev": "pnpm --filter @ens402/web dev",
     "build": "pnpm --filter @ens402/web build",
     "typecheck": "pnpm --filter @ens402/sdk typecheck && pnpm --filter @ens402/server typecheck && pnpm --filter @ens402/web typecheck",
-    "test": "vitest run packages/sdk/test packages/server/test/config.test.ts packages/server/test/merchant-demo.test.ts packages/server/test/merchant-delivery.test.ts packages/server/test/discovery.test.ts packages/server/test/resolver-config.test.ts scripts/ens/provider-config.test.ts",
+    "test": "vitest run packages/sdk/test packages/server/test/config.test.ts packages/server/test/transport.test.ts packages/server/test/merchant-demo.test.ts packages/server/test/merchant-delivery.test.ts packages/server/test/discovery.test.ts packages/server/test/resolver-config.test.ts scripts/ens/provider-config.test.ts",
     "test:intercepta:live": "tsx scripts/intercepta-live.ts",
     "test:privy:live": "tsx scripts/privy-live.ts",
     "test:contracts": "forge test --root contracts --no-storage-caching -vv",

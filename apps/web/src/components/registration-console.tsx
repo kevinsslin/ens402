@@ -446,7 +446,7 @@ export function RegistrationConsole({
         if (receipt.status !== "success")
           throw new Error("Commitment reverted.");
         setMessage(
-          "Commitment confirmed. Wait 60 seconds, then complete registration.",
+          "First transaction confirmed. Wait at least 60 seconds, then choose Finish registration to sign the second transaction and publish your ENS service.",
         );
       } else {
         const draft =
@@ -848,8 +848,16 @@ export function RegistrationConsole({
                   override powers. This is not an independent mainnet .eth
                   registration.
                 </p>
+                <p className="mt-4 text-sm leading-6">
+                  Two Sepolia transactions are required: first submit a hidden
+                  commitment to your name and settings, wait at least 60 seconds
+                  after confirmation, then register the name and publish its
+                  records. Each transaction requires a wallet confirmation and
+                  gas. The first transaction alone does not publish your
+                  service.
+                </p>
                 <Button className="mt-5" disabled={busy || example}>
-                  1. Commit registration
+                  1. Start registration
                 </Button>
                 <Button
                   type="button"
@@ -858,7 +866,7 @@ export function RegistrationConsole({
                   disabled={busy || example}
                   onClick={() => run(true)}
                 >
-                  2. Complete / resume registration
+                  2. Finish registration
                 </Button>
               </div>
             </fieldset>
