@@ -162,3 +162,30 @@ it("checks a just-registered name even before catalog ingestion", async () => {
     merchantDashboard("demo.ens402.eth", wallet, "evil.other.eth"),
   ).rejects.toThrow("directly below");
 });
+it("uses a distinct deterministic resolver salt when resuming a deployed provider registry", async () => {
+  client.readContract.mockImplementation(async ({ functionName }) => {
+    if (functionName === "findExpiry") return 1000000n;
+    if (functionName === "findOwner") return admin;
+    if (functionName === "getSubregistry") return registry;
+    if (functionName === "verifyContract") return currentDeployment.registryImplementation;
+    if (functionName === "hasRootRoles") return true;
+    throw Error("Unexpected read");
+  });
+  client.getCode.mockResolvedValue("0x6000");
+  client.simulateContract.mockImplementation(async ({ args }) => {
+    if (args[1] === 123n) throw Error("Registry already occupies this factory salt");
+    return { result: "0x4444444444444444444444444444444444444444" };
+  });
+  const input = { parent: "ens402.eth", label: "demo", admin, platformSigner: admin, ops: wallet, treasury: registry, salt: "123" };
+  const plan = await planProvider(input);
+  expect(plan.setup.resolverSalt).not.toBe("123");
+  expect(plan.setup.registry).toBe(registry);
+  expect(plan.transactions[0]?.description).toContain("Deploy shared");
+  client.getCode.mockImplementation(async ({ address }) => address === registry ? "0x6000" : "0x");
+  const resumed = await planProvider(plan.setup);
+  expect(resumed.setup.resolverSalt).toBe(plan.setup.resolverSalt);
+  expect(resumed.setup.resolver).toBe(plan.setup.resolver);
+});
+it("rejects an explicitly reused resolver salt before RPC calls", async () => {
+  await expect(planProvider({ parent: "ens402.eth", label: "demo", admin, platformSigner: admin, ops: wallet, treasury: registry, salt: "123", resolverSalt: "123" })).rejects.toThrow("distinct");
+});

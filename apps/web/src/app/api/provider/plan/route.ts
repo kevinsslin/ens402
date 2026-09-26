@@ -21,14 +21,15 @@ export async function POST(request: Request) {
     return Response.json(result, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const throttled = error instanceof Error && /rate.?limit|429|too many requests/i.test(error.message);
+    const reverted = error instanceof Error && /revert/i.test(error.message);
     return Response.json(
       {
-        error: throttled ? "Sepolia RPC providers are busy. Your setup is saved. Wait a moment, then continue this step." :
+        error: throttled ? "Sepolia RPC providers are busy. Your setup is saved. Wait a moment, then continue this step." : reverted ? "This setup transaction was rejected by the ENS contract during simulation. No new transaction was sent. Your existing provider is unchanged." :
           error instanceof Error &&
           error.message.length < 300 &&
           !error.message.includes("http")
             ? error.message
-            : "Provider planning unavailable",
+            : "Could not read or simulate the next setup step on Sepolia. Your existing provider and saved progress are unchanged. Try Continue setup again.",
       },
       { status: throttled ? 503 : 400, headers: { "Cache-Control": "no-store", ...(throttled ? { "Retry-After": "5" } : {}) } },
     );

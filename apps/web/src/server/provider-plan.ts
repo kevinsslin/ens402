@@ -1,4 +1,4 @@
-import { encodeFunctionData, zeroAddress, type Address, type Hex } from "viem";
+import { encodeFunctionData, keccak256, stringToHex, zeroAddress, type Address, type Hex } from "viem";
 import { normalize } from "viem/ens";
 import { ensClient } from "@ens402/server";
 import {
@@ -23,6 +23,7 @@ export type ProviderSetup = {
   ops: string;
   treasury: string;
   salt: string;
+  resolverSalt?: string;
   expiry?: string;
   registry?: string;
   resolver?: string;
@@ -50,6 +51,10 @@ export async function planProvider(input: ProviderSetup) {
   if (!/^\d{1,78}$/.test(input.salt) || BigInt(input.salt) >= 2n ** 256n)
     throw Error("Invalid deployment salt");
   const salt = BigInt(input.salt);
+  // The native factory identifies proxies by sender and salt, not implementation.
+  // Domain-separate resolver creation from the registry deployment and persist it.
+  const resolverSalt = input.resolverSalt ?? BigInt(keccak256(stringToHex(`ens402:provider-resolver:${name}:${admin.toLowerCase()}:${salt}`))).toString();
+  if (!/^\d{1,78}$/.test(resolverSalt) || BigInt(resolverSalt) >= 2n ** 256n || BigInt(resolverSalt) === salt) throw Error("Resolver deployment salt must be distinct from the registry salt");
   const client = ensClient();
   const block = await client.getBlock();
   let platform: Address = deployment.rootRegistry;
@@ -211,7 +216,7 @@ export async function planProvider(input: ProviderSetup) {
       ops,
       treasury,
       name,
-      salt,
+      BigInt(resolverSalt),
       block.number,
       resolver,
     );
@@ -242,6 +247,7 @@ export async function planProvider(input: ProviderSetup) {
       label,
       registry,
       resolver,
+      resolverSalt,
       expiry: String(expiry),
     },
     name,
