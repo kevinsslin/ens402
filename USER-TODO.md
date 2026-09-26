@@ -2,7 +2,11 @@
 
 Updated September 26, 2026. All development and demo payments use testnets.
 
-## 1. Register the ENSv2 testnet parent
+## 1. Confirm the registered parent deployment
+
+The owner reports registering `ens402.eth` to `0x0D2FDDee5b84540A9766c025ad26dCaFb9FeF380`. On September 26, the pinned ENSv2 Sepolia registry still returned a zero owner and no subregistry. ENSv1 Sepolia also returned a zero owner. A transaction link or registration-app URL is needed to identify the actual network/deployment before preparing namespace transactions. Registration is reported by the owner but not yet verified on the supported deployment.
+
+### Supported testnet registration
 
 - Open **https://app.ens.dev**, the testnet app linked from https://docs.ens.domains/learn/deployments.
 - Connect the wallet you want to own the namespace and use Sepolia, not mainnet.

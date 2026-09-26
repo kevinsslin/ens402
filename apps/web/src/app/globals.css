@@ -4,9 +4,9 @@
 
 @custom-variant dark (&:is(.dark *));
 @theme inline {
-  --font-sans: var(--font-satoshi), ui-sans-serif, system-ui, sans-serif;
-  --font-heading: var(--font-satoshi), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-editorial), Georgia, serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -32,25 +32,26 @@
 }
 :root {
   color-scheme: light;
-  --background: #fafbff;
-  --foreground: #192333;
+  --background: #f7f7f2;
+  --foreground: #191919;
   --card: #ffffff;
-  --primary: #0054cc;
+  --primary: #006c96;
   --primary-foreground: #ffffff;
-  --secondary: #eef5ff;
-  --muted-foreground: #56657a;
+  --secondary: #e4f0f4;
+  --muted-foreground: #545650;
   --destructive: #b42318;
-  --border: #dce4ef;
+  --border: #dcded6;
 }
 @layer base {
   * { @apply border-border; }
-  body { @apply bg-background text-foreground; }
+  body { @apply bg-background text-foreground font-sans; }
+  h1, h2 { font-family: var(--font-heading); font-weight: 400; letter-spacing: -.035em; }
   html { scroll-behavior: smooth; scroll-padding-top: 6rem; }
   ::selection { background: var(--primary); color: var(--primary-foreground); }
   a:focus-visible, summary:focus-visible { outline: 2px solid var(--primary); outline-offset: 5px; }
 }
-.section-shell { @apply mx-auto w-full max-w-6xl px-5 sm:px-8; }
-.eyebrow { @apply font-mono text-xs font-medium uppercase tracking-[.16em] text-primary; }
+.section-shell { @apply mx-auto w-full max-w-[1280px] px-5 sm:px-8; }
+.eyebrow { @apply font-mono text-xs font-medium uppercase tracking-[.1em] text-primary; }
 .technical-grid { background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px); background-size: 40px 40px; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
@@ -59,7 +60,19 @@
 @keyframes flow-enter { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 .flow-enter { animation: flow-enter 240ms ease-out; }
 
-/* ENS Thorin blue palette; darker text/action shade preserves contrast on white. */
-.hero-wash { background: radial-gradient(ellipse at 20% 0%, #eef5ff 0%, transparent 55%), radial-gradient(ellipse at 90% 10%, #f3edff 0%, transparent 45%); }
-.flow-panel { box-shadow: 0 12px 48px -24px #3889ff40; }
-.flow-connector { background: linear-gradient(90deg, #3889ff, #a099ff); }
+/* Editorial typography inspired by ens.domains/ensv2. Open-source font alternatives. */
+.hero-wash { background: var(--background); }
+.display-title { font-family: var(--font-heading); font-size: clamp(3.25rem, 7.2vw, 5.75rem); line-height: .96; letter-spacing: -.035em; font-weight: 400; text-wrap: balance; }
+.section-title { font-family: var(--font-heading); font-size: clamp(2.5rem, 5vw, 4.5rem); line-height: 1; letter-spacing: -.035em; font-weight: 400; text-wrap: balance; }
+.hero-copy { font-size: 18px; line-height: 1.5; }
+.flow-panel { box-shadow: none; }
+.flow-connector { background: linear-gradient(90deg, #0082bb, #008c46); }
+.editorial-hero { position: relative; isolation: isolate; overflow: hidden; }
+.editorial-hero::before { content: ''; position: absolute; z-index: -1; inset: 0; opacity: .35; background-image: radial-gradient(#c9d0c5 .65px, transparent .65px); background-size: 5px 5px; mask-image: linear-gradient(to bottom, #000, transparent); }
+.hero-emblem { display: inline-flex; align-items: center; gap: .75rem; border: 1px solid currentColor; border-radius: 4px; padding: .35rem .75rem; font-family: var(--font-heading); font-size: 32px; line-height: 1; color: #063c50; }
+.permission-card:nth-child(1) { background: #e0eff5; }
+.permission-card:nth-child(2) { background: #e1efde; }
+.permission-card:nth-child(3) { background: #f4e2ed; }
+[data-slot="button"][data-variant="default"] { background: #191919; color: #fff; }
+[data-slot="button"][data-variant="default"]:hover { background: #343732; }
+@media (max-width: 639px) { .display-title { line-height: 1.02; } }

@@ -52,7 +52,7 @@ export default function Architecture() {
       ['Pending live integration', 'Privy signing and provider policy rejection tests passed. The production Neon database is connected and migrated. A registered live service, namespace registrar deployment, human login and funded Base Sepolia payment still need end-to-end validation.'],
     ].map(([title, body]) => <div key={title} className="rounded-xl border p-5"><h3 className="text-sm font-medium">{title}</h3><p className={prose}>{body}</p></div>)}</div></section>
     <section className={section}><h2 className="text-xl font-medium">Primary sources</h2><ul className="mt-5 space-y-3 text-sm">{[
-      ['ENSv2 pinned contracts', 'https://github.com/ensdomains/contracts-v2/tree/48b3e2d39513b9dd32ef1850877a29009bc807b9'],
+      ['ENSv2 pinned contracts', 'https://github.com/ensdomains/contracts-v2/tree/71a3b7339dbc55ab47667abdfe8303bac4f4c24e'],
       ['ENSIP-26 service discovery proposal', 'https://docs.ens.domains/ensip/26'],
       ['Intercepta Quick Scan Address schema', 'https://docs.web3antivirus.io/reference/quick-scan-address'],
       ['Privy Ethereum policy examples', 'https://docs.privy.io/controls/policies/example-policies/ethereum'],
