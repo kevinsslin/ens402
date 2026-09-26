@@ -18,15 +18,16 @@ export default function Architecture() {
       <div className="max-w-3xl">
         <p className="eyebrow mt-9">Architecture / sponsor walkthrough</p>
         <h1 className="mt-4 text-4xl font-medium tracking-tight sm:text-5xl">
-          Who publishes the service?
+          Public x402 configuration.
           <br />
-          <span className="text-primary">Who can independently discover it?</span>
+          <span className="text-primary">Governed updates. Checked payments.</span>
         </h1>
         <p className="mt-6 text-base leading-8 text-muted-foreground">
-          ENS402 is building an open discovery layer for x402 on ENS: providers
-          publish service information, independent indexers build directories,
-          and agents verify payment requests before signing. The verification
-          core exists; open indexing and advertised-price checks are planned.
+          ENS is the public configuration and discovery foundation. Native EAC
+          governs record updates. The ENS402 SDK guards purchases by comparing
+          offchain HTTP 402 requests with current ENS records and buyer approval.
+          Our Console uses this same core through its backend. Open indexing
+          and advertised-price checks are planned.
         </p>
       </div>
       <NamespaceArchitecture />
@@ -328,6 +329,22 @@ export default function Architecture() {
         <h2 className="mt-3 text-2xl font-medium">How the other pieces fit.</h2>
         <div className="mt-6 space-y-3">
           {[
+            [
+              "Does EAC prevent a server from changing its bill?",
+              "EAC restricts writes to ENS records. It does not control the API server. The SDK detects disagreement between a server’s HTTP 402 and approved ENS settings before requesting a signature. Authorized ENS changes still need to satisfy buyer approval; Admin retains root authority.",
+            ],
+            [
+              "Does ENS automatically route requests to a new endpoint?",
+              "An integrated client resolves the name and calls the current endpoint. ENS does not proxy HTTP traffic. Our current SDK checks the URL against buyer-approved endpoints; a new URL outside that scope requires new approval. It also rechecks configuration immediately before signing.",
+            ],
+            [
+              "Does onchain payment create reputation?",
+              "Settlement supplies evidence of payment, not proof of service quality. A future integration can link service identity to receipts and ERC-8004 feedback. Feedback remains attached to the registry’s agent identity; names, parents and payout addresses do not automatically inherit a reputation score. Ownership and identity continuity must be verified.",
+            ],
+            [
+              "Does the Console actually use the SDK?",
+              "Yes. The hosted backend imports resolveService, purchaseResource, verifyRequest and settlement verification from @ens402/sdk. It adds accounts, approvals, reservations and signer integration. Independent apps can integrate the SDK core in their own runtime; the hosted API client is a separate integration option.",
+            ],
             [
               "Has ENS already explored discovery?",
               "Yes. Draft ENSIP-26 defines agent context and endpoint records; draft ENSIP-27 describes node classification and metadata schemas. ENSv2 also documents indexing. ENS402 builds on these foundations for x402 service publication, independent catalog reconstruction, scoped updates and payment checks. We do not claim to invent ENS discovery.",

@@ -10,8 +10,8 @@ const heading = EB_Garamond({ subsets: ['latin'], variable: '--font-editorial', 
 const mono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' });
 
 export const metadata: Metadata = {
-  title: 'ENS402 | Publish on ENS. Discover independently.',
-  description: 'Building an open discovery layer for x402 on ENS: publicly published services, independent indexing, native permissions and payment verification. Testnet prototype.',
+  title: 'ENS402 | Discover. Govern. Guard.',
+  description: 'Public x402 service configuration on ENS, native EAC governance and SDK payment verification. Independent discovery and published pricing in development. Testnet prototype.',
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
