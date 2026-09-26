@@ -1,3 +1,4 @@
+import Image from "next/image";
 import {
   ArrowDown,
   ArrowRight,
@@ -86,12 +87,35 @@ export function PaymentVerificationFlow() {
       </div>
       <div className="rounded-xl border border-primary/25 bg-primary/5 p-4">
         <p className="flex items-center gap-2 font-medium">
-          <ShieldCheck size={18} className="text-primary" /> Guard
+          <ShieldCheck size={18} className="text-primary" /> Buyer approval &
+          limits
         </p>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          Terms match + approved buyer scope + spending limits + recipient
-          screening.
+          Check the approved service, recipient, endpoints and spending limits.
         </p>
+      </div>
+      <div className="flex justify-center py-3 text-primary">
+        <ArrowDown size={20} />
+      </div>
+      <div className="rounded-xl border border-violet-200 bg-violet-50/50 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="font-medium">Recipient risk check</p>
+          <span className="inline-flex items-center gap-2 text-sm font-medium">
+            <Image src="/brands/intercepta.svg" alt="" width={17} height={24} />
+            Intercepta
+          </span>
+        </div>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+          Intercepta returns address risk signals. ENS402 pauses or rejects
+          flagged payments; missing or expired evidence pauses payment.
+        </p>
+        <p className="mt-3 text-xs leading-5 text-muted-foreground">
+          Current coverage: Ethereum-mainnet address intelligence. Payment
+          chain: Base Sepolia. This does not assess API quality.
+        </p>
+      </div>
+      <div className="flex justify-center py-3 text-primary">
+        <ArrowDown size={20} />
       </div>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">

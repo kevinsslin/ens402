@@ -47,7 +47,7 @@ export function LandingLayers() {
         <p className="eyebrow flex items-center gap-3"><ShieldCheck size={18} /> 03 / Guard</p>
         <h2 className="mt-5 text-4xl leading-tight sm:text-5xl">Match the API’s bill to ENS.<br />Then request a signature.</h2>
         <p className="mt-6 text-lg leading-8 text-muted-foreground">A compromised API can return a different recipient or a higher price. Before signing, the SDK compares the HTTP 402 request with freshly resolved ENS configuration.</p>
-        <p className="mt-4 leading-7 text-muted-foreground">Check the recipient, network, token and fixed price, then apply buyer limits and recipient screening. If a server changes the recipient, stop before requesting a signature.</p>
+        <p className="mt-4 leading-7 text-muted-foreground">After matching the recipient, network, token and price, check buyer limits. Intercepta then supplies risk signals about the receiving address. ENS402 applies its risk rules before requesting a signature.</p>
         <p className="mt-4 text-sm leading-6 text-muted-foreground">Our Console uses the same SDK. Bring your own signer; payments signed outside the SDK bypass these checks. Matching configuration does not prove service quality.</p>
         <Link href="/docs" className="mt-6 inline-flex items-center gap-2 font-medium text-primary">Integrate the SDK <ArrowRight size={17} /></Link>
       </div>

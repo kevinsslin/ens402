@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { EB_Garamond, Inter, Geist_Mono } from "next/font/google";
 import { Layers3 } from "lucide-react";
-import { SiteNav } from "@/components/site-nav";
+import { ConsoleNav, SiteNav } from "@/components/site-nav";
 import "./globals.css";
 
 const sans = Inter({
@@ -51,7 +51,10 @@ export default function RootLayout({
             <SiteNav />
           </div>
         </header>
-        <main id="main-content">{children}</main>
+        <main id="main-content">
+          <ConsoleNav />
+          {children}
+        </main>
         <footer className="border-t">
           <div className="section-shell flex flex-col justify-between gap-5 py-9 text-sm leading-relaxed text-muted-foreground sm:flex-row">
             <div>
