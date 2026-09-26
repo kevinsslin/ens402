@@ -57,7 +57,7 @@
   html { scroll-behavior: auto; }
   *, *::before, *::after { transition-duration: 0s !important; animation: none !important; }
   /* Keep transaction activity visible with a slower, small progress indicator. */
-  .setup-progress-spinner { animation: setup-progress-spin 2.4s linear infinite !important; }
+  .setup-progress-spinner { animation: spin 2.4s linear infinite !important; }
 }
 @keyframes flow-enter { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 .flow-enter { animation: flow-enter 240ms ease-out; }
@@ -74,5 +74,3 @@
 [data-slot="button"][data-variant="default"] { background: #191919; color: #fff; }
 [data-slot="button"][data-variant="default"]:hover { background: #343732; }
 @media (max-width: 639px) { .display-title { line-height: 1.02; } }
-
-@keyframes setup-progress-spin { to { transform: rotate(360deg); } }

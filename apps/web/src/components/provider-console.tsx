@@ -287,6 +287,8 @@ export function ProviderConsole({
       </details>
       {(plan || pending) && <SetupProgressCard
         phase={pending?.phase ?? plan?.phase ?? 0} activity={activity}
+        parties={{ops: setup.ops, treasury: setup.treasury, registrar: setup.registrar}}
+        stepDescription={pending?.step.description ?? plan?.transactions[0]?.description}
         title={pending ? setupStepCopy(pending.step.description).title : nextStep.title}
         description={pending ? `${setupStepCopy(pending.step.description).body} Submitted. Checking automatically; no new signature is needed.` : nextStep.body}
         actionLabel={pending ? "Check transaction" : nextStep.action}
