@@ -139,7 +139,7 @@ export function DiscoveryConsole({
           </label>
         </details>
       </form>
-      <AgentSetup />
+      <AgentSetup search={{ query, valid: !ceiling || /^\d+(\.\d{1,6})?$/.test(ceiling), ...(/^\d+(\.\d{1,6})?$/.test(ceiling) ? { maxPricePerRequestAtomic: parseUnits(ceiling, 6).toString() } : {}) }} />
       {!result && !busy && !error && !catalogNotReady && (
         <div className="mt-4 flex flex-wrap gap-2" aria-label="Example prompts">
           {[
@@ -277,8 +277,7 @@ export function DiscoveryConsole({
                   </pre>
                   <p className="mt-2 text-xs leading-6 text-muted-foreground">
                     This command does not sign or pay. For a purchase, inspect
-                    and approve in Console, then use the approved ENS402 SDK
-                    flow.
+                    and approve in Console, then export a CLI checkout or use the SDK.
                   </p>
                   <p className="mt-3 text-xs text-muted-foreground">
                     {service.fixture && service.indexedBlock === "0"

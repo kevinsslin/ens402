@@ -1,8 +1,8 @@
-import { ArrowDown, Bot, Braces, Database, Search } from "lucide-react";
+import { ArrowDown, Bot, Braces, Database, Search, Terminal } from "lucide-react";
 
-/** The catalog is shared by the search API and its SDK/MCP access paths. */
+/** The catalog is shared by the search API and its SDK/CLI/MCP access paths. */
 export function AgentDiscoveryFlow() {
-  return <figure className="rounded-2xl border bg-white p-5 sm:p-7" aria-label="Public ENS records are indexed for keyword and semantic search; an agent accesses the search API through SDK or MCP">
+  return <figure className="rounded-2xl border bg-white p-5 sm:p-7" aria-label="Public ENS records are indexed for keyword and semantic search; an agent accesses the search API through SDK, CLI or MCP">
     <div className="rounded-xl border bg-background p-4">
       <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary"><Database size={15} /> Onchain data / ENS</p>
       <p className="mt-2 break-all font-mono text-xs">service2.provider.ens402.eth</p>
@@ -14,13 +14,12 @@ export function AgentDiscoveryFlow() {
       <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-primary/15 bg-white p-3 text-sm"><Search size={16} className="text-primary" /><span>Keyword + semantic search</span></div>
       <div className="mt-3 flex items-center justify-between gap-2 text-xs"><span className="text-muted-foreground">Descriptions → embeddings → ranked results</span><span className="shrink-0 font-medium text-primary">Search API</span></div>
     </div>
-    <div className="relative mx-auto h-9 w-[65%]" aria-hidden="true"><div className="absolute left-1/2 top-0 h-4 border-l border-primary/40" /><div className="absolute inset-x-0 top-4 h-5 rounded-t-lg border-x border-t border-primary/40" /></div>
-    <div className="mx-auto grid max-w-sm grid-cols-[1fr_auto_1fr] items-center gap-0">
-      <div className="relative z-10 rounded-xl border border-primary/30 bg-blue-50 px-3 py-3 text-center"><Braces className="mx-auto text-primary" size={21} aria-hidden="true" /><p className="mt-1 text-sm font-semibold text-primary">SDK</p></div>
-      <div className="relative px-5 text-primary"><span className="absolute inset-x-0 top-1/2 border-t-2 border-primary/40" aria-hidden="true" /><div className="relative rounded-2xl border border-primary/20 bg-white p-3"><Bot size={48} strokeWidth={1.5} aria-hidden="true" /></div></div>
-      <div className="relative z-10 rounded-xl border border-primary/30 bg-blue-50 px-3 py-3 text-center"><Braces className="mx-auto text-primary" size={21} aria-hidden="true" /><p className="mt-1 text-sm font-semibold text-primary">MCP</p></div>
+    <div className="relative mx-auto h-9 w-[68%]" aria-hidden="true"><div className="absolute left-1/2 top-0 h-9 border-l border-primary/40" /><div className="absolute inset-x-0 top-4 h-5 rounded-t-lg border-x border-t border-primary/40" /></div>
+    <div className="mx-auto grid max-w-md grid-cols-3 gap-3">
+      {[{ label: "SDK", detail: "Your code", Icon: Braces }, { label: "CLI", detail: "Your terminal", Icon: Terminal }, { label: "MCP", detail: "Agent tools", Icon: Braces }].map(({ label, detail, Icon }) => <div key={label} className="rounded-xl border border-primary/30 bg-blue-50 px-2 py-3 text-center"><Icon className="mx-auto text-primary" size={22} aria-hidden="true" /><p className="mt-2 text-sm font-semibold text-primary">{label}</p><p className="mt-1 text-xs text-muted-foreground">{detail}</p></div>)}
     </div>
-    <p className="mt-3 text-center text-sm font-semibold">Your agent</p>
-    <figcaption className="mt-4 text-center text-xs leading-6 text-muted-foreground">Two interfaces to the same search. Use our API or run your own indexer and API.</figcaption>
+    <div className="relative mx-auto h-8 w-[68%]" aria-hidden="true"><div className="absolute inset-x-0 top-0 h-4 rounded-b-lg border-x border-b border-primary/40" /><div className="absolute left-1/2 top-0 h-8 border-l border-primary/40" /></div>
+    <div className="flex items-center justify-center gap-3"><div className="rounded-2xl border border-primary/20 bg-white p-3 text-primary"><Bot size={40} strokeWidth={1.5} aria-hidden="true" /></div><p className="text-sm font-semibold">Your agent</p></div>
+    <figcaption className="mt-4 text-center text-xs leading-6 text-muted-foreground">Three interfaces to the same search. Use our API or run your own indexer and API.</figcaption>
   </figure>;
 }

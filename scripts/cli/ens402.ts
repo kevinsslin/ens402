@@ -7,7 +7,7 @@ import { formatUnits } from "viem";
 import { baseUrl, CliError, loadConfig, paymentSummary, compactExecution, executePayment, uuid } from "./core";
 
 const help = `ENS402 CLI (Node.js 22+, testnets only)
-  search "your task" [--limit 3] [--base-url https://ens402.vercel.app]
+  search "your task" [--limit 3] [--max-price-atomic 10000] [--base-url https://ens402.vercel.app]
   inspect service.provider.ens402.eth [--base-url URL]
   pay --config checkout.json --id UUID [--request request.json] [--yes]
   status --config checkout.json --id UUID
@@ -22,7 +22,7 @@ Save each --id and reuse it for status/reconciliation, never blindly retry.
 
 async function main() {
   const { positionals, values } = parseArgs({ allowPositionals: true, options: {
-    "base-url": { type: "string" }, limit: { type: "string" }, config: { type: "string" }, id: { type: "string" }, request: { type: "string" }, tx: { type: "string" }, yes: { type: "boolean" }, help: { type: "boolean" },
+    "base-url": { type: "string" }, limit: { type: "string" }, "max-price-atomic": { type: "string" }, config: { type: "string" }, id: { type: "string" }, request: { type: "string" }, tx: { type: "string" }, yes: { type: "boolean" }, help: { type: "boolean" },
   } });
   const [command, query] = positionals;
   if (!command || command === "help" || values.help) { console.log(help); return; }
@@ -30,7 +30,7 @@ async function main() {
   if (command === "search") {
     if (positionals.length !== 2) throw new CliError('Provide one quoted search query');
     const origin = baseUrl(values["base-url"] || "https://ens402.vercel.app");
-    const result = await discover({ query, mode: "hybrid", pageSize: Number(values.limit ?? 3) }, { apiUrl: `${origin}/api/discover` });
+    const result = await discover({ query, mode: "hybrid", pageSize: Number(values.limit ?? 3), maxPricePerRequestAtomic: values["max-price-atomic"] }, { apiUrl: `${origin}/api/discover` });
     console.log(JSON.stringify({ services: result.results.map(({service}) => ({ name: service.name, description: service.description, price: `${formatUnits(BigInt(service.pricePerRequestAtomic), service.assetDecimals)} USDC / request`, demo: service.fixture, console: `${origin}/console?service=${encodeURIComponent(service.name)}` })), semantic: result.semantic }, null, 2));
     return;
   }
