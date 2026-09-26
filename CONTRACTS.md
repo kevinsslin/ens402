@@ -16,18 +16,34 @@ flowchart TD
   Treasury[Treasury operator] -->|payment setter key| Resolver
 ```
 
-## Exact native roles
+## Wallet, resource and role
 
-| Contract | Grant | Purpose |
-| --- | --- | --- |
-| UserRegistry root | `ROLE_REGISTRAR = 1` to ServiceRegistrar | Issue available labels in this namespace |
-| UserRegistry name | `ROLE_SET_RESOLVER = 1 << 24` and its admin to registering owner | Manage the name's resolver pointer |
-| UserRegistry name | `ROLE_CAN_TRANSFER_ADMIN = (1 << 28) << 128` to owner | Permit native name transfer |
-| PermissionedResolver root | `ROLE_SET_TEXT = 1 << 4` and its admin to owner | Administer service configuration |
-| PermissionedResolver key resource | Native endpoint setter grant to endpoint operator | Change `agent-endpoint[x402]` |
-| PermissionedResolver key resource | Native payment setter grant to Treasury | Change `ens402.payment` |
+Role and scope are separate. `ROLE_SET_TEXT = 16` is the same action for Ops and Admin, but root authority covers every text key. `ROLE_SET_TEXT_ADMIN = 16 << 128` administers those grants.
 
-Current source `71a3b733` uses `setText(bytes name,...)`, `grantSetterRoles`, and `revokeRoles`. A key grant spans records within the resolver. Each service therefore gets a separate resolver. `SET_TEXT` is not a made-up ENS402 role. The earlier `48b3e2d` ABI is supported explicitly for compatibility tests.
+| Wallet | Contract / resource | Native roles | Effect |
+| --- | --- | --- | --- |
+| Ops | Dedicated resolver / `keccak256("agent-endpoint[x402]")` | `ROLE_SET_TEXT` | Update API URL only |
+| Treasury writer | Dedicated resolver / `keccak256("ens402.payment")` | `ROLE_SET_TEXT` | Update payment record only |
+| Service Admin | Dedicated resolver / root `0` | `ROLE_SET_TEXT`, `ROLE_SET_TEXT_ADMIN` | Write every text key, grant/revoke writers |
+| Service Admin | UserRegistry / service name | `ROLE_SET_RESOLVER`, `ROLE_SET_RESOLVER_ADMIN`, `ROLE_CAN_TRANSFER_ADMIN` | Manage resolver pointer and native name transfer |
+| Platform owner | Child UserRegistry / root `0` | `ROLE_REGISTRAR`, `ROLE_REGISTRAR_ADMIN` | Issue names and manage registrar grants |
+| ServiceRegistrar | Child UserRegistry / root `0` | `ROLE_REGISTRAR` | Issue names only |
+
+The service Admin is the wallet calling `register`. The platform owner controls the parent namespace; it is not automatically the service Admin. The USDC receiver is independent from the Treasury writer and gets no role simply by receiving funds.
+
+Current native `grantSetterRoles(setText(...), wallet)` derives the resource and role. For text setters, the resource is the hash of the text key, not the full ENS name. Key grants therefore span records within a resolver: use one resolver per service. No fabricated Ops/Admin role exists in ENS. These are application labels for exact native grants.
+
+This table is the intended registration configuration, not a live wallet audit. Other existing grants and parent/root powers can add authority.
+
+## Implementation map
+
+- `ServiceRegistrar.sol`: validate input, consume commitment, configure native resolver, publish name atomically.
+- `libraries/ENSRoles.sol`: official role names and bitmaps.
+- `libraries/ENSDeployment.sol`: current and legacy deployment compatibility pins. New setup scripts use current only.
+- `interfaces/INativeENS.sol`: external ABI declarations; no permission implementation.
+- `scripts/ens/README.md`: the two setup workflows, exact env inputs and transaction order.
+
+Current source `71a3b733` uses `setText(bytes name,...)`, `grantSetterRoles` and `revokeRoles`. Legacy `48b3e2d` remains isolated compatibility coverage; it is not a second setup option.
 
 ## Registration constraints
 
@@ -35,7 +51,7 @@ Current source `71a3b733` uses `setText(bytes name,...)`, `grantSetterRoles`, an
 - Commit/reveal binds chain, registrar, owner, label, endpoint, recipient, delegates and secret. Reveal requires a 60-second wait and expires after one day.
 - Labels are 3-32 lowercase ASCII letters, digits or hyphens; leading/trailing hyphens are rejected. This deliberately narrow label policy avoids onchain ENS normalization ambiguity.
 - Endpoint must start with HTTPS and fit the size bound. Clients independently validate full URL syntax, DNS, actual HTTP 402 and payment settings.
-- Endpoint and Treasury delegates must be nonzero and distinct. The recipient is a Base Sepolia USDC address.
+- Endpoint and Treasury delegates must be nonzero and distinct. Ops must also differ from the service Admin. The recipient is a Base Sepolia USDC address.
 - Registration is free except gas, with a fixed namespace expiry at deployment. No token custody, payment hook, custom RBAC, broad token approval or upgrade proxy is introduced by ENS402.
 - Reentrancy is blocked across native ERC1155 receiver callbacks.
 

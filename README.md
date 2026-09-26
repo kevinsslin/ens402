@@ -38,7 +38,7 @@ pnpm setup:check
 pnpm dev
 ```
 
-`/architecture` is the sponsor walkthrough. `/console` supports Privy user login and scoped agent keys; `/operator` retains the admin-token workflow. `/docs` explains managed and self-signing integrations. `/register` enables native subdomain registration once the parent namespace is configured. Landing-page examples are labeled fixtures.
+`/permissions` explains each wallet, resource and native role. [scripts/ens/README.md](scripts/ens/README.md) separates platform setup from service setup. `/architecture` is the sponsor walkthrough. `/console` supports Privy user login and scoped agent keys; `/operator` retains the admin-token workflow. `/docs` explains managed and self-signing integrations. `/register` enables native subdomain registration once the parent namespace is configured. Landing-page examples are labeled fixtures.
 
 ## Verify
 

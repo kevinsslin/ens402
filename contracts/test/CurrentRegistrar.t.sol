@@ -48,6 +48,16 @@ contract CurrentRegistrarTest {
             .register("ens402fork", owner, address(registry), address(0), 1 << 20, uint64(block.timestamp + 30 days));
     }
 
+    function testOpsCannotAlsoBeServiceAdmin() public {
+        ServiceRegistrar.Service memory service =
+            ServiceRegistrar.Service("weather", "https://weather.example/api", treasury, owner, treasury);
+        registrar.commit(registrar.makeCommitment(service, owner, bytes32(uint256(2))));
+        vm.warp(block.timestamp + 60);
+        vm.expectPartialRevert(ServiceRegistrar.InvalidRecord.selector);
+        vm.prank(owner);
+        registrar.register(service, bytes32(uint256(2)));
+    }
+
     function testCurrentNativeRegistrationAndSetterRoles() public {
         ServiceRegistrar.Service memory s =
             ServiceRegistrar.Service("weather", "https://weather.example/api", treasury, ops, treasury);

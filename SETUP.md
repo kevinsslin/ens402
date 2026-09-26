@@ -54,7 +54,11 @@ pg_ctl -D "$PWD/.local/postgres/data" -m fast -w stop
 
 For a managed database, set DATABASE_URL and run only `pnpm db:migrate`. Migration creates ENS402-prefixed tables and does not alter legacy tables.
 
-## 3. Configure the ENS service
+## 3. Choose the ENS setup workflow
+
+See [scripts/ens/README.md](scripts/ens/README.md). Use `pnpm ens:namespace:plan` for the platform parent. Use `/register` for a new subname, or `pnpm ens:plan` for an already registered service. These are different workflows.
+
+### Configure one existing service
 
 Register a testnet name at https://app.ens.dev, or ask the ENS sponsor for one. The default integration pins contracts-v2 commit `71a3b7339dbc55ab47667abdfe8303bac4f4c24e`. Legacy deployment compatibility is tested separately. See [USER-TODO.md](USER-TODO.md) for the parent namespace workflow.
 
@@ -68,7 +72,7 @@ This creates ignored `docs/setup/ens-transactions.json`. It simulates deployment
 
 1. Deploy a native PermissionedResolver through ENS's VerifiableFactory.
 2. Write endpoint, payment and active status records.
-3. Grant the operator only `agent-endpoint[x402]` write permission.
+3. Grant Ops only `agent-endpoint[x402]` and Treasury only `ens402.payment` write permission. Set `ENS_TREASURY_ADDRESS` separately from `MERCHANT_PAY_TO`.
 4. Set the registered name's resolver pointer last.
 
 The name owner must review and submit the transactions in order with Sepolia ETH for gas. The generated resolver grants root text writing/administration to that owner; alias and upgrade roles are not assigned. Parent registry and resolver-pointer powers still exist and are documented.

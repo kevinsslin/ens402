@@ -3,6 +3,9 @@
   "include": [
     "scripts/anvil-payment.ts",
     "scripts/ens-fork.ts",
-    "scripts/current-ens-fork.ts"
+    "scripts/current-ens-fork.ts",
+    "scripts/ens-plan.ts",
+    "scripts/namespace-plan.ts",
+    "scripts/ens/shared.ts"
   ]
 }

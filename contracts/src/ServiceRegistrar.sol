@@ -8,10 +8,11 @@ import {
     ICurrentResolver,
     NativeGrant
 } from "./interfaces/INativeENS.sol";
+import {ENSDeployment} from "./libraries/ENSDeployment.sol";
 import {ENSRoles} from "./libraries/ENSRoles.sol";
 
 /// @notice Free testnet service registration. Native ENS enforces record permissions.
-/// @dev Grant this contract only REGISTRAR on a dedicated native subregistry.
+/// @dev Grant this contract only ROLE_REGISTRAR on a dedicated native subregistry.
 ///      The parent registry's administrators retain their native override powers.
 contract ServiceRegistrar {
     error InvalidConfiguration();
@@ -55,23 +56,7 @@ contract ServiceRegistrar {
         registry = INativeRegistry(registry_);
         factory = IVerifiableFactory(factory_);
         resolverImplementation = implementation_;
-        bytes32 hash = implementation_.codehash;
-        currentResolver = hash == 0x00de223fd76d537e07b24abe5537e3c852e934dbe4db22c02f94a143e4ceeea3;
-        if (
-            factory_.codehash
-                != (currentResolver
-                        ? bytes32(0x7ccfd46da461cb7145497a383f2a6e6582be057b8bef3de694530b699632ecda)
-                        : bytes32(0xaf680a81acf0d38ad5d0aa5fdf461171619788959147b8e193ba311214cedbec))
-        ) revert InvalidConfiguration();
-        if (!currentResolver && hash != 0x4dbadfa3bc41fcd525118b6cf8aab9f4f39de2eb2f770c76c9f7182eb6d10e78) {
-            revert InvalidConfiguration();
-        }
-        if (
-            factory.verifyContract(registry_)
-                != (currentResolver
-                        ? address(0xA80338aAA8D23831cEa25E858D1774534aBb0263)
-                        : address(0x840Fa461059862Ea466A711E8C98c8dE732061C0))
-        ) revert InvalidConfiguration();
+        currentResolver = ENSDeployment.validate(registry_, factory_, implementation_);
         parentNode = _namehash(parentDNS_, 0);
         parentDNS = parentDNS_;
         registrationExpiry = expiry_;
@@ -98,7 +83,7 @@ contract ServiceRegistrar {
         if (entered) revert ReentrantCall();
         entered = true;
         if (block.timestamp >= registrationExpiry) revert RegistrationExpired();
-        _validate(service);
+        _validate(service, msg.sender);
         bytes32 commitment = makeCommitment(service, msg.sender, secret);
         uint256 committedAt = commitments[commitment];
         if (
@@ -115,7 +100,7 @@ contract ServiceRegistrar {
             msg.sender,
             address(0),
             resolverAddress,
-            ENSRoles.SET_RESOLVER | ENSRoles.RESOLVER_ADMIN | ENSRoles.CAN_TRANSFER_ADMIN,
+            ENSRoles.ROLE_SET_RESOLVER | ENSRoles.ROLE_SET_RESOLVER_ADMIN | ENSRoles.ROLE_CAN_TRANSFER_ADMIN,
             registrationExpiry
         );
         emit ServiceRegistered(node, msg.sender, resolverAddress, tokenId, service.label);
@@ -126,7 +111,7 @@ contract ServiceRegistrar {
         private
         returns (address resolverAddress)
     {
-        uint256 temporaryRoles = ENSRoles.SET_TEXT | ENSRoles.TEXT_ADMIN;
+        uint256 temporaryRoles = ENSRoles.ROLE_SET_TEXT | ENSRoles.ROLE_SET_TEXT_ADMIN;
         bytes memory initialization;
         if (currentResolver) {
             NativeGrant[] memory grants = new NativeGrant[](1);
@@ -164,7 +149,7 @@ contract ServiceRegistrar {
         INativeResolver(resolverAddress).revokeRootRoles(temporaryRoles, address(this));
     }
 
-    function _validate(Service calldata service) private pure {
+    function _validate(Service calldata service, address admin) private pure {
         bytes memory label = bytes(service.label);
         if (label.length < 3 || label.length > 32 || label[0] == "-" || label[label.length - 1] == "-") {
             revert InvalidLabel();
@@ -178,6 +163,7 @@ contract ServiceRegistrar {
             endpoint.length < 9 || endpoint.length > 2048 || bytes8(endpoint) != bytes8("https://")
                 || service.payTo == address(0) || service.endpointOperator == address(0)
                 || service.treasury == address(0) || service.endpointOperator == service.treasury
+                || service.endpointOperator == admin
         ) revert InvalidRecord();
         // URL syntax, DNS, HTTP and payment semantics are independently checked by consuming clients.
     }

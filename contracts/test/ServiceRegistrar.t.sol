@@ -13,7 +13,7 @@ contract ServiceRegistrarTest is NativeENSTest {
         registrar = new ServiceRegistrar(
             address(registry), address(factory), resolverImpl, hex"0a656e73343032666f726b00", expiry
         );
-        registry.grantRootRoles(ENSRoles.REGISTRAR, address(registrar));
+        registry.grantRootRoles(ENSRoles.ROLE_REGISTRAR, address(registrar));
     }
 
     function _service(string memory label) internal pure returns (ServiceRegistrar.Service memory) {
@@ -36,9 +36,9 @@ contract ServiceRegistrarTest is NativeENSTest {
         (address found, bytes32 hash, uint256 offset) = universal.findResolver(name);
         require(found == address(child) && offset == 0, "not published");
         require(universal.findOwner(name) == merchant, "wrong owner");
-        require(!child.hasRootRoles(ENSRoles.SET_TEXT, address(registrar)), "registrar retained writer");
-        require(!child.hasRootRoles(ENSRoles.TEXT_ADMIN, address(registrar)), "registrar retained admin");
-        require(child.hasRootRoles(ENSRoles.TEXT_ADMIN, merchant), "owner lacks admin");
+        require(!child.hasRootRoles(ENSRoles.ROLE_SET_TEXT, address(registrar)), "registrar retained writer");
+        require(!child.hasRootRoles(ENSRoles.ROLE_SET_TEXT_ADMIN, address(registrar)), "registrar retained admin");
+        require(child.hasRootRoles(ENSRoles.ROLE_SET_TEXT_ADMIN, merchant), "owner lacks admin");
         vm.prank(operator);
         child.setText(hash, "agent-endpoint[x402]", "https://weather.example/v2");
         vm.expectPartialRevert(bytes4(0x4b27a133));
@@ -97,7 +97,7 @@ contract ServiceRegistrarTest is NativeENSTest {
         bytes32 commitment = registrar.makeCommitment(s, merchant, secret);
         registrar.commit(commitment);
         vm.warp(block.timestamp + 60);
-        registry.revokeRootRoles(ENSRoles.REGISTRAR, address(registrar));
+        registry.revokeRootRoles(ENSRoles.ROLE_REGISTRAR, address(registrar));
         vm.expectPartialRevert(bytes4(0x4b27a133));
         vm.prank(merchant);
         registrar.register(s, secret);

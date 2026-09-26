@@ -2,20 +2,11 @@
 
 Updated September 26, 2026. All development and demo payments use testnets.
 
-## 1. Confirm the registered parent deployment
+## 1. Parent ownership verified
 
-The owner reports registering `ens402.eth` to `0x0D2FDDee5b84540A9766c025ad26dCaFb9FeF380`. On September 26, the pinned ENSv2 Sepolia registry still returned a zero owner and no subregistry. ENSv1 Sepolia also returned a zero owner. A transaction link or registration-app URL is needed to identify the actual network/deployment before preparing namespace transactions. Registration is reported by the owner but not yet verified on the supported deployment.
+`ens402.eth` is registered on the supported ENSv2 Sepolia deployment. At block `11784285`, native `findOwner("ens402")` returned `0x0D2FDDee5b84540A9766c025ad26dCaFb9FeF380`. The earlier zero-owner observation has been superseded by this confirmed read.
 
-### Supported testnet registration
-
-- Open **https://app.ens.dev**, the testnet app linked from https://docs.ens.domains/learn/deployments.
-- Connect the wallet you want to own the namespace and use Sepolia, not mainnet.
-- Search for `ens402.eth`. The current official Sepolia registrar reported `isAvailable("ens402") = true` during our September 26 check. Availability can change.
-- Follow the app's testnet registration and payment-token instructions. Sepolia ETH may be needed for gas; do not assume the ENSv2 registrar charges native ETH. No mainnet purchase is needed for this demo.
-- Send the registered name and owner address to the implementation task. Keep the owner wallet available to approve setup transactions.
-- If the testnet app cannot register it, ask the ENS sponsor about the current Sepolia deployment and required test payment tokens. Our current integration pins source commit `71a3b7339dbc55ab47667abdfe8303bac4f4c24e`, UniversalResolver `0x5d25c1d6acbb71b7a28aa7899618a3412a8303e3`, and PermissionedResolver implementation `0x14f09fd05d4585759e54844dc9b00147131cf243`.
-
-Buying `ens402.eth` at **https://app.ens.domains** on mainnet is a separate optional purchase. It does not create ownership in the testnet deployment.
+The parent currently has no child registry. `pnpm ens:namespace:plan` successfully generated `docs/setup/namespace-transactions.json` with the verified owner, deployment pin, observed block and intended role grants. No transaction has been sent. This wallet controls the platform namespace; each service registrant separately becomes that service's Admin.
 
 ## 2. Enable the namespace
 
@@ -38,3 +29,15 @@ Sign in, inspect a configured service, choose managed or self signing, and appro
 - Unusable localhost production DATABASE_URL removed.
 - Removed unused `HUFU_LARGE_PAYEE_ATOMIC`, `HUFU_DAILY_CAP_ATOMIC`, `HUFU_PER_PAYMENT_CAP_ATOMIC`, and `POLICY_ORIGIN`.
 - Local PostgreSQL remains separate for disposable integration tests.
+
+## Demo wallet assignments
+
+Use three distinct wallets:
+
+| Responsibility | Public address | Funding |
+| --- | --- | --- |
+| Platform owner / demo service Admin | `0x0D2FDDee5b84540A9766c025ad26dCaFb9FeF380` | Sepolia ETH for setup and grants |
+| Ops endpoint writer | `0x03eEe8Be9682D6DF713563FDf7f8D1eD78d7479D` | Sepolia ETH for record updates |
+| Treasury payment-record writer | `0x0Ca23D06479560bb9A916c19Df5a2948a8ed3346` | Sepolia ETH for record updates |
+
+Ops and Treasury are freshly generated test-only wallets. Their keys are stored only in ignored root `.env` as `ENS_OPS_TEST_PRIVATE_KEY` and `ENS_TREASURY_TEST_PRIVATE_KEY`; the file is owner-readable/writable only. No roles have been granted and no transaction has been sent from them. The Admin key was not requested or copied. Funding these two writers does not fund the separate Base Sepolia USDC payer. The USDC receiving address remains `MERCHANT_PAY_TO`, an independent configuration.
