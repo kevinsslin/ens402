@@ -1,3 +1,5 @@
+<img src="apps/web/public/brands/ens402.svg" alt="ENS402" width="80" height="80" />
+
 # ENS402: start here
 
 **Discover. Govern. Guard.** ENS402 puts x402 service configuration on ENS, governs updates with native EAC, and verifies payment requests before agents sign.

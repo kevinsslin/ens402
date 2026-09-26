@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { EB_Garamond, Inter, Geist_Mono } from "next/font/google";
-import { Layers3 } from "lucide-react";
+import Image from "next/image";
 import { WalletProvider } from "@/components/wallet-provider";
 import { WalletNav } from "@/components/wallet-nav";
 import { SiteNav } from "@/components/site-nav";
@@ -21,6 +21,8 @@ const mono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" });
 
 export const metadata: Metadata = {
   title: "ENS402 | Discover. Govern. Guard.",
+  icons: { apple: "/brands/ens402.png" },
+  openGraph: { images: [{ url: "https://ens402.vercel.app/brands/ens402.png", width: 512, height: 512, alt: "ENS402" }] },
   description:
     "Public x402 service configuration on ENS, native EAC governance and SDK payment verification. Independent indexing in development. Testnet prototype.",
 };
@@ -48,7 +50,7 @@ export default function RootLayout({
                 aria-label="ENS402 home"
                 className="flex items-center justify-self-start gap-2.5 text-xl font-semibold tracking-tight"
               >
-                <Layers3 className="size-6 text-primary" aria-hidden="true" />
+                <Image src="/brands/ens402.svg" alt="" width={36} height={36} className="size-9 shrink-0" />
                 ENS<span className="-ml-2 text-primary">402</span>
               </Link>
               <div className="order-3 w-full md:order-2 md:w-auto">
@@ -71,7 +73,7 @@ export default function RootLayout({
                   href="/"
                   className="inline-flex items-center gap-2 text-xl font-semibold tracking-tight"
                 >
-                  <Layers3 className="size-6 text-primary" aria-hidden="true" />
+                  <Image src="/brands/ens402.svg" alt="" width={36} height={36} className="size-9 shrink-0" />
                   ENS402
                 </Link>
                 <p className="mt-3 max-w-sm text-sm leading-6 text-muted-foreground">

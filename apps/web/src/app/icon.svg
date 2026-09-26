@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="ENS402 symbol">
+  <rect width="512" height="512" rx="112" fill="#F4F7FF"/>
+  <path d="M153 154h68c31 0 42 19 54 43l24 48" fill="none" stroke="#2854C5" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M153 358h68c31 0 42-19 54-43l24-48" fill="none" stroke="#2854C5" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M153 256h191" fill="none" stroke="#2854C5" stroke-width="28" stroke-linecap="round"/>
+  <circle cx="153" cy="154" r="23" fill="#2854C5"/>
+  <circle cx="153" cy="256" r="23" fill="#2854C5"/>
+  <circle cx="153" cy="358" r="23" fill="#2854C5"/>
+  <circle cx="362" cy="256" r="40" fill="#F4F7FF" stroke="#183B8A" stroke-width="25"/>
+</svg>

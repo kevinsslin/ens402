@@ -16,3 +16,5 @@ Discovery comparison assets retrieved September 27, 2026:
 - x402 wordmark for the Bazaar extension: https://raw.githubusercontent.com/coinbase/x402/main/typescript/site/app/assets/x402_wordmark_light.svg. This identifies x402, not a separate Bazaar logo.
 
 Curvegrid wordmark retrieved September 27, 2026 from the navigation logo at https://www.curvegrid.com/ (inline SVG, viewBox 0 0 167 34). The standalone asset preserves the official shapes and colors, with CSS variables resolved to their original fallback colors. This replaces the documentation-specific "Curvegrid Docs" logo and identifies the MultiBaas governance event integration.
+
+ENS402 project mark: the original flat v5 submission artwork, created September 27, 2026. `ens402.svg` and `ens402.png` are the vector and 512px raster exports, copied unchanged from the local submission assets. The same mark is used for navigation, footer, comparison, README and app icon.

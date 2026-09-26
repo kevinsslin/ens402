@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { Check, Layers3, Minus } from "lucide-react";
+import { Check, Minus } from "lucide-react";
 
 function Capability({ included }: { included: boolean }) {
   return included ? (
@@ -61,7 +61,7 @@ export function DiscoveryComparison() {
                 className="bg-primary/5 p-5 text-center font-semibold text-primary"
               >
                 <span className="inline-flex items-center gap-2">
-                  <Layers3 size={21} aria-hidden="true" />
+                  <Image src="/brands/ens402.svg" alt="" width={28} height={28} />
                   ENS402
                 </span>
               </th>
