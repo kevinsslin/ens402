@@ -1,4 +1,3 @@
-import { PrivyClient } from '@privy-io/node';
 import type { PolicyCreateParams, PolicyCondition, EthereumTypedDataInput } from '@privy-io/node/resources';
 import { authorizationTypes, type ClientEvmSigner } from '@x402/evm';
 import { verifyTypedData, type Address, type Hex } from 'viem';
@@ -50,7 +49,8 @@ export function privyPaymentInput(input: TypedInput, payer: string, scope: Signi
 }
 
 /** Server-only adapter. The integrator supplies its own Privy account and policy-bound wallet. */
-export function createPrivySigner(options: { client: PrivyClient; walletId: string; address: Address; scope: SigningScope; now?: () => number }): ClientEvmSigner {
+export type PrivySigningClient = { wallets(): { ethereum(): { signTypedData(walletId: string, input: { params: { typed_data: EthereumTypedDataInput } }): Promise<{ signature: string }> } } };
+export function createPrivySigner(options: { client: PrivySigningClient; walletId: string; address: Address; scope: SigningScope; now?: () => number }): ClientEvmSigner {
   const scope = structuredClone(options.scope);
   assertScope(scope);
   return {

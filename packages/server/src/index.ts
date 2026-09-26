@@ -7,6 +7,7 @@ import { buildPrivyPolicy, createPrivySigner } from '@ens402/sdk/privy';
 import { InterceptaProvider } from '@ens402/sdk/intercepta';
 import { purchaseResource } from '@ens402/sdk/http';
 import { verifySettlement } from '@ens402/sdk/settlement';
+import { normalize } from 'viem/ens';
 import { sameAddress, NETWORK } from '@ens402/sdk';
 import { Store } from './store';
 import { allowedNames, allowedOrigins, amount, requireEnv, uuid } from './config';
@@ -16,14 +17,14 @@ export { authorized, readiness } from './config';
 let stored: Store | undefined;
 let scanner: InterceptaProvider | undefined;
 export const getStore = () => stored ??= new Store(requireEnv('DATABASE_URL'));
-const ensClient = () => createPublicClient({ chain: sepolia, transport: http(requireEnv('SEPOLIA_RPC_URL'), { timeout: 12000, retryCount: 1 }), ccipRead: false });
-const baseClient = () => createPublicClient({ chain: baseSepolia, transport: http(requireEnv('BASE_SEPOLIA_RPC_URL'), { timeout: 12000, retryCount: 1 }) });
-const privy = () => new PrivyClient({ appId: requireEnv('PRIVY_APP_ID'), appSecret: requireEnv('PRIVY_APP_SECRET'), timeout: 15000, maxRetries: 0 });
+export const ensClient = () => createPublicClient({ chain: sepolia, transport: http(requireEnv('SEPOLIA_RPC_URL'), { timeout: 12000, retryCount: 1 }), ccipRead: false });
+export const baseClient = () => createPublicClient({ chain: baseSepolia, transport: http(requireEnv('BASE_SEPOLIA_RPC_URL'), { timeout: 12000, retryCount: 1 }) });
+export const privy = () => new PrivyClient({ appId: requireEnv('PRIVY_APP_ID'), appSecret: requireEnv('PRIVY_APP_SECRET'), timeout: 15000, maxRetries: 0 });
 function serviceName(input: unknown): string {
-  if (typeof input !== 'string' || !allowedNames().includes(input)) throw new Error('Select a configured ENS service'); return input;
+  if (typeof input !== 'string' || input.length > 255) throw new Error('Enter an ENS service name'); const name = normalize(input); if (name.split('.').length < 2) throw new Error('Enter a complete ENS name'); return name;
 }
 export async function inspectService(input: unknown) { return resolveService(ensClient(), serviceName(input)); }
-export async function createApproval(input: Record<string, unknown>) {
+export async function createApproval(input: Record<string, unknown>, ownerId = 'operator') {
   const id = uuid(input.id);
   const name = serviceName(input.name);
   const maxAmount = amount(input.maxAmount, process.env.DEMO_MAX_PAYMENT_UNITS || '1000000');
@@ -33,16 +34,19 @@ export async function createApproval(input: Record<string, unknown>) {
   if (typeof duration !== 'number' || !Number.isInteger(duration) || duration < 600 || duration > 30*86400) throw new Error('Approval duration must be between 10 minutes and 30 days');
   if (!Array.isArray(input.endpoints) || !input.endpoints.length || input.endpoints.length > 5 || input.endpoints.some(x => typeof x !== 'string')) throw new Error('Explicitly approve one to five API URLs');
   const endpoints = input.endpoints as string[];
-  const origins = allowedOrigins();
-  for (const endpoint of endpoints) { const url = new URL(endpoint); if (!origins.includes(url.origin) || url.href !== endpoint || url.username || url.password || url.hash) throw new Error('Endpoint is outside the configured merchant origins'); }
+  const mode = input.mode === 'self' ? 'self' : input.mode === undefined || input.mode === 'hosted' ? 'hosted' : null;
+  if (!mode) throw new Error('Select hosted or self signing');
+  const payer = mode === 'self' ? String(input.payer) : undefined;
+  if (payer && !sameAddress(payer,payer)) throw new Error('Connect a valid payer wallet');
+  for (const endpoint of endpoints) { const url = new URL(endpoint); if (url.protocol !== 'https:' || url.href !== endpoint || url.username || url.password || url.hash) throw new Error('Endpoint is outside the configured merchant origins'); }
   const service = await inspectService(name);
   if (service.status !== 'active' || !endpoints.includes(service.endpoint)) throw new Error('Current service endpoint must be explicitly approved');
   // Bind the submitted consent to the configuration the browser actually displayed.
   if (input.authority !== service.authority || !sameAddress(String(input.payTo), service.payment.payTo)) throw new Error('Service changed since inspection; review and approve again');
-  const fingerprint = createHash('sha256').update(JSON.stringify({ name, authority: service.authority, payTo: service.payment.payTo, endpoints: [...endpoints].sort(), maxAmount, dailyLimit, duration })).digest('hex');
+  const fingerprint = createHash('sha256').update(JSON.stringify({ ownerId, mode, payer, name, authority: service.authority, payTo: service.payment.payTo, endpoints: [...endpoints].sort(), maxAmount, dailyLimit, duration })).digest('hex');
   const store = getStore();
-  const row = await store.createApproval({ id, fingerprint, service, dailyLimit, approval: { name, authority: service.authority, endpoints, payTo: service.payment.payTo, maxAmount, expiresAt: Math.floor(Date.now()/1000) + duration } });
-  return provisionApproval(row);
+  const row = await store.createApproval({ id, fingerprint, service, dailyLimit, ownerId, mode, payer, approval: { name, authority: service.authority, endpoints, payTo: service.payment.payTo, maxAmount, expiresAt: Math.floor(Date.now()/1000) + duration } });
+  return mode === 'self' ? row : provisionApproval(row);
 }
 async function provisionApproval(row: Awaited<ReturnType<Store['getApproval']>>) {
   const id = row.id;
@@ -63,9 +67,10 @@ export async function revokeApproval(input: unknown) {
   if (row.policy_id) await privy().policies().update(row.policy_id, { rules: [{ name: 'Revoked by buyer', method: '*', action: 'DENY', conditions: [] }] });
   return { revoked: true, note: 'Already issued authorizations remain valid until used or expired.' };
 }
-export async function executePurchase(input: Record<string, unknown>) {
+export async function executePurchase(input: Record<string, unknown>, guard: () => Promise<void> = async () => {}) {
   const id = uuid(input.id), approvalId = uuid(input.approvalId);
   const store = getStore(); const row = await store.getApproval(approvalId);
+  if (row.mode !== 'hosted') throw new Error('Use external signing for this approval');
   if (!row.wallet_id || !row.payer || !row.policy_id) throw new Error('Approval wallet is not ready');
   const reserved = await store.reserve(id, approvalId, Math.floor(Date.now()/1000));
   if (!reserved.created) return reserved.execution;
@@ -82,9 +87,10 @@ export async function executePurchase(input: Record<string, unknown>) {
     const rules = (items: typeof activePolicy.rules) => items.map(({ method, action, conditions }) => ({ method, action, conditions }));
     const expectedRules = buildPrivyPolicy(row.approval).rules.map(({ method, action, conditions }) => ({ method, action, conditions }));
     if (canonical(rules(activePolicy.rules)) !== canonical(expectedRules)) throw new Error('Wallet policy terms changed');
-    const signer = createPrivySigner({ client, walletId: row.wallet_id, address: row.payer as Address, scope: row.approval });
+    const providerSigner = createPrivySigner({ client, walletId: row.wallet_id, address: row.payer as Address, scope: row.approval });
+    const signer = { address: providerSigner.address, signTypedData: async (data: Parameters<typeof providerSigner.signTypedData>[0]) => { await guard(); const current = await store.getApproval(approvalId); if (current.state !== 'active') throw new Error('Approval revoked'); return providerSigner.signTypedData(data); } };
     scanner ??= new InterceptaProvider({ apiKey: requireEnv('INTERCEPTA_API_KEY') });
-    const receipt = await purchaseResource({ name: row.approval.name, approval: row.approval, resolve: inspectService, signer, screen: address => scanner!.screen(address), transport: createResourceTransport(allowedOrigins()), beforeSubmit: (authorization, requirement) => store.beforeSubmit(id, authorization, requirement), verifySettlement: (settlement, authorization, requirement) => verifySettlement(baseClient(), settlement, authorization, requirement) });
+    const receipt = await purchaseResource({ name: row.approval.name, approval: row.approval, resolve: inspectService, signer, screen: address => scanner!.screen(address), transport: createResourceTransport(row.approval.endpoints.map(endpoint => new URL(endpoint).origin)), beforeSubmit: async (authorization, requirement) => { await guard(); await store.beforeSubmit(id, authorization, requirement); }, verifySettlement: (settlement, authorization, requirement) => verifySettlement(baseClient(), settlement, authorization, requirement) });
     return store.finish(id, receipt);
   } catch {
     // A database write may fail after submission. Never release a submitting reservation.
@@ -122,3 +128,5 @@ export async function walletBalance(input: unknown) {
 }
 
 export async function cancelUnsentPurchase(input: unknown) { return getStore().cancelReserved(uuid(input)); }
+
+export async function screenRecipient(address: string) { scanner ??= new InterceptaProvider({ apiKey: requireEnv('INTERCEPTA_API_KEY') }); return scanner.screen(address); }

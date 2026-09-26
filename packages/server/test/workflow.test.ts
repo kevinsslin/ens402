@@ -58,3 +58,66 @@ describe('server orchestration with real PostgreSQL and simulated external provi
   it('revokes both future backend purchases and the provider policy',async()=>{const row=await approve();await revokeApproval(row.id);expect((await getStore().getApproval(row.id)).state).toBe('revoked');await expect(executePurchase({id:randomUUID(),approvalId:row.id})).rejects.toThrow('inactive');});
   it('serves an unpaid 402 and rejects an invalid signature without settlement',async()=>{expect((await serveMerchant(new Request(endpoint))).status).toBe(402);const before=settleCalls;expect((await serveMerchant(new Request(endpoint,{headers:{'PAYMENT-SIGNATURE':'invalid'}}))).status).toBe(402);expect(settleCalls).toBe(before);});
 });
+
+import { platformAction, authenticate, type Principal } from '../src/platform';
+const userA:Principal={kind:'user',ownerId:'did:privy:test-a'};
+const userB:Principal={kind:'user',ownerId:'did:privy:test-b'};
+async function ownedApproval(owner=userA,mode:'hosted'|'self'='hosted') {
+  return platformAction(owner,{action:'approve',id:randomUUID(),mode,payer:account.address,name:'search.example.eth',authority:'fixture',payTo:recipient,endpoints:[endpoint],maxAmount:'10000',dailyLimit:'100000',durationSeconds:3600}) as ReturnType<typeof createApproval>;
+}
+describe('tenant isolation, scoped agent credentials and external signing',()=>{
+  it('isolates reads and rejects cross-user access to all approval mutations',async()=>{
+    const row=await ownedApproval();
+    const other=await platformAction(userB,{action:'state'}) as {approvals:{id:string}[]};
+    expect(other.approvals.some(a=>a.id===row.id)).toBe(false);
+    for(const action of ['balance','resume-approval','revoke'])await expect(platformAction(userB,{action,id:row.id})).rejects.toThrow('not found');
+    await expect(platformAction(userB,{action:'execute',id:randomUUID(),approvalId:row.id})).rejects.toThrow('not found');
+    await expect(platformAction(userB,{action:'create-key',approvalId:row.id,label:'steal'})).rejects.toThrow('not found');
+  });
+  it('binds idempotency keys to the owning account',async()=>{
+    const row=await ownedApproval();
+    await expect(createApproval({id:row.id,name:row.approval.name,authority:'fixture',payTo:recipient,endpoints:[endpoint],maxAmount:'10000',dailyLimit:'100000',durationSeconds:3600},userB.ownerId)).rejects.toThrow('Idempotency');
+  });
+  it('stores only a token hash, restricts keys to one approval, and revokes them',async()=>{
+    const row=await ownedApproval(), other=await ownedApproval();
+    const key=await platformAction(userA,{action:'create-key',approvalId:row.id,label:'weather-agent'}) as {id:string;token:string};
+    const stored=await getStore().pool.query('SELECT token_hash FROM ens402_agent_keys WHERE id=$1',[key.id]);
+    expect(stored.rows[0].token_hash).not.toBe(key.token);
+    const agent=await authenticate(`Bearer ${key.token}`);
+    for(const action of ['state','approve','create-key','revoke'])await expect(platformAction(agent,{action,id:row.id,approvalId:row.id})).rejects.toThrow('user login');
+    await expect(platformAction(agent,{action:'execute',id:randomUUID(),approvalId:other.id})).rejects.toThrow('does not cover');
+    await expect(platformAction(userB,{action:'revoke-key',id:key.id})).rejects.toThrow('not found');
+    await platformAction(userA,{action:'revoke-key',id:key.id});
+    await expect(authenticate(`Bearer ${key.token}`)).rejects.toThrow('revoked');
+  });
+  it('creates no Privy wallet for self signing and settles only the prepared signature once',async()=>{
+    const row=await ownedApproval(userA,'self'),before=signCalls,id=randomUUID();
+    expect(row.wallet_id).toBeNull();expect(row.state).toBe('active');
+    const first=await platformAction(userA,{action:'prepare-external',id,approvalId:row.id}) as {prepared:{typedData:Parameters<typeof account.signTypedData>[0]}};
+    const second=await platformAction(userA,{action:'prepare-external',id,approvalId:row.id}) as typeof first;
+    expect(second.prepared).toEqual(first.prepared);
+    await expect(platformAction(userB,{action:'submit-external',id,signature:`0x${'00'.repeat(65)}`})).rejects.toThrow('not found');
+    const signature=await account.signTypedData(first.prepared.typedData);
+    const result=await platformAction(userA,{action:'submit-external',id,signature}) as {state:string};
+    expect(result.state).toBe('settled');expect(signCalls).toBe(before);
+    const count=settleCalls;
+    expect(await platformAction(userA,{action:'submit-external',id,signature})).toMatchObject({state:'settled'});
+    expect(settleCalls).toBe(count);
+  });
+  it('rejects wrong-wallet signatures and ENS rotation after external preparation',async()=>{
+    const row=await ownedApproval(userA,'self'),id=randomUUID();
+    const prepared=await platformAction(userA,{action:'prepare-external',id,approvalId:row.id}) as {prepared:{typedData:Parameters<typeof account.signTypedData>[0]}};
+    const other=privateKeyToAccount(`0x${'33'.repeat(32)}`);
+    await expect(platformAction(userA,{action:'submit-external',id,signature:await other.signTypedData(prepared.prepared.typedData)})).rejects.toThrow('Signature');
+    changedRecipient=true;
+    try {await expect(platformAction(userA,{action:'submit-external',id,signature:await account.signTypedData(prepared.prepared.typedData)})).rejects.toThrow('changed');}finally{changedRecipient=false;}
+    expect((await getStore().getExecution(id)).state).toBe('reserved');
+    await platformAction(userA,{action:'cancel',id});
+  });
+  it('blocks external submission after approval revocation',async()=>{
+    const row=await ownedApproval(userA,'self'),id=randomUUID();
+    const p=await platformAction(userA,{action:'prepare-external',id,approvalId:row.id}) as {prepared:{typedData:Parameters<typeof account.signTypedData>[0]}};
+    await platformAction(userA,{action:'revoke',id:row.id});
+    await expect(platformAction(userA,{action:'submit-external',id,signature:await account.signTypedData(p.prepared.typedData)})).rejects.toThrow('revoked');
+  });
+});

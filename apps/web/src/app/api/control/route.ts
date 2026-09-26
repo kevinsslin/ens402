@@ -1,9 +1,13 @@
+import { prepareExternal, submitExternal } from '@ens402/server/external';
+import { authenticate, platformAction } from '@ens402/server/platform';
 import { resumeApproval, authorized, cancelUnsentPurchase, walletBalance, createApproval, ensTransaction, executePurchase, getStore, inspectService, reconcilePurchase, revokeApproval } from '@ens402/server';
 export const runtime = 'nodejs';
 export const maxDuration = 120;
 export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
-  if (!authorized(request.headers.get('authorization'))) return Response.json({ error: 'A valid demo access token is required.' }, { status: 401 });
+  const operator = authorized(request.headers.get('authorization'));
+  let principal;
+  if (!operator) { try { principal = await authenticate(request.headers.get('authorization')); } catch { return Response.json({error:'Sign in or provide a valid agent API key.'},{status:401,headers:{'Cache-Control':'no-store'}}); } }
   if (!request.headers.get('content-type')?.startsWith('application/json')) return Response.json({ error: 'Expected JSON.' }, { status: 415 });
   let raw = '';
   const reader = request.body?.getReader();
@@ -26,6 +30,7 @@ export async function POST(request: Request) {
   try { input = JSON.parse(raw); if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error(); }
   catch { return Response.json({ error: 'Invalid request.' }, { status: 400 }); }
   try {
+    if (principal) return Response.json(await platformAction(principal,input),{headers:{'Cache-Control':'no-store'}});
     let result: unknown;
     switch (input.action) {
       case 'state': result = { names: (process.env.SERVICE_ENS_NAME || '').split(',').filter(Boolean), approvals: await getStore().listApprovals(), executions: await getStore().listExecutions() }; break;
@@ -35,6 +40,9 @@ export async function POST(request: Request) {
       case 'inspect': result = await inspectService(input.name); break;
       case 'approve': result = await createApproval(input); break;
       case 'revoke': result = await revokeApproval(input.id); break;
+      case 'prepare-external': result = await prepareExternal(input); break;
+      case 'submit-external': result = await submitExternal(input,async()=>{}); break;
+      case 'execution': result = await getStore().getExecution(String(input.id)); break;
       case 'execute': result = await executePurchase(input); break;
       case 'reconcile': result = await reconcilePurchase(input); break;
       case 'ens': result = await ensTransaction({ ...input, action: input.operation }); break;

@@ -1,3 +1,4 @@
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { Pool, type PoolClient } from 'pg';
 import type { Approval } from '@ens402/sdk';
 import type { ResolvedService } from '@ens402/sdk/ens';
@@ -20,9 +21,21 @@ CREATE INDEX IF NOT EXISTS ens402_executions_budget ON ens402_executions(approva
 CREATE TABLE IF NOT EXISTS ens402_merchant_payments (
   nonce_key text PRIMARY KEY, state text NOT NULL, response jsonb,
   created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE ens402_approvals ADD COLUMN IF NOT EXISTS owner_id text NOT NULL DEFAULT 'operator';
+ALTER TABLE ens402_approvals ADD COLUMN IF NOT EXISTS mode text NOT NULL DEFAULT 'hosted';
+ALTER TABLE ens402_executions ADD COLUMN IF NOT EXISTS prepared jsonb;
+CREATE INDEX IF NOT EXISTS ens402_approvals_owner ON ens402_approvals(owner_id,created_at);
+CREATE TABLE IF NOT EXISTS ens402_agent_keys (
+ id uuid PRIMARY KEY, owner_id text NOT NULL, approval_id uuid NOT NULL REFERENCES ens402_approvals(id),
+ label text NOT NULL, token_hash text NOT NULL UNIQUE, expires_at timestamptz NOT NULL,
+ revoked_at timestamptz, created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS ens402_rate_limits (
+ subject text NOT NULL, bucket bigint NOT NULL, hits integer NOT NULL, PRIMARY KEY(subject,bucket)
 );`;
-export type StoredApproval = { id: string; fingerprint: string; service: ResolvedService; approval: Approval; daily_limit: string; state: string; wallet_id: string | null; payer: string | null; policy_id: string | null; created_at: Date };
-export type Execution = { id: string; approval_id: string; state: string; authorization: PublicAuthorization | null; requirement: PaymentRequirements | null; receipt: PaymentReceipt | null; reserved_amount: string; created_at: Date };
+export type StoredApproval = { owner_id: string; mode: 'hosted' | 'self'; id: string; fingerprint: string; service: ResolvedService; approval: Approval; daily_limit: string; state: string; wallet_id: string | null; payer: string | null; policy_id: string | null; created_at: Date };
+export type Execution = { prepared?: unknown; id: string; approval_id: string; state: string; authorization: PublicAuthorization | null; requirement: PaymentRequirements | null; receipt: PaymentReceipt | null; reserved_amount: string; created_at: Date };
 export class Store {
   readonly pool: Pool;
   constructor(url: string) { this.pool = new Pool({ connectionString: url, max: 4, connectionTimeoutMillis: 5000, idleTimeoutMillis: 10000 }); }
@@ -34,10 +47,17 @@ export class Store {
     try { await client.query('BEGIN'); const value = await action(client); await client.query('COMMIT'); return value; }
     catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
   }
-  async createApproval(input: { id: string; fingerprint: string; service: ResolvedService; approval: Approval; dailyLimit: string }) {
-    await this.pool.query(`INSERT INTO ens402_approvals(id,fingerprint,service,approval,daily_limit,state) VALUES($1,$2,$3,$4,$5,'provisioning') ON CONFLICT(id) DO NOTHING`, [input.id, input.fingerprint, input.service, input.approval, input.dailyLimit]);
+  async createApproval(input: { id: string; fingerprint: string; service: ResolvedService; approval: Approval; dailyLimit: string; ownerId?: string; mode?: 'hosted' | 'self'; payer?: string }) {
+    await this.transaction(async client => {
+      const owner = input.ownerId ?? 'operator';
+      await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [owner]);
+      const count = await client.query("SELECT count(*)::int AS n FROM ens402_approvals WHERE owner_id=$1 AND created_at > now()-interval '1 day'",[owner]);
+      const existing = await client.query('SELECT id FROM ens402_approvals WHERE id=$1',[input.id]);
+      if (!existing.rowCount && count.rows[0].n >= 20) throw new Error('Daily approval creation limit reached');
+      await client.query(`INSERT INTO ens402_approvals(id,fingerprint,service,approval,daily_limit,state,owner_id,mode,payer) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(id) DO NOTHING`, [input.id,input.fingerprint,input.service,input.approval,input.dailyLimit,input.mode === 'self' ? 'active' : 'provisioning',owner,input.mode ?? 'hosted',input.payer ?? null]);
+    });
     const stored = await this.getApproval(input.id);
-    if (stored.fingerprint !== input.fingerprint) throw new Error('Idempotency key was already used for different approval terms');
+    if (stored.owner_id !== (input.ownerId ?? 'operator') || stored.fingerprint !== input.fingerprint) throw new Error('Idempotency key was already used for different approval terms');
     return stored;
   }
   async getApproval(id: string): Promise<StoredApproval> {
@@ -94,6 +114,46 @@ export class Store {
     if (!result.rows[0]) throw new Error('Execution not found'); return result.rows[0];
   }
   async listExecutions() { return (await this.pool.query('SELECT * FROM ens402_executions ORDER BY created_at DESC LIMIT 50')).rows as Execution[]; }
+  async assertOwner(owner: string, approvalId: string) {
+    const row = await this.getApproval(approvalId);
+    if (row.owner_id !== owner) throw new Error('Approval not found');
+    return row;
+  }
+  async userState(owner: string) {
+    const [approvals, executions, keys] = await Promise.all([
+      this.pool.query('SELECT * FROM ens402_approvals WHERE owner_id=$1 ORDER BY created_at DESC LIMIT 50',[owner]),
+      this.pool.query('SELECT e.* FROM ens402_executions e JOIN ens402_approvals a ON a.id=e.approval_id WHERE a.owner_id=$1 ORDER BY e.created_at DESC LIMIT 50',[owner]),
+      this.pool.query('SELECT id,approval_id,label,expires_at,revoked_at FROM ens402_agent_keys WHERE owner_id=$1 ORDER BY created_at DESC LIMIT 50',[owner]),
+    ]);
+    return { approvals: approvals.rows as StoredApproval[], executions: executions.rows as Execution[], keys: keys.rows };
+  }
+  async createAgentKey(owner: string, approvalId: string, label: string) {
+    const row = await this.assertOwner(owner,approvalId);
+    if (row.state !== 'active' || row.approval.expiresAt <= Date.now()/1000) throw new Error('Approval must be active');
+    const token = 'ens402_' + randomBytes(32).toString('base64url');
+    const id = randomUUID();
+    await this.pool.query('INSERT INTO ens402_agent_keys(id,owner_id,approval_id,label,token_hash,expires_at) VALUES($1,$2,$3,$4,$5,to_timestamp($6))', [id,owner,approvalId,label,createHash('sha256').update(token).digest('hex'),row.approval.expiresAt]);
+    return { id, token, approvalId, expiresAt: row.approval.expiresAt };
+  }
+  async authenticateAgent(token: string): Promise<{ owner_id: string; approval_id: string; id: string } | null> {
+    const result = await this.pool.query(`SELECT k.id,k.owner_id,k.approval_id FROM ens402_agent_keys k JOIN ens402_approvals a ON a.id=k.approval_id WHERE k.token_hash=$1 AND k.revoked_at IS NULL AND k.expires_at>now() AND a.state='active' AND (a.approval->>'expiresAt')::bigint>extract(epoch from now())`,[createHash('sha256').update(token).digest('hex')]);
+    return result.rows[0] ?? null;
+  }
+  async revokeAgentKey(owner: string, id: string) {
+    const result = await this.pool.query('UPDATE ens402_agent_keys SET revoked_at=now() WHERE id=$1 AND owner_id=$2 RETURNING id',[id,owner]);
+    if (!result.rowCount) throw new Error('Key not found');
+    return { revoked: true };
+  }
+  async rateLimit(subject: string, limit=60) {
+    const bucket = Math.floor(Date.now()/60000);
+    const r = await this.pool.query('INSERT INTO ens402_rate_limits(subject,bucket,hits) VALUES($1,$2,1) ON CONFLICT(subject,bucket) DO UPDATE SET hits=ens402_rate_limits.hits+1 RETURNING hits',[subject,bucket]);
+    if (r.rows[0].hits > limit) throw new Error('Request rate limit reached');
+    await this.pool.query('DELETE FROM ens402_rate_limits WHERE subject=$1 AND bucket<$2',[subject,bucket-2]);
+  }
+  async savePrepared(id: string, prepared: unknown) {
+    const r = await this.pool.query("UPDATE ens402_executions SET prepared=$2 WHERE id=$1 AND state='reserved' AND prepared IS NULL RETURNING id",[id,prepared]);
+    if (!r.rowCount) throw new Error('Cannot prepare this attempt');
+  }
   async merchantResponse(key: string) { return (await this.pool.query('SELECT state,response FROM ens402_merchant_payments WHERE nonce_key=$1',[key])).rows[0] ?? null; }
   async claimMerchant(key: string) {
     const result = await this.pool.query(`INSERT INTO ens402_merchant_payments(nonce_key,state) VALUES($1,'processing') ON CONFLICT DO NOTHING RETURNING nonce_key`, [key]);

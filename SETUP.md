@@ -3,7 +3,7 @@
 ## What is already implemented
 
 - An authenticated operating console at `/console` and Next.js backend APIs.
-- Registered ENSv2 service resolution through a pinned Sepolia Universal Resolver, factory/implementation checks, explicit owner/resolver observations, and alias rejection.
+- Registered ENSv2 service resolution through pinned current Sepolia native registry traversal, factory/implementation checks, explicit owner/resolver observations, and alias rejection.
 - Native ENS record-edit and text-permission transaction preparation, simulation and browser-wallet submission.
 - Explicit buyer approval with a per-payment limit, UTC daily backend budget, expiry and exact endpoint allowlist.
 - A separate Privy agent wallet and restrictive policy for each approval. Existing wallets and policies are not silently reused.
@@ -14,7 +14,7 @@
 
 World and ERC-8004 are outside this implementation scope. No mainnet transaction is needed.
 
-## 1. Provide these missing values
+## 1. Environment configuration
 
 Put local values in the repository root `.env`. Never paste secrets into chat.
 
@@ -22,13 +22,13 @@ Put local values in the repository root `.env`. Never paste secrets into chat.
 | --- | --- |
 | `PRIVY_APP_ID` | Your Privy application ID |
 | `PRIVY_APP_SECRET` | That application's server secret |
-| `SERVICE_ENS_NAME` | A registered ENSv2 Sepolia service name that you control |
+| `SERVICE_ENS_NAME` | Optional comma-separated service suggestions; users may enter other supported ENS names |
 | `ENS_OWNER_ADDRESS` | The wallet or Safe that owns that name and can set its resolver |
 | `ENS_OPERATOR_ADDRESS` | A different wallet to demonstrate endpoint-only delegation |
 | `MERCHANT_PAY_TO` | The Treasury address that will receive Base Sepolia USDC |
 | `DATABASE_URL` on Vercel | A durable, network-accessible PostgreSQL connection string. The local DB cannot be reached from Vercel. Use the provider's required TLS settings. |
 
-Existing Intercepta and RPC settings can be reused. `DEMO_ACCESS_TOKEN` is a distinct randomly generated operator token, not a Privy credential. The local token is stored in root `.env`; enter it only into `/console` on your own deployment. Do not publish it in the pitch.
+Production Privy credentials and Neon are configured; the production schema health check passed. Keep local PostgreSQL separate. Existing Intercepta and RPC settings can be reused. `DEMO_ACCESS_TOKEN` is a distinct randomly generated operator token, not a Privy credential. The local token is stored in root `.env`; enter it only into `/operator` on your own deployment. Do not publish it in the pitch.
 
 The console reports variable presence only. It does not assert that credentials, balances or permissions work.
 
@@ -56,7 +56,7 @@ For a managed database, set DATABASE_URL and run only `pnpm db:migrate`. Migrati
 
 ## 3. Configure the ENS service
 
-Ask the ENS sponsor to provide a registered name on the supported ENSv2 Sepolia deployment. The current integration is pinned to contracts-v2 commit `48b3e2d39513b9dd32ef1850877a29009bc807b9`; newer deployment APIs may differ.
+Register a testnet name at https://app.ens.dev, or ask the ENS sponsor for one. The default integration pins contracts-v2 commit `71a3b7339dbc55ab47667abdfe8303bac4f4c24e`. Legacy deployment compatibility is tested separately. See [USER-TODO.md](USER-TODO.md) for the parent namespace workflow.
 
 After filling the public name/owner/operator/Treasury/endpoint variables:
 
@@ -84,7 +84,7 @@ pnpm test:intercepta:live
 
 The Privy test creates an unfunded, disposable wallet and policy, verifies a tiny self-payment signature, tests forbidden direct provider calls, and restores deny-all. No transfer is submitted and no signature is persisted. Policy/wallet IDs and results are saved under ignored `docs/validation/`.
 
-Open `/console`, enter DEMO_ACCESS_TOKEN, inspect the configured name, then explicitly approve endpoint(s), recipient, amount, daily budget and expiry. This provisions a new Privy payer. **Fund the payer address shown on that approval card with Base Sepolia USDC.** Do not send mainnet USDC. The reference flow uses a facilitator, so the payer signs a token authorization; seller ENS writes separately require Sepolia ETH.
+Open `/console`, sign in with Privy, inspect a current ENSv2 Sepolia name, then explicitly approve endpoint(s), recipient, amount, daily budget and expiry. Choose managed signing to provision a new Privy payer, or self signing to use your connected EOA without creating a platform wallet. **Fund the payer address shown on that approval card with Base Sepolia USDC.** Do not send mainnet USDC. The reference flow uses a facilitator, so the payer signs a token authorization; seller ENS writes separately require Sepolia ETH.
 
 If wallet provisioning is interrupted, use **Resume wallet setup** on its approval card. Retries reuse the same provider keys for up to 23 hours. After that, revoke the incomplete approval, review its Privy resources, and create a new approval. Do not fund orphan resources.
 
@@ -139,3 +139,28 @@ pnpm test:anvil
 This starts disposable Sepolia and Base Sepolia Anvil forks plus a temporary PostgreSQL cluster. It registers names through native ENS contracts, funds a local payer through the deployed USDC minter, executes actual EIP-3009 transfers through a local HTTP merchant, and verifies balances, nonce replay protection, ledger idempotency, recipient changes, screening holds, lost responses, reconciliation, delivery errors and budget/revocation behavior. No transaction is sent to a public network. Temporary processes/data are cleaned up.
 
 Set `ENS_FORK_RPC_URL` or `BASE_SEPOLIA_RPC_URL` if public RPCs are unreliable. `BASE_FORK_BLOCK` optionally pins the payment fork; the report records the block used. The harness uses a public fixture key and deterministic screening responses, not Privy or Intercepta credentials. Production HTTPS transport is unchanged; only the test injects a loopback HTTP bridge. The local merchant/relayer is a test adapter rather than the deployed merchant or public facilitator. Their orchestration is covered separately by server integration tests. Provider enforcement and real deployment credentials remain separate live gates.
+
+
+## Hosted users, independent signers and agent access
+
+- `/console` uses Privy email/wallet login. Allow the production URL in the Privy dashboard. The server verifies the access token and derives the user ID; a caller cannot supply ownership in JSON.
+- `/operator` retains the private demo token for maintenance. Do not distribute that token to users or agents.
+- Every approval belongs to a user. Managed mode provisions a policy-bound wallet. Self mode records the payer and never provisions a Privy wallet.
+- Create an agent key on an approval card. The raw key is shown once; PostgreSQL stores its SHA-256 hash. Keys expire with the approval and can be revoked independently. Agents cannot create approvals, modify policies, change recipients or view the whole account.
+- The `/api/v1` endpoint accepts scoped agent keys or verified user tokens. SDK methods and the complete workflow are documented at `/docs`. The agent Skill is `integrations/agent-skill/SKILL.md`.
+- SDK packages are workspace packages, not published npm releases. Use this checkout's workspace or package them deliberately for your integrator.
+- The supported resource request is GET to the exact ENS-published HTTPS URL. Arbitrary POST bodies and forwarded authentication headers are not implemented. The SSRF-safe transport rejects private IPs and redirects and pins DNS for each request.
+- Self signing is a two-step flow: prepare a durable attempt, sign its exact typed data, submit the signature. The server verifies the EOA signature and rechecks current ENS, screening, revocation and budget before sending it. Smart contract wallets are not supported in this reference path.
+- Core `purchaseResource` remains usable without our hosted service. Integrators supply their own signer, persistence, transport, approval and settlement verification.
+
+## Neon production database
+
+`ens402-db` is connected through Vercel Marketplace to production. `DATABASE_URL` is the pooled Neon URL; migration tooling can use `DATABASE_URL_UNPOOLED`. The existing `pg` pool uses ordinary PostgreSQL and does not need replacement with a new ORM. Production schema migration and health check passed. The localhost connection remains local only. Preview does not share production data.
+
+Optional local `PRODUCTION_DATABASE_URL` / `PRODUCTION_DATABASE_URL_UNPOOLED` settings are used only by `scripts/db-production-check.ts` and remain in ignored `.env`. Do not upload those aliases as extra Vercel application variables.
+
+## Namespace setup
+
+See [USER-TODO.md](USER-TODO.md). The official current ENSv2 testnet app is https://app.ens.dev. The current SDK defaults to the official deployment pinned at source `71a3b733`; the older deployment remains an explicit `legacy` option for historical tests. Current key grants apply within a resolver, so use one resolver per service.
+
+After registering the parent, run `pnpm ens:namespace:plan`. It produces an unsigned plan and refuses to replace an existing subregistry. `SERVICE_REGISTRAR_ADDRESS` and `ENS_PARENT_NAME` enable `/register`. The contract uses native EAC; it does not implement a competing permission system. Parent administrators and fixed expiry remain trust boundaries. No public-network deployment is performed by tests.

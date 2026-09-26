@@ -17,7 +17,9 @@
     "setup:check": "tsx scripts/check-setup.ts",
     "ens:plan": "tsx scripts/ens-plan.ts",
     "db:local": "tsx scripts/db-local.ts",
-    "test:anvil": "pnpm exec tsc -p tsconfig.anvil.json --noEmit && pnpm test:contracts && tsx scripts/ens-fork.ts --payments && pnpm test:integration"
+    "test:anvil": "pnpm exec tsc -p tsconfig.anvil.json --noEmit && pnpm test:contracts && tsx scripts/ens-fork.ts && tsx scripts/current-ens-fork.ts --payments && pnpm test:integration",
+    "test:ens:current": "tsx scripts/current-ens-fork.ts",
+    "ens:namespace:plan": "forge build --root contracts --quiet && tsx scripts/namespace-plan.ts"
   },
   "devDependencies": {
     "@privy-io/node": "0.35.0",

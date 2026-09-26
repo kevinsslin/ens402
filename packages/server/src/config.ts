@@ -21,6 +21,6 @@ export function allowedOrigins(): string[] {
 }
 export function allowedNames(): string[] { return requireEnv('SERVICE_ENS_NAME').split(',').map(s => s.trim()).filter(Boolean); }
 export function readiness() {
-  const names = ['DATABASE_URL', 'DEMO_ACCESS_TOKEN', 'PRIVY_APP_ID', 'PRIVY_APP_SECRET', 'INTERCEPTA_API_KEY', 'SEPOLIA_RPC_URL', 'BASE_SEPOLIA_RPC_URL', 'SERVICE_ENS_NAME', 'MERCHANT_ALLOWED_ORIGINS'] as const;
+  const names = ['DATABASE_URL', 'PRIVY_APP_ID', 'PRIVY_APP_SECRET', 'INTERCEPTA_API_KEY', 'SEPOLIA_RPC_URL', 'BASE_SEPOLIA_RPC_URL'] as const;
   return { configured: names.map(name => ({ name, configured: !!process.env[name]?.trim() })), signer: 'Privy', ensChain: 'Sepolia', paymentChain: 'Base Sepolia', constraints: ['Native ENS roles control records', 'Backend reserves daily budget', 'Privy restricts each authorization', 'No automatic retry after uncertain submission'] };
 }

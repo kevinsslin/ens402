@@ -9,7 +9,7 @@ An agent resolves a merchant's current API through ENS, compares the HTTP 402 bi
 - `apps/web`: shadcn/ui landing, architecture/pitch, fixture examples, authenticated operating console and server APIs.
 - `packages/sdk`: pinned ENSv2 resolution and native transaction preparation, request checks, Intercepta adapter, provider-independent signing, real x402 v2 HTTP exchange and on-chain settlement verification.
 - `packages/server`: Privy reference wallet provisioning, explicit approvals, PostgreSQL daily reservations and idempotent receipts, merchant/facilitator integration and reconciliation.
-- `contracts`: interfaces and reproducible tests of actual native ENS registry/resolver proxies on a disposable Sepolia fork. No replacement permission contract.
+- `contracts`: commit/reveal service registrar with dedicated native ENS resolvers and EAC delegation, plus reproducible Sepolia fork tests. See [CONTRACTS.md](CONTRACTS.md).
 
 ```mermaid
 flowchart LR
@@ -38,7 +38,7 @@ pnpm setup:check
 pnpm dev
 ```
 
-`/architecture` is the sponsor walkthrough. `/console` runs real operations with a separate demo access token. Landing-page examples are labeled fixtures.
+`/architecture` is the sponsor walkthrough. `/console` supports Privy user login and scoped agent keys; `/operator` retains the admin-token workflow. `/docs` explains managed and self-signing integrations. `/register` enables native subdomain registration once the parent namespace is configured. Landing-page examples are labeled fixtures.
 
 ## Verify
 
@@ -54,7 +54,7 @@ pnpm test:intercepta:live
 pnpm test:privy:live
 ```
 
-Integration tests use real temporary PostgreSQL databases and simulated external providers. Fork tests execute native ENS contracts and actual SDK resolution, with fork-local registrations. Genuine Intercepta scanning has passed. Privy policy enforcement, live registered-name writes and funded payment settlement still require the setup in SETUP.md. See [IMPLEMENTATION.md](IMPLEMENTATION.md) for evidence and remaining gates.
+Integration tests use real temporary PostgreSQL databases and simulated external providers. Fork tests execute native ENS contracts and actual SDK resolution, with fork-local registrations. Genuine Intercepta scanning has passed. Live Privy signing and seven policy-denial checks passed. Public registered-name writes, human login and funded public payment settlement still require [USER-TODO.md](USER-TODO.md). See [IMPLEMENTATION.md](IMPLEMENTATION.md) for evidence and remaining gates.
 
 ## Integration and trust
 
@@ -62,7 +62,7 @@ Integration tests use real temporary PostgreSQL databases and simulated external
 
 ENS enforces record writes. The SDK validates values and payment consistency. Ownership/resolver/version observations do not enumerate every admin grant or ancestor control path. Custom records `ens402.payment` and `ens402.status`, and the x402 value in `agent-endpoint[x402]`, are application conventions, not official ENS standards.
 
-Privy is the default demo signer. Its policy is designed to restrict each authorization's chain, token, recipient, amount and expiry. Live enforcement needs credential-dependent tests. Daily totals are enforced by the reference backend database. The Privy app secret can change policies, so that backend remains trusted. Other integrators can supply their own wallet and policy infrastructure.
+Privy is the default demo signer. Its policy is designed to restrict each authorization's chain, token, recipient, amount and expiry. Live signing and policy-denial tests passed with the configured credentials. Daily totals are enforced by the reference backend database. The Privy app secret can change policies, so that backend remains trusted. Other integrators can supply their own wallet and policy infrastructure.
 
 Intercepta returns address-risk evidence, not service quality. Its bounded one-hour cache never substitutes expired evidence after failure. Ethereum mainnet evidence is supplementary to Base Sepolia payments. World identity and ERC-8004 reputation remain future inputs and pitch context.
 

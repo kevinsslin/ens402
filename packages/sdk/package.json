@@ -10,7 +10,9 @@
     "./x402": "./src/x402.ts",
     "./ens": "./src/ens/index.ts",
     "./http": "./src/http.ts",
-    "./settlement": "./src/settlement.ts"
+    "./settlement": "./src/settlement.ts",
+    "./platform": "./src/platform.ts",
+    "./ens/registration": "./src/ens/registration.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

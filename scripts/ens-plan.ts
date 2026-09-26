@@ -4,7 +4,7 @@ import { randomBytes } from 'node:crypto';
 import { createPublicClient,http,parseAbi,encodeFunctionData,bytesToHex,keccak256,type Address } from 'viem';
 import { sepolia } from 'viem/chains';
 import { normalize,labelhash,packetToBytes } from 'viem/ens';
-import { ensDeployment,factoryAbi,resolverAbi,universalAbi,prepareRecordUpdate,prepareTextPermission,type ResolvedService } from '../packages/sdk/src/ens/index';
+import { currentDeployment as ensDeployment,factoryAbi,currentResolverAbi as resolverAbi,currentRegistryAbi,universalAbi,prepareRecordUpdate,prepareTextPermission,type ResolvedService } from '../packages/sdk/src/ens/index';
 import { registryAbi } from '../packages/sdk/src/ens/abi';
 import { NETWORK,USDC,sameAddress } from '../packages/sdk/src/index';
 config({path:'.env',quiet:true});
@@ -18,14 +18,16 @@ if(await client.getChainId()!==11155111)throw new Error('ENS setup requires Sepo
 const block=await client.getBlock();
 for(const [address,hash] of [[ensDeployment.universalResolver,ensDeployment.universalResolverCodeHash],[ensDeployment.factory,ensDeployment.factoryCodeHash],[ensDeployment.resolverImplementation,ensDeployment.resolverImplementationCodeHash]] as const){const code=await client.getCode({address,blockNumber:block.number});if(!code||keccak256(code)!==hash)throw new Error('ENS deployment changed; refresh integration before creating transactions');}
 const dns=bytesToHex(packetToBytes(name));
-const actualOwner=await client.readContract({address:ensDeployment.universalResolver,abi:universalAbi,functionName:'findOwner',args:[dns]});
-if(!sameAddress(actualOwner,owner))throw new Error('The service name must already be registered to ENS_OWNER_ADDRESS. Ask ENS sponsor to provision the name first.');
-const parent=await client.readContract({address:ensDeployment.universalResolver,abi:universalAbi,functionName:'findParentRegistry',args:[dns]});
+let parent:Address=ensDeployment.rootRegistry;
+const labels=name.split('.');
+for(let i=labels.length-1;i>0;i--)parent=await client.readContract({address:parent,abi:currentRegistryAbi,functionName:'getSubregistry',args:[labels[i]!]});
+const actualOwner=await client.readContract({address:parent,abi:currentRegistryAbi,functionName:'findOwner',args:[labels[0]!]});
+if(!sameAddress(actualOwner,owner))throw new Error('Register the service name through app.ens.dev or the configured ServiceRegistrar first.');
 const salt=BigInt(`0x${randomBytes(32).toString('hex')}`);
-const initialization=encodeFunctionData({abi:resolverAbi,functionName:'initialize',args:[owner,16n|(16n<<128n),[]]});
+const initialization=encodeFunctionData({abi:resolverAbi,functionName:'initialize',args:[[{account:owner,roleBitmap:16n|(16n<<128n)}],[]]});
 const deploy=await client.simulateContract({account:owner,address:ensDeployment.factory,abi:factoryAbi,functionName:'deployProxy',args:[ensDeployment.resolverImplementation,salt,initialization]});
 const resolver=deploy.result;
-const service={name,resolver};
+const service={name,resolver,deployment:'current' as const};
 const transactions=[
   {chainId:11155111,to:ensDeployment.factory,value:'0x0',data:encodeFunctionData({abi:factoryAbi,functionName:'deployProxy',args:[ensDeployment.resolverImplementation,salt,initialization]}),description:'Deploy a native ENSv2 PermissionedResolver with only root text writer and text administrator roles. No alias or upgrade role is assigned.'},
   prepareRecordUpdate(service,'agent-endpoint[x402]',process.env.MERCHANT_RESOURCE_URL!),

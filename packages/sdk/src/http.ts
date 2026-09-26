@@ -81,16 +81,39 @@ export async function purchaseResource(options: {
     receipt.authorization = structuredClone(authorization);
     step('sign', 'Wallet signed the exact payment authorization');
     await options.beforeSubmit(receipt.authorization, requirement);
-    const fullPayload: PaymentPayload = { x402Version: 2, accepted: requirement, resource: { url: service.endpoint }, payload: prepared.payload.payload };
+    transmitted = true;
+    return submitResourcePayment({ endpoint: service.endpoint, payload: prepared.payload.payload, receipt, transport: options.transport, verifySettlement: options.verifySettlement });
+  } catch {
+    receipt.state = transmitted ? 'uncertain' : 'held';
+    receipt.reason = transmitted ? 'Authorization was submitted; reconcile its nonce before any retry' : 'Required evidence or service response unavailable; payment not submitted';
+    step('stop', receipt.reason);
+    return receipt;
+  }
+}
+
+/** Submit an already verified authorization once. Callers must persist its nonce first. */
+export async function submitResourcePayment(options: {
+  endpoint: string; payload: PaymentPayload['payload']; receipt: PaymentReceipt;
+  transport: ResourceTransport;
+  verifySettlement: (settlement: SettleResponse, authorization: PublicAuthorization, requirement: PaymentRequirements) => Promise<void>;
+}): Promise<PaymentReceipt> {
+  const receipt = structuredClone(options.receipt);
+  const requirement = receipt.requirement!;
+  const authorization = receipt.authorization!;
+  const step = (stage: string, detail: string) => receipt.steps.push({ stage, detail });
+  let transmitted = false;
+  try {
+    const fullPayload: PaymentPayload = { x402Version: 2, accepted: requirement, resource: { url: options.endpoint }, payload: options.payload };
     transmitted = true;
     step('submit', 'Sent the authorization once; automatic retries are disabled');
-    const paid = await options.transport(service.endpoint, { method: 'GET', headers: { Accept: 'application/json', 'PAYMENT-SIGNATURE': encodePaymentSignatureHeader(fullPayload) }, redirect: 'error', signal: AbortSignal.timeout(45000) });
+    const paid = await options.transport(options.endpoint, { method: 'GET', headers: { Accept: 'application/json', 'PAYMENT-SIGNATURE': encodePaymentSignatureHeader(fullPayload) }, redirect: 'error', signal: AbortSignal.timeout(45000) });
     const header = paid.headers.get('payment-response');
     if (!header || header.length > 32768) { await paid.body?.cancel(); throw new Error('Missing settlement receipt'); }
     const settlement = decodePaymentResponseHeader(header);
     if (!settlement.success || settlement.network !== NETWORK || !/^0x[0-9a-fA-F]{64}$/.test(settlement.transaction) || !sameAddress(settlement.payer ?? '', authorization.from)) { await paid.body?.cancel(); throw new Error('Invalid settlement receipt'); }
     receipt.settlement = settlement;
-    await options.verifySettlement(settlement, authorization, requirement);
+    try { await options.verifySettlement(settlement, authorization, requirement); }
+    catch (error) { await paid.body?.cancel(); throw error; }
     step('settle', 'Base Sepolia receipt confirms this authorization nonce and USDC transfer');
     receipt.state = paid.ok ? 'settled' : 'paid_delivery_failed';
     receipt.reason = paid.ok ? 'Payment confirmed and resource delivered' : 'Payment confirmed, but the service returned an error';
@@ -99,8 +122,7 @@ export async function purchaseResource(options: {
     return receipt;
   } catch {
     receipt.state = transmitted ? 'uncertain' : 'held';
-    receipt.reason = transmitted ? 'Authorization was submitted; reconcile its nonce before any retry' : 'Required evidence or service response unavailable; payment not submitted';
-    step('stop', receipt.reason);
+    receipt.reason = transmitted ? 'Submission outcome is uncertain; reconcile before retrying' : 'No payment submitted';
     return receipt;
   }
 }

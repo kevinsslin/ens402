@@ -1,3 +1,5 @@
+import { resolveCurrentService, currentResolverAbi } from './current';
+export { currentDeployment, currentResolverAbi, currentRegistryAbi } from './current';
 import { bytesToHex, decodeFunctionResult, encodeFunctionData, keccak256, stringToHex, zeroAddress, type Address, type Hex, type PublicClient } from 'viem';
 import { namehash, normalize, packetToBytes } from 'viem/ens';
 import { NETWORK, USDC, sameAddress, type PaymentConfig, type ServiceSnapshot } from '../index';
@@ -5,6 +7,7 @@ import { ensDeployment } from './deployment';
 import { factoryAbi, recordKeys, resolverAbi, universalAbi, type RecordKey } from './abi';
 export { ensDeployment, factoryAbi, recordKeys, resolverAbi, universalAbi };
 export type ResolvedService = ServiceSnapshot & {
+  deployment?: 'legacy' | 'current';
   resolver: Address; implementation: Address; owner: Address; parentRegistry: Address;
   blockHash: Hex; recordVersion: string;
   authorityCoverage: readonly string[];
@@ -22,7 +25,8 @@ export function validateEndpoint(raw: string): string {
   return url.href;
 }
 /** No arbitrary CCIP gateways. Supports on-chain records on the pinned native resolver. */
-export async function resolveService(client: PublicClient, input: string, now = Math.floor(Date.now() / 1000)): Promise<ResolvedService> {
+export async function resolveService(client: PublicClient, input: string, now = Math.floor(Date.now() / 1000), deployment: 'legacy' | 'current' = 'current'): Promise<ResolvedService> {
+  if (deployment === 'current') return resolveCurrentService(client,input,now);
   if (await client.getChainId() !== ensDeployment.chainId) throw new Error('ENS requires Sepolia');
   const name = normalize(input);
   if (name.split('.').length < 2) throw new Error('Use a complete service name');
@@ -66,15 +70,19 @@ export async function resolveService(client: PublicClient, input: string, now = 
   return { name, endpoint, status: records[2]!, payment, authority, block: String(block.number), blockHash: block.hash, observedAt: now, resolver, implementation, owner, parentRegistry, recordVersion: String(recordVersion), authorityCoverage: ['exact owner', 'parent registry', 'resolver pointer', 'factory-verified implementation', 'record version', 'aliases rejected'] };
 }
 export type EnsTransaction = { chainId: 11155111; to: Address; data: Hex; value: '0x0'; description: string };
-export function prepareRecordUpdate(service: Pick<ResolvedService, 'name' | 'resolver'>, key: RecordKey, value: string): EnsTransaction {
+export function prepareRecordUpdate(service: Pick<ResolvedService, 'name' | 'resolver' | 'deployment'>, key: RecordKey, value: string): EnsTransaction {
   if (!recordKeys.includes(key)) throw new Error('Unsupported service record');
   if (key === 'agent-endpoint[x402]') value = validateEndpoint(value);
   if (key === 'ens402.payment') value = JSON.stringify(parsePaymentRecord(value));
   if (key === 'ens402.status' && !['active', 'suspended'].includes(value)) throw new Error('Unsupported status');
-  return { chainId: 11155111, to: service.resolver, data: encodeFunctionData({ abi: resolverAbi, functionName: 'setText', args: [namehash(service.name), key, value] }), value: '0x0', description: `Update ${key} for ${service.name}` };
+  return { chainId: 11155111, to: service.resolver, data: service.deployment === 'current' ? encodeFunctionData({abi:currentResolverAbi,functionName:'setText',args:[bytesToHex(packetToBytes(service.name)),key,value]}) : encodeFunctionData({ abi: resolverAbi, functionName: 'setText', args: [namehash(service.name), key, value] }), value: '0x0', description: `Update ${key} for ${service.name}` };
 }
-export function prepareTextPermission(service: Pick<ResolvedService, 'name' | 'resolver'>, key: RecordKey, operator: Address, grant: boolean): EnsTransaction {
+export function prepareTextPermission(service: Pick<ResolvedService, 'name' | 'resolver' | 'deployment'>, key: RecordKey, operator: Address, grant: boolean): EnsTransaction {
   if (!recordKeys.includes(key) || !sameAddress(operator, operator) || sameAddress(operator, zeroAddress)) throw new Error('Invalid permission request');
+  if (service.deployment === 'current') {
+    const setter=encodeFunctionData({abi:currentResolverAbi,functionName:'setText',args:[bytesToHex(packetToBytes(service.name)),key,'']});
+    return {chainId:11155111,to:service.resolver,value:'0x0',data:grant?encodeFunctionData({abi:currentResolverAbi,functionName:'grantSetterRoles',args:[setter,operator]}):encodeFunctionData({abi:currentResolverAbi,functionName:'revokeRoles',args:[BigInt(keccak256(stringToHex(key))),16n,operator]}),description:`${grant?'Grant':'Revoke'} native ${key} writer. This key permission applies to this dedicated resolver; root rights are separate.`};
+  }
   return { chainId: 11155111, to: service.resolver, data: encodeFunctionData({ abi: resolverAbi, functionName: 'authorizeTextRoles', args: [bytesToHex(packetToBytes(service.name)), key, operator, grant] }), value: '0x0', description: `${grant ? 'Grant' : 'Revoke'} ${key} write permission for ${service.name}. Broader root or name permissions are separate.` };
 }
 export async function simulateEnsTransaction(client: PublicClient, from: Address, transaction: EnsTransaction) {

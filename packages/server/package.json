@@ -7,7 +7,9 @@
     ".": "./src/index.ts",
     "./store": "./src/store.ts",
     "./transport": "./src/transport.ts",
-    "./merchant": "./src/merchant.ts"
+    "./merchant": "./src/merchant.ts",
+    "./platform": "./src/platform.ts",
+    "./external": "./src/external.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

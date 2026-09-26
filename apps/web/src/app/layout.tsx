@@ -23,6 +23,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <nav aria-label="Main navigation" className="flex items-center justify-self-end gap-5 text-sm text-muted-foreground sm:justify-self-center sm:gap-7">
           <Link href="/#stack" className="hover:text-foreground">The stack</Link>
           <Link href="/console" className="hover:text-foreground">Console</Link>
+          <Link href="/docs" className="hover:text-foreground">Docs</Link>
         </nav>
         <Button asChild variant="outline" className="hidden justify-self-end sm:inline-flex"><Link href="/architecture">Architecture <ArrowUpRight aria-hidden="true"/></Link></Button>
       </div>

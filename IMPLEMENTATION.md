@@ -1,24 +1,24 @@
 # ENS402 implementation and evidence
 
-Updated September 26, 2026. The application is implemented; a funded live demonstration is still gated by credentials, an ENS name and wallet funding.
+Updated September 26, 2026. The application is implemented; a funded live demonstration is still gated by an ENS name, human login and wallet funding.
 
 | Layer | Implemented and checked | Remaining live gate |
 | --- | --- | --- |
 | ENS | Registered-name resolution, pinned deployment hashes, owner/resolver/version observation; actual SDK fork test | Controlled registered ENSv2 Sepolia name |
-| Native EAC | Prepare/simulate writes and narrow grants; 11 native fork contract tests | Owner/operator transactions on Sepolia |
+| Native EAC | Prepare/simulate writes and narrow grants; 29 native fork contract tests | Owner/operator transactions on Sepolia |
 | x402 | Real v2 HTTP exchange, cryptographic authorization, single submission and chain receipt/nonce checks | Funded Base Sepolia settlement |
 | Privy | Approval-specific wallet/policy, current-policy validation, revocation and bounded provisioning retry | Local provider signing and rejection checks passed; production configuration and funded settlement remain |
 | Intercepta | Genuine clean scan observed; one-hour cache and fail-closed risk rules | Risky classifications tested as fixtures only |
-| Backend | Authenticated APIs; PostgreSQL budget locking, idempotency, durable nonce, cancellation and reconciliation | Cloud PostgreSQL for Vercel |
+| Backend | Authenticated APIs; PostgreSQL budget locking, idempotency, durable nonce, cancellation and reconciliation | Neon connected and migrated; public funded flow remains |
 | Merchant | Two protected routes, signature validation, facilitator verify/settle and nonce deduplication | Configured Treasury and funded purchase |
 | Frontend | Service inspection, explicit approval, funding address, payment receipt timeline, native seller controls | Full browser purchase with live credentials |
 | CI | Unit, integration, typecheck/build and native fork workflows | GitHub Actions run `36188932735` passed |
 
 ## Test evidence
 
-- 73 fast tests pass: SDK/risk/signature/HTTP/settlement/configuration checks.
-- 19 database/workflow tests pass using temporary PostgreSQL; external provider responses are simulated.
-- 11 native contract tests pass on a pinned Sepolia fork.
+- 77 fast tests pass: SDK/risk/signature/HTTP/settlement/configuration checks.
+- 25 database/workflow tests pass using temporary PostgreSQL; external provider responses are simulated.
+- 29 native contract tests pass on a pinned Sepolia fork.
 - SDK registered-name resolution, native permissions and alias rejection pass on a disposable fork.
 - Typecheck/build and browser validation are recorded with the release. A passing local suite is not evidence of live Privy policy enforcement or settled payment.
 
@@ -36,9 +36,9 @@ All exact steps and variable names are in [SETUP.md](SETUP.md): Privy App ID/Sec
 - A merchant crash after claiming a nonce can require manual transaction investigation; it never attempts a second settlement for that nonce. Buyer reconciliation can confirm payment without claiming resource delivery.
 - World and ERC-8004 are not required runtime dependencies. The core remains wallet-provider independent.
 
-## Release verification
+## Historical release verification
 
-Implementation commit `8147b52` passed both GitHub Actions jobs and deployed successfully to https://ens402.vercel.app. Public pages and status return 200; unauthenticated control returns 401. Production correctly reports missing database, Privy credentials and ENS name.
+Implementation commit `8147b52` passed both GitHub Actions jobs and deployed successfully to https://ens402.vercel.app. Public pages and status return 200; unauthenticated control returns 401. That historical deployment reported missing database, Privy credentials and ENS name. The current configuration now has Neon and Privy; the ENS namespace remains pending.
 
 Browser login, service inspection, approval, paid-receipt display and revocation were exercised. Inspection/approval/payment UI used explicitly injected browser fixtures, not live provider calls. The real local login used PostgreSQL. At 390 CSS pixels, console and architecture have no page-level horizontal overflow. The initial Ego screenshot capture timed out. A subsequent built-in browser inspection successfully verified the deployed desktop architecture diagram and mobile (390px) public console setup screen. Authenticated live payment screens still require the missing production configuration.
 
@@ -55,3 +55,14 @@ Run `pnpm test:anvil`. The local signer, screening response and merchant/relayer
 `pnpm test:privy:live` passed using the local application credentials. An unfunded disposable wallet signed an x402 authorization that was cryptographically verified. Direct provider calls rejected the wrong recipient, chain, token, excessive amount, excessive expiry, changed type map, and personal signing with `policy_violation`. The policy was restored to deny-all. No payment was submitted. This verifies provider enforcement, not production configuration or funded settlement.
 
 The test now sends only supported policy update fields and recognizes the observed HTTP 400 policy violation by its structured error code. Local evidence is in `docs/validation/privy-live.json`.
+
+
+## Multi-user platform and current ENSv2 upgrade
+
+Implemented user-scoped approvals, Privy token verification, hashed and revocable per-approval agent keys, API rate limits and hosted SDK methods. Managed and self-signing flows share ENS/payment/risk checks. Self signing persists a preparation, verifies the exact EOA signature and rechecks before submission. No raw signing endpoint or policy administration is exposed to agent keys. Database ownership checks cover reads, balance, provisioning, execution, reconciliation, cancellation and revocation.
+
+The current SDK pins ENSv2 source `71a3b733`, uses native registry traversal, `setText(bytes,...)`, `grantSetterRoles` and `revokeRoles`, and requires a dedicated resolver record. Legacy integration tests remain explicitly marked. Added `ServiceRegistrar` with bound commit/reveal, one native resolver per service, atomic configuration/publication, separate record delegates and removal of bootstrap privileges. It supports only verified resolver/factory versions on Sepolia. Parent authority is not removed.
+
+Neon was created and connected to production. Migration/health check passed. Removed four unused legacy environment variables and the unusable localhost production database setting. Live namespace deployment, a real user login and funded public-facilitator settlement remain separate gates recorded in USER-TODO.md.
+
+Validation: 77 fast tests; 25 PostgreSQL workflow/store tests including cross-user rejection, key scoping/revocation and self-signed payment tampering/replay; 29 Solidity fork tests (including inherited compatibility cases); complete Anvil workflow with current native ENS and real Base Sepolia USDC bytecode. Typecheck and production build passed during implementation. Final release receipts are recorded separately after deployment.
