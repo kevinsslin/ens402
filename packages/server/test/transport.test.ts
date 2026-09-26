@@ -12,7 +12,7 @@ vi.mock("undici", () => ({
 }));
 import { createResourceTransport } from "../src/transport";
 const request = () => createResourceTransport(["https://merchant.example"])("https://merchant.example/api", {
-  method: "GET", redirect: "error", signal: AbortSignal.timeout(1000),
+  method: "GET", headers: {}, redirect: "error", signal: AbortSignal.timeout(1000),
 });
 beforeEach(() => {
   vi.clearAllMocks();

@@ -458,3 +458,9 @@ The endpoint must return an unsigned x402 HTTP 402 challenge containing `resourc
 The registration page inspects the endpoint, lets the merchant review proposed values, and rechecks metadata/payment equality before both commit and reveal. Editing any field discards the pending draft. Guard pins verified metadata in buyer approval and rejects later changes or removal before signing. Legacy records lacking the verification marker retain their existing payment checks but do not gain a metadata-verification claim.
 
 Treasury Admin is a payment-settings role, not a wallet type. `PROVIDER_TREASURY_ADMIN_ADDRESS` is the preferred variable; the previous `PROVIDER_TREASURY_SAFE_ADDRESS` remains accepted as a compatibility alias. The registrar ABI retains its legacy `treasurySafe()` getter; it does not require contract code.
+
+## Optional Curvegrid MultiBaas activity feed
+
+Set `MULTIBAAS_BASE_URL`, `MULTIBAAS_API_KEY`, `MULTIBAAS_ENS_REGISTRY_ADDRESS` and `MULTIBAAS_ENS_RESOLVER_ADDRESS` as server-only variables. For this demo, the addresses are the native `ens402.eth` child Registry and parent Resolver on Ethereum Sepolia. Run `pnpm exec tsx scripts/multibaas-setup.ts` once to register their event ABIs and link the contracts. The script checks chain ID 11155111. On the free plan, set `MULTIBAAS_START_BLOCK=-80` for an initial window within its 100-block backfill cap. Add the four runtime variables to Vercel Production and redeploy to enable the public feed. Never use a `NEXT_PUBLIC_` prefix for the API key.
+
+`GET /api/governance/activity?kind=Registry|Resolver` and MCP `observe_ens_changes` return bounded, read-only event observations; the landing page shows the same feed. This initial link does not cover every provider Registry or shared Resolver. An empty page means there were no events in the indexed window, not that no ENS changes ever happened. Guard and native EAC checks always use fresh ENS state rather than this index.

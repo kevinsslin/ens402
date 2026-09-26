@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AgentDiscoveryFlow } from "./agent-discovery-flow";
 import { PaymentVerificationFlow } from "./payment-verification-flow";
+import { GovernanceActivity } from "./governance-activity";
 import { ArrowRight, Check, LockKeyhole, Search, ShieldCheck, X } from "lucide-react";
 
 const panel = "rounded-2xl border bg-white p-6 sm:p-8";
@@ -39,6 +40,7 @@ export function LandingLayers() {
         </div>
         <p className="mt-5 text-sm leading-6 text-muted-foreground">One provider shares one resolver. Key grants cover its service bundles; separate teams can use separate resolvers. Provider Admin retains governance authority.</p>
       </div>
+      <div className="lg:col-span-2"><GovernanceActivity /></div>
     </section>
     <section id="guard" className="grid items-start gap-10 py-16 lg:grid-cols-2 lg:gap-20 sm:py-24">
       <div>

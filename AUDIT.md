@@ -159,6 +159,12 @@ Validation this round:
 
 The browser verification did not sign in as the real owner or execute wallet transactions. Hosted ingestion, public grants, Safe execution and a funded buyer purchase remain explicit TODO items. Ancestor/root/link/upgrade powers are not renounced and exclusive resolver membership is not claimed.
 
+## Curvegrid MultiBaas integration, September 27
+
+- An authenticated status request confirmed the supplied MultiBaas deployment is Ethereum Sepolia, chain ID 11155111. The native ENS402 child Registry and parent Resolver event ABIs were registered and their addresses linked. Both index jobs reported complete through block 11788749.
+- The live read-only adapter returned a valid empty event page. No real `LabelRegistered`, `TextUpdated` or `EACRolesChanged` event has yet been observed through MultiBaas, so event decoding is verified only with fixtures. The free-plan initial link covers about 80 recent blocks; it is not historical or provider-wide coverage.
+- `packages/server/test/multibaas.test.ts` checks bounded queries, source/chain validation, malformed events and credential-safe errors. The Governance API, MCP tool and landing activity panel are separate from fresh ENS reads, native permission enforcement and Guard decisions.
+
 ## Onboarding recovery and Treasury Admin correction
 
 - Treasury Admin is wallet-type agnostic. Removed the planner's contract-code requirement; native EAC still requires separate Admin, Operations and Treasury identities in the shared-provider setup. The existing Solidity ABI is unchanged.

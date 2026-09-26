@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-const { inspect, search, merchant } = vi.hoisted(() => ({ inspect: vi.fn(), search: vi.fn(), merchant: vi.fn() }));
+const { inspect, search, activity, merchant } = vi.hoisted(() => ({ inspect: vi.fn(), search: vi.fn(), activity: vi.fn(), merchant: vi.fn() }));
 vi.mock("@ens402/server", () => ({ inspectService: inspect }));
 vi.mock("../src/app/api/discover/route", () => ({ GET: search }));
+vi.mock("../src/app/api/governance/activity/route", () => ({ GET: activity }));
 vi.mock("@ens402/server/merchant", () => ({ serveMerchant: merchant }));
 import { POST } from "../src/app/api/mcp/route";
 import { GET as fixture } from "../src/app/api/merchant/fixtures/[service]/route";
@@ -13,7 +14,7 @@ describe("read-only MCP", () => {
   it("initializes and exposes only read tools", async () => {
     expect((await (await rpc("initialize")).json()).result.capabilities.tools).toBeDefined();
     const tools = (await (await rpc("tools/list")).json()).result.tools;
-    expect(tools.map((tool: { name: string }) => tool.name)).toEqual(["discover_services", "resolve_service"]);
+    expect(tools.map((tool: { name: string }) => tool.name)).toEqual(["discover_services", "resolve_service", "observe_ens_changes"]);
     expect(tools.every((tool: { annotations: { readOnlyHint: boolean } }) => tool.annotations.readOnlyHint)).toBe(true);
   });
   it("uses the same discovery route and rejects unknown fields", async () => {
@@ -35,6 +36,14 @@ describe("read-only MCP", () => {
     expect(result.result.content[0].text).toContain('"10000"');
     expect(inspect).toHaveBeenCalledWith("weather.provider.eth");
     expect((await (await rpc("tools/call", { name: "resolve_service", arguments: { name: "https://evil.example" } })).json()).error.code).toBe(-32602);
+  });
+  it("exposes bounded indexed ENS observations without payment authority", async () => {
+    activity.mockResolvedValue(Response.json({ source: "Curvegrid MultiBaas", authority: "observation_only", events: [] }));
+    const result = await (await rpc("tools/call", { name: "observe_ens_changes", arguments: { kind: "Registry", limit: 5 } })).json();
+    expect(result.result.isError).toBe(false);
+    expect(result.result.content[0].text).toContain("observation_only");
+    expect(new URL(activity.mock.calls[0]![0].url).searchParams.get("limit")).toBe("5");
+    expect((await (await rpc("tools/call", { name: "observe_ens_changes", arguments: { limit: 1000 } })).json()).error.code).toBe(-32602);
   });
   it("rejects browser cross-origin use and handles upstream unavailability without payments", async () => {
     expect((await rpc("tools/list", undefined, { Origin: "https://evil.example" })).status).toBe(403);

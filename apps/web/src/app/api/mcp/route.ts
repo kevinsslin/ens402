@@ -1,11 +1,13 @@
 import { inspectService } from "@ens402/server";
 import { GET as search } from "../discover/route";
+import { GET as activity } from "../governance/activity/route";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const headers = { "Cache-Control": "no-store" };
 const tools = [
   { name: "discover_services", description: "Search public ENS service candidates. Relevance does not grant payment authority. Resolve a chosen name again before approval or signing.", inputSchema: { type: "object", properties: { query: { type: "string", maxLength: 500 }, maxPricePerRequestAtomic: { type: "string", pattern: "^[0-9]+$" }, pageSize: { type: "integer", minimum: 1, maximum: 50 }, mode: { type: "string", enum: ["keyword", "hybrid"] } }, additionalProperties: false }, annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true } },
   { name: "resolve_service", description: "Read current ENS service configuration. No payment, wallet creation or approval occurs.", inputSchema: { type: "object", properties: { name: { type: "string", maxLength: 255 } }, required: ["name"], additionalProperties: false }, annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true } },
+  { name: "observe_ens_changes", description: "Read Curvegrid MultiBaas indexed ENSv2 activity for the ENS402 namespace. This is historical observation, not current permission or payment authority. Resolve the service again before acting.", inputSchema: { type: "object", properties: { kind: { type: "string", enum: ["Registry", "Resolver"] }, event: { type: "string", enum: ["LabelRegistered", "EACRolesChanged", "TextUpdated"] }, limit: { type: "integer", minimum: 1, maximum: 50 }, offset: { type: "integer", minimum: 0 } }, additionalProperties: false }, annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true } },
 ];
 /** Stateless MCP Streamable HTTP JSON responses. This server has no payment tools. */
 export async function POST(request: Request) {
@@ -45,6 +47,19 @@ export async function POST(request: Request) {
       const values = args as Record<string, unknown>;
       if (Object.keys(values).some(key => key !== "name") || typeof values.name !== "string" || !/^[a-z0-9.-]+\.eth$/.test(values.name) || values.name.length > 255) return fail(-32602, "Provide a valid ENS name");
       result = await inspectService(values.name);
+    } else if (name === "observe_ens_changes") {
+      const values = args as Record<string, unknown>;
+      if (Object.keys(values).some(key => !["kind", "event", "limit", "offset"].includes(key)) ||
+          (values.kind !== undefined && values.kind !== "Registry" && values.kind !== "Resolver") ||
+          (values.event !== undefined && !["LabelRegistered", "EACRolesChanged", "TextUpdated"].includes(String(values.event))) ||
+          (values.limit !== undefined && (typeof values.limit !== "number" || !Number.isInteger(values.limit) || values.limit < 1 || values.limit > 50)) ||
+          (values.offset !== undefined && (typeof values.offset !== "number" || !Number.isInteger(values.offset) || values.offset < 0)))
+        return fail(-32602, "Invalid ENS activity arguments");
+      const url = new URL("/api/governance/activity", request.url);
+      for (const [key, value] of Object.entries(values)) url.searchParams.set(key, String(value));
+      const response = await activity(new Request(url));
+      if (!response.ok) throw new Error("ENS activity feed unavailable");
+      result = await response.json();
     } else return fail(-32602, "Unknown tool");
     return reply({ content: [{ type: "text", text: JSON.stringify(result, (_, value) => typeof value === "bigint" ? value.toString() : value) }], isError: false });
   } catch { return reply({ content: [{ type: "text", text: "Service data unavailable. No payment or approval was performed." }], isError: true }); }

@@ -17,6 +17,8 @@
     "./discovery-store": "./src/discovery-store.ts",
     "./analytics": "./src/analytics.ts",
     "./analytics-runtime": "./src/analytics-runtime.ts",
+    "./multibaas": "./src/multibaas.ts",
+    "./multibaas-runtime": "./src/multibaas-runtime.ts",
     "./config": "./src/config.ts",
     "./fixture-metadata": "./src/fixture-metadata.ts"
   },
