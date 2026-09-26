@@ -44,12 +44,12 @@ it("selects independently configured providers and rejects unknown or conflictin
   expect(configuredProviderGroups(env)).toHaveLength(2);
   expect(
     resolverPolicyForService("weather.other.ens402.eth", env),
-  ).toMatchObject(second);
+  ).toMatchObject({mode:"namespace",roots:["ens402.eth"]});
   expect(
     resolverPolicyForService("weather.dataco.ens402.eth", env),
-  ).toMatchObject({ providerName: complete.PROVIDER_ENS_NAME });
+  ).toMatchObject({mode:"namespace",roots:["ens402.eth"]});
   expect(() => resolverPolicyForService("weather.unknown.eth", env)).toThrow(
-    "Configure",
+    "outside supported",
   );
   expect(() =>
     configuredProviderGroups({
@@ -62,4 +62,10 @@ it("selects independently configured providers and rejects unknown or conflictin
   expect(() =>
     configuredProviderGroups({ PROVIDER_GROUPS_JSON: "[{}]" }),
   ).toThrow("Incomplete");
+});
+
+it("accepts newly registered providers in the configured root without manual pins",()=>{
+ expect(resolverPolicyForService("bounty-info.ethglobal.ens402.eth",{})).toEqual({mode:"namespace",roots:["ens402.eth"]});
+ expect(()=>resolverPolicyForService("bounty-info.evilens402.eth",{})).toThrow();
+ expect(()=>resolverPolicyForService("v1.bounty-info.ethglobal.ens402.eth",{})).toThrow();
 });

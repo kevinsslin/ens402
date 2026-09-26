@@ -5,6 +5,7 @@ import { sameAddress } from "../index";
 /** Shared means a configured provider permission boundary, not a globally trusted resolver. */
 export type CurrentResolverPolicy =
   | { mode: "dedicated" }
+  | { mode: "namespace"; roots: string[] }
   | {
       mode: "provider-shared";
       providerName: string;
@@ -33,6 +34,18 @@ export function checkResolverPolicy(input: {
     return {
       authorityParts: ["dedicated"],
       coverage: ["single-record bundle check; aliases are not enumerated"],
+    };
+  }
+  if (policy.mode === "namespace") {
+    const roots = policy.roots.map(normalize);
+    if (!roots.some(root => name.endsWith(`.${root}`) && name.split(".").length === root.split(".").length + 2))
+      throw new Error("Service is outside supported provider namespaces");
+    if (sameAddress(parentRegistry, zeroAddress) || sameAddress(resolver, zeroAddress))
+      throw new Error("Native provider registry and resolver required");
+    const provider = name.split(".").slice(1).join(".");
+    return {
+      authorityParts: ["provider-shared", provider, parentRegistry.toLowerCase(), resolver.toLowerCase()],
+      coverage: ["provider registry derived from native ENS ancestor traversal", "exact factory-verified resolver and nonzero record link", "shared resolver permissions apply across provider services; ancestor and root administrators remain trusted"],
     };
   }
   if (policy.mode !== "provider-shared") throw new Error("Unsupported resolver policy");

@@ -463,3 +463,7 @@ In the provider workspace, choose **Publish service -> ETHGlobal bounty info**. 
 The configured merchant recipient must match the new service-name holder. Keep the preset description and payment terms aligned with the endpoint. Under `ethglobal.ens402.eth`, the resulting name is `bounty-info.ethglobal.ens402.eth`. The endpoint itself does not register a name or add a search result.
 
 After publication and finality, use **Refresh listings**, then Search Service with `help me find ETHGlobal bounty information`. **Copy Skill** uses the existing public search API; an agent can use the same prompt. Discovery requires no wallet; purchasing still requires Guard and an approved payment. A different ENS root must be supported by provider setup and included in the indexer's configured roots before it is searchable.
+
+## Direct CLI purchase
+
+GET services can be purchased by ENS name with a local signer and explicit maximum price, without a Console export. See the [CLI reference](apps/web/public/skills/ens402-discovery/references/cli.md). Hosted Guard derives provider bindings on chain within `ENS_PARENT_NAME`; registering a provider under that root no longer needs `PROVIDER_GROUPS_JSON`. Existing external pins remain available outside the configured root.

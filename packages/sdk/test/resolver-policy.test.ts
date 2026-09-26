@@ -48,3 +48,11 @@ it("Guard holds an approval when the resolved authority changes", async () => {
     { name: input.name, authority: "provider-registry:resolver:record-1", endpoints: [service.endpoint], payTo: other, maxAmount: "1000", expiresAt: 1000 }, 100);
   expect(decision).toEqual({ outcome: "hold", reason: "Service identity needs approval" });
 });
+
+it("binds discovered namespace providers to their actual chain registry and resolver",()=>{
+ const dynamic={...input,policy:{mode:"namespace" as const,roots:["ens402.eth"]}};
+ expect(checkResolverPolicy(dynamic).authorityParts).toEqual(checkResolverPolicy(input).authorityParts);
+ expect(checkResolverPolicy({...dynamic,resolver:other}).authorityParts).not.toEqual(checkResolverPolicy(dynamic).authorityParts);
+ for(const name of ["weather.evilens402.eth","v1.weather.dataco.ens402.eth","dataco.ens402.eth"]) expect(()=>checkResolverPolicy({...dynamic,name})).toThrow();
+ expect(()=>checkResolverPolicy({...dynamic,recordId:0n})).toThrow();
+});

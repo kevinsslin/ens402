@@ -174,13 +174,13 @@ export function resolverPolicyForService(
   name: string,
   env: Record<string, string | undefined> = process.env,
 ): CurrentResolverPolicy {
-  const provider = normalize(name).split(".").slice(1).join(".");
+  const root = normalize(env.ENS_PARENT_NAME || "ens402.eth");
+  const service = normalize(name);
+  if (service.endsWith(`.${root}`) && service.split(".").length === root.split(".").length + 2)
+    return { mode: "namespace", roots: [root] };
+  const provider = service.split(".").slice(1).join(".");
   const groups = configuredProviderGroups(env);
-  const group = groups.find((group) => group.providerName === provider);
+  const group = groups.find(group => group.providerName === provider);
   if (group) return group;
-  if (groups.length)
-    throw Error(
-      "Configure this provider's registry and resolver before hosted verification",
-    );
-  return { mode: "dedicated" };
+  throw Error("Service is outside supported provider namespaces");
 }

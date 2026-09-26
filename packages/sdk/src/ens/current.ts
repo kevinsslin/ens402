@@ -115,6 +115,14 @@ export async function resolveCurrentService(
         throw new Error("Missing native subregistry");
     }
   }
+  if (policy.mode === "namespace") {
+    const registryImplementation = await client.readContract({
+      address: d.factory, abi: factoryAbi, functionName: "verifyContract",
+      args: [parentRegistry], blockNumber,
+    });
+    if (!sameAddress(registryImplementation, d.registryImplementation))
+      throw new Error("Unsupported native provider registry");
+  }
   const dns = bytesToHex(packetToBytes(name)),
     node = namehash(name);
   const [resolver, resolvedNode, offset] = await client.readContract({

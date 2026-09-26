@@ -22,7 +22,7 @@ The hosted resource supports GET or bounded JSON POST to the exact ENS-published
 
 ## Discover first
 
-For public search without payment credentials, use the standalone [ENS402 discovery Skill](https://ens402.vercel.app/skills/ens402-discovery/SKILL.md). The landing page and Search services page provide Copy Skill, a standalone CLI download and a Claude Code MCP setup command. For terminal payments, export an active checkout from Console and follow the [CLI payment reference](https://ens402.vercel.app/skills/ens402-discovery/references/cli.md). Website login alone does not authenticate terminal commands.
+For public search without payment credentials, use the standalone [ENS402 discovery Skill](https://ens402.vercel.app/skills/ens402-discovery/SKILL.md). The landing page and Search services page provide Copy Skill, a standalone CLI download and a Claude Code MCP setup command. For direct GET payments, use a local signer and the CLI by ENS name; managed wallets and POST requests can still export a Console checkout. Follow the [CLI payment reference](https://ens402.vercel.app/skills/ens402-discovery/references/cli.md). Website login alone does not authenticate terminal commands.
 
 Use `discover({ query, mode: "hybrid", maxPricePerRequestAtomic }, { apiUrl: "https://YOUR_DEPLOYMENT/api/discover" })` from `@ens402/sdk/discovery`. The API URL is configurable; no wallet or payment key is needed. The operator must configure a catalog/indexer. Semantic search can be unavailable; inspect `semantic` rather than assuming it ran.
 
