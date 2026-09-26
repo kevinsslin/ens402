@@ -72,7 +72,7 @@ Local tests do not complete these steps. No mainnet transactions.
 
 ## Remaining boundaries to validate with real setup
 
-- [ ] Deploy the four server-only MultiBaas variables already configured on Vercel Production and verify the public activity route. After a real native ENS change, verify a nonempty indexed event page and transaction link. Add each provider Registry/Resolver to MultiBaas before claiming provider-wide governance history. The free-plan 100-block backfill cap limits older changes.
+- [ ] After a real native ENS change, verify a nonempty MultiBaas event page and transaction link. Add each provider Registry/Resolver to MultiBaas before claiming provider-wide governance history. The four server-only variables are configured on Vercel Production and the public route returns 200 with an empty page; the free-plan 100-block backfill cap limits older changes.
 
 - [ ] Full authenticated browser wallet journey with actual provider deployment and Safe signing. Current route/unit/fork checks do not replace a funded public walkthrough.
 - [ ] Audit actual ancestor pointer, renewal/expiry, re-registration, alias/link, root/admin and upgrade powers before claiming platform-independent control. Prepare irreversible renunciation only after recovery tests; no renunciation is currently claimed.

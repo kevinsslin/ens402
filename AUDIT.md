@@ -164,6 +164,7 @@ The browser verification did not sign in as the real owner or execute wallet tra
 - An authenticated status request confirmed the supplied MultiBaas deployment is Ethereum Sepolia, chain ID 11155111. The native ENS402 child Registry and parent Resolver event ABIs were registered and their addresses linked. Both index jobs reported complete through block 11788749.
 - The live read-only adapter returned a valid empty event page. No real `LabelRegistered`, `TextUpdated` or `EACRolesChanged` event has yet been observed through MultiBaas, so event decoding is verified only with fixtures. The free-plan initial link covers about 80 recent blocks; it is not historical or provider-wide coverage.
 - `packages/server/test/multibaas.test.ts` checks bounded queries, source/chain validation, malformed events and credential-safe errors. The Governance API, MCP tool and landing activity panel are separate from fresh ENS reads, native permission enforcement and Guard decisions.
+- Commit `02ef979` built and deployed to Vercel Production. `https://ens402.vercel.app/api/governance/activity?kind=Registry&limit=5` returned HTTP 200, chain ID 11155111, `authority: observation_only`, and zero events. The live landing page rendered the empty-window state. The ETHGlobal Curvegrid prize draft was updated with this exact integration and its limitations; the overall project submission was not finalized here.
 
 ## Onboarding recovery and Treasury Admin correction
 
