@@ -17,13 +17,13 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return <html lang="en" className={`dark ${sans.variable} ${mono.variable}`}><body className="min-h-screen antialiased">
     <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-primary focus:p-3 focus:text-primary-foreground">Skip to content</a>
     <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur-sm">
-      <div className="section-shell flex min-h-20 flex-wrap items-center justify-between gap-x-6 gap-y-3 py-4">
-        <Link href="/" aria-label="ENS402 home" className="flex items-center gap-2.5 text-xl font-semibold tracking-tight"><Layers3 className="size-6 text-primary" aria-hidden="true"/>ENS<span className="-ml-2 text-primary">402</span></Link>
-        <nav aria-label="Main navigation" className="flex items-center gap-5 text-sm text-muted-foreground sm:gap-7">
+      <div className="section-shell grid min-h-20 grid-cols-[auto_1fr] items-center gap-x-6 gap-y-3 py-4 sm:grid-cols-[1fr_auto_1fr]">
+        <Link href="/" aria-label="ENS402 home" className="flex items-center justify-self-start gap-2.5 text-xl font-semibold tracking-tight"><Layers3 className="size-6 text-primary" aria-hidden="true"/>ENS<span className="-ml-2 text-primary">402</span></Link>
+        <nav aria-label="Main navigation" className="flex items-center justify-self-end gap-5 text-sm text-muted-foreground sm:justify-self-center sm:gap-7">
           <Link href="/#stack" className="hover:text-foreground">The stack</Link>
           <Link href="/console" className="hover:text-foreground">Console</Link>
-          <Button asChild variant="outline" className="hidden sm:inline-flex"><Link href="/architecture">Architecture <ArrowUpRight aria-hidden="true"/></Link></Button>
         </nav>
+        <Button asChild variant="outline" className="hidden justify-self-end sm:inline-flex"><Link href="/architecture">Architecture <ArrowUpRight aria-hidden="true"/></Link></Button>
       </div>
     </header>
     <main id="main-content">{children}</main>
