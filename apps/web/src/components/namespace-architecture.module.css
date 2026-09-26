@@ -1,0 +1,48 @@
+.figure { margin-top: 2.25rem; border: 1px solid var(--border); border-radius: 20px; background: var(--card); overflow: hidden; }
+.header { padding: 28px; border-bottom: 1px solid var(--border); }
+.header h3 { font-size: 22px; font-weight: 500; }
+.header p { margin-top: 8px; color: var(--muted-foreground); line-height: 1.6; }
+.legend { display: flex; flex-wrap: wrap; gap: 12px 24px; margin-top: 18px; font-size: 12px; color: var(--muted-foreground); }
+.legend span:last-child { margin-left: auto; }
+.diagram { padding: 28px; }
+.row { display: grid; grid-template-columns: minmax(0,1fr) 64px minmax(0,1.2fr); align-items: center; position: relative; padding: 14px 0; }
+.wallet { border: 1px solid var(--border); border-radius: 12px; padding: 18px; background: var(--background); min-width: 0; }
+.walletTitle,.contractTitle { display: flex; align-items: center; gap: 9px; font-size: 15px; font-weight: 600; }
+.walletTitle svg,.contractTitle svg { flex-shrink: 0; }
+.action { margin-top: 8px; font-size: 14px; line-height: 1.6; }
+.roles { display: flex; flex-direction: column; margin-top: 12px; }
+.roles code { font-size: 11px; line-height: 1.8; overflow-wrap: anywhere; }
+.scope { margin-top: 8px; font-size: 12px; line-height: 1.5; color: var(--primary); }
+.grantEdge { display: flex; align-items: center; color: var(--primary); }
+.grantEdge span { height: 1px; flex: 1; background: currentColor; }
+.grantEdge svg:last-child { display: none; }
+.contract { border: 1px solid var(--border); border-radius: 12px; padding: 20px; min-width: 0; position: relative; }
+.contract p:not(.contractTitle) { margin-top: 12px; font-size: 13px; line-height: 1.7; color: var(--muted-foreground); }
+.name { text-align: center; font: 16px var(--font-geist-mono),monospace; }
+.pointer { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 0; font-size: 12px; color: var(--muted-foreground); }
+.nameControl { border-left: 2px solid var(--border); margin-left: 24px; padding: 8px 18px; }
+.nameControl > code { display: block; margin-top: 8px; overflow-wrap: anywhere; font-size: 14px; }
+.small { display: block; font-size: 12px; color: var(--muted-foreground); line-height: 1.6; }
+.services { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; font: 13px var(--font-geist-mono),monospace; }
+.services > * { border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; }
+.services strong { color: var(--primary); background: var(--secondary); font-weight: 500; }
+.resolverGroup { margin-top: 14px; padding: 20px; border: 1px solid var(--primary); border-radius: 14px; background: color-mix(in srgb,var(--secondary) 25%,white); }
+.resolverLabel { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+.resolverLabel span { margin-left: auto; font-size: 12px; color: var(--muted-foreground); font-weight: 400; }
+.record { padding: 18px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); min-width: 0; }
+.record > code { font-size: 12px; overflow-wrap: anywhere; }
+.record strong { display: block; margin-top: 8px; font-size: 15px; font-weight: 500; }
+.record p { font-size: 12px; line-height: 1.7; margin-top: 8px; color: var(--muted-foreground); }
+.siblings { text-align: center; font-size: 13px; line-height: 1.8; margin-top: 20px; color: var(--muted-foreground); }
+.caption { border-top: 1px solid var(--border); padding: 20px 28px; font-size: 12px; line-height: 1.8; color: var(--muted-foreground); }
+@media(max-width: 700px) {
+ .header,.diagram { padding: 20px; }
+ .row { grid-template-columns: minmax(0,1fr); padding: 16px 0; }
+ .grantEdge { height: 26px; justify-content: center; }
+ .grantEdge span,.grantEdge svg:nth-child(2) { display: none; }
+ .grantEdge svg:last-child { display: block; }
+ .resolverGroup { padding: 12px; }
+ .resolverLabel span { width: 100%; margin: 0; }
+ .legend span:last-child { margin: 0; }
+ .caption { padding: 20px; }
+}
