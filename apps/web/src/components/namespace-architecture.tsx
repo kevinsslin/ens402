@@ -1,71 +1,64 @@
-import { ArrowDown, ArrowRight, Database, Wallet } from "lucide-react";
+import { ArrowUpRight, Wallet } from "lucide-react";
 import styles from "./namespace-architecture.module.css";
 
-function Grant({ wallet, roles, scope, action }: { wallet: string; roles: string[]; scope: string; action: string }) {
-  return <div className={styles.wallet}>
-    <p className={styles.walletTitle}><Wallet size={17} aria-hidden="true"/>{wallet}</p>
-    <p className={styles.action}>{action}</p>
-    <div className={styles.roles}>{roles.map(role=><code key={role}>{role}</code>)}</div>
-    <p className={styles.scope}>Scope: {scope}</p>
-  </div>;
-}
-function Edge() {
-  return <div className={styles.grantEdge} aria-label="Permission applies to this target"><span/><ArrowRight size={17} aria-hidden="true"/><ArrowDown size={17} aria-hidden="true"/></div>;
-}
-function Pointer({children}:{children:React.ReactNode}) {
-  return <div className={styles.pointer}><ArrowDown size={17} aria-hidden="true"/><span>{children}</span></div>;
-}
-function Contract({title,children}:{title:string;children:React.ReactNode}) {
-  return <div className={styles.contract}><p className={styles.contractTitle}><Database size={17} aria-hidden="true"/>{title}</p>{children}</div>;
-}
+const wallets = [
+  { name: "Platform owner", target: "A · Root", action: "Register companies", roles: ["ROLE_REGISTRAR", "ROLE_REGISTRAR_ADMIN"] },
+  { name: "Company Admin", target: "A · company / B · Root", action: "Choose the company registry; register services", roles: ["A / company: ROLE_SET_SUBREGISTRY", "B / root: ROLE_REGISTRAR + ROLE_REGISTRAR_ADMIN"] },
+  { name: "Service Admin", target: "B · service1 / C1 · Root", action: "Choose the resolver; manage its records and writers", roles: ["B / service1: ROLE_SET_RESOLVER + ROLE_SET_RESOLVER_ADMIN", "B / service1: ROLE_CAN_TRANSFER_ADMIN", "C1 / root: ROLE_SET_TEXT + ROLE_SET_TEXT_ADMIN"] },
+  { name: "Ops wallet", target: "C1 · Endpoint key", action: "Update the API URL", roles: ["ROLE_SET_TEXT", "Resource: hash of agent-endpoint[x402]"] },
+  { name: "Treasury wallet", target: "C1 · Payment key", action: "Update recipient, token and network", roles: ["ROLE_SET_TEXT", "Resource: hash of ens402.payment"] },
+];
+
 export function NamespaceArchitecture() {
-  return <figure className={styles.figure} aria-label="ENS namespace and wallet permissions in one connected diagram">
-    <header className={styles.header}>
-      <h3>Who controls each part of a service?</h3>
-      <p>Follow the name down. Read each wallet’s grant across.</p>
-      <div className={styles.legend}><span>↓ Name / contract pointer</span><span>→ Scoped wallet permission</span><span>Proposed company hierarchy</span></div>
-    </header>
-    <div className={styles.diagram}>
-      <div className={styles.row}>
-        <Grant wallet="Platform owner" roles={['ROLE_REGISTRAR','ROLE_REGISTRAR_ADMIN']} scope="Platform registry · root" action="Register companies and manage registrar grants."/>
-        <Edge/>
-        <div><p className={styles.name}>ens402.eth</p><Pointer>subregistry pointer</Pointer><Contract title="Platform UserRegistry"><p>Company name: <code>kevin.ens402.eth</code></p></Contract></div>
-      </div>
-      <div className={styles.row}>
-        <Grant wallet="Company Admin" roles={['ROLE_SET_SUBREGISTRY']} scope="Platform registry · kevin name" action="Choose the registry for Kevin’s services."/>
-        <Edge/>
-        <div className={styles.nameControl}><span className={styles.small}>Inside Platform UserRegistry</span><code>kevin.ens402.eth</code><Pointer>subregistry pointer</Pointer></div>
-      </div>
-      <div className={styles.row}>
-        <Grant wallet="Company Admin" roles={['ROLE_REGISTRAR','ROLE_REGISTRAR_ADMIN']} scope="Kevin registry · root" action="Create services and delegate registration."/>
-        <Edge/>
-        <Contract title="Kevin UserRegistry"><div className={styles.services}><strong>search</strong><span>weather</span><span>enrich</span></div><p>Each name has its own resolver pointer.</p></Contract>
-      </div>
-      <div className={styles.row}>
-        <Grant wallet="Service Admin" roles={['ROLE_SET_RESOLVER','ROLE_SET_RESOLVER_ADMIN','ROLE_CAN_TRANSFER_ADMIN']} scope="Kevin registry · search name" action="Manage Search’s resolver pointer and name transfer."/>
-        <Edge/>
-        <div className={styles.nameControl}><span className={styles.small}>Inside Kevin UserRegistry</span><code>search.kevin.ens402.eth</code><Pointer>resolver pointer</Pointer></div>
-      </div>
-      <div className={styles.resolverGroup}>
-        <div className={styles.resolverLabel}><Database size={17} aria-hidden="true"/> Search Resolver <span>One dedicated contract for Search</span></div>
-        <div className={styles.row}>
-          <Grant wallet="Service Admin" roles={['ROLE_SET_TEXT','ROLE_SET_TEXT_ADMIN']} scope="Search resolver · root" action="Write all text records. Grant and revoke text writers."/>
-          <Edge/>
-          <div className={styles.record}><span className={styles.small}>All records in this resolver</span><strong>Root text control</strong><p>Includes API URL, payment settings and <code>ens402.status</code>.</p></div>
+  return (
+    <figure className={styles.figure} aria-label="ENS contract tree and separate wallet permissions">
+      <header className={styles.header}>
+        <div>
+          <p className={styles.eyebrow}>01 / Contracts and names</p>
+          <h3>One namespace. Separate service resolvers.</h3>
+          <p>Registries hold names. Each service name points to its own resolver, which holds its public configuration.</p>
         </div>
-        <div className={styles.row}>
-          <Grant wallet="Ops wallet" roles={['ROLE_SET_TEXT']} scope="Endpoint key only" action="Change the API URL."/>
-          <Edge/>
-          <div className={styles.record}><code>agent-endpoint[x402]</code><strong>API URL</strong><p>Resource = hash of the endpoint key</p></div>
-        </div>
-        <div className={styles.row}>
-          <Grant wallet="Treasury wallet" roles={['ROLE_SET_TEXT']} scope="Payment key only" action="Change where and how the service gets paid."/>
-          <Edge/>
-          <div className={styles.record}><code>ens402.payment</code><strong>Recipient · token · network</strong><p>Resource = hash of the payment key</p></div>
+        <span className={styles.status}>Proposed company hierarchy</span>
+      </header>
+      <div className={styles.tree}>
+        <div className={styles.legend}><span>Solid arrow: contract pointer</span><span>Dashed arrow: name inside a registry</span></div>
+        <a className={styles.diagramLink} href="/diagrams/ens402-contracts.svg" target="_blank" rel="noreferrer" aria-label="Open the full-size contract tree">
+          {/* Pre-rendered Mermaid SVG keeps this static diagram free of client JavaScript. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/diagrams/ens402-contracts.svg" width={440} height={558} loading="lazy" alt="ens402.eth points to Platform Registry A. The company name points to Company Registry B. Its service1, service2 and service3 names point to separate resolvers C1, C2 and C3. Each resolver stores an API URL, payment settings and status." />
+        </a>
+        <div className={styles.treeFooter}>
+          <p>Full service name: <code>service1.company.ens402.eth</code><br/>Each service has its own API URL, payment settings and permissions.</p>
+          <div className={styles.links}>
+            <a href="/diagrams/ens402-contracts.svg" target="_blank" rel="noreferrer">Full-size diagram <ArrowUpRight size={13} aria-hidden="true" /></a>
+            <a href="/diagrams/ens402-contracts.mmd" download>Mermaid source ↓</a>
+          </div>
         </div>
       </div>
-      <p className={styles.siblings}>Weather → Weather Resolver · Enrich → Enrich Resolver<br/>Separate contracts and grants. Search permissions do not carry over.</p>
-    </div>
-    <figcaption className={styles.caption}>Roles belong to a contract and resource, not to the spelling of a name. Root grants cover that contract’s resources; narrow grants do not remove broader authority. Company Admin and Service Admin may be the same wallet. Ops and Treasury are separate wallets. The company layer is planned; this diagram describes intended grants, not live permissions.</figcaption>
-  </figure>;
+      <section className={styles.permissions} aria-label="Wallet permissions">
+        <div className={styles.walletHeading}>
+          <div><p className={styles.eyebrow}>02 / Wallet permissions</p><h4>Who can change what?</h4></div>
+          <p>Letters refer to the contracts above.<br/>Service-level examples use Service 1.</p>
+        </div>
+        <div className={styles.wallets}>
+          {wallets.map(wallet => (
+            <div className={styles.walletRow} key={wallet.name}>
+              <p className={styles.walletName}><Wallet size={14} aria-hidden="true" />{wallet.name}</p>
+              <span className={styles.target}>{wallet.target}</span>
+              <p className={styles.action}>{wallet.action}</p>
+            </div>
+          ))}
+        </div>
+        <details className={styles.details}>
+          <summary>Native EAC roles and exact scopes</summary>
+          <div className={styles.roleList}>
+            {wallets.map(wallet => <div key={wallet.name}><strong>{wallet.name}</strong><div>{wallet.roles.map(role => <code key={role}>{role}</code>)}</div></div>)}
+          </div>
+          <p>Root means all resources in that contract. A role does not automatically carry into a child registry or a separate resolver. Text-key grants apply across records in the same resolver, so independent services use separate resolvers. Admin roles can grant broader authority; a narrow writer grant does not remove an existing root grant.</p>
+          <p>Company Admin and Service Admin can be the same wallet. Ops and Treasury use separate wallets. Changing a name owner does not transfer administration of its separate resolver.</p>
+        </details>
+      </section>
+      <figcaption className={styles.caption}>Intended architecture, not a live permissions audit. The company registry layer is planned. These wallets manage public ENS configuration; the buyer’s payment-signing wallet is separate.</figcaption>
+    </figure>
+  );
 }

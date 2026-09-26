@@ -1,0 +1,45 @@
+---
+config:
+  htmlLabels: false
+  theme: base
+  fontFamily: Arial, sans-serif
+  themeCSS: "text { font-family: Arial, sans-serif; }"
+  themeVariables:
+    fontFamily: 'Inter, Arial, sans-serif'
+    fontSize: 17px
+    primaryColor: '#ffffff'
+    primaryTextColor: '#242936'
+    primaryBorderColor: '#cbd1da'
+    lineColor: '#8b95a5'
+    edgeLabelBackground: '#ffffff'
+  flowchart:
+    htmlLabels: false
+    curve: linear
+    nodeSpacing: 18
+    rankSpacing: 30
+    padding: 12
+---
+flowchart TB
+  accTitle: ENS402 namespace and contract tree
+  accDescr: ens402.eth points to Platform Registry A. Its company name points to Company Registry B. Three service names each point to a separate resolver C1, C2 or C3. Each resolver stores an API URL, payment settings and status. Wallet permissions are listed separately below the diagram.
+  parent["ens402.eth"]
+  platform["A · Platform Registry"]
+  company["company.ens402.eth"]
+  registry["B · Company Registry"]
+  s1["service1"]
+  s2["service2"]
+  s3["service3"]
+  r1["C1<br/>Resolver 1"]
+  r2["C2<br/>Resolver 2"]
+  r3["C3<br/>Resolver 3"]
+  parent -->|subregistry| platform
+  platform -.->|name entry| company
+  company -->|subregistry| registry
+  registry -.->|name entry| s1 & s2 & s3
+  s1 -->|resolver| r1
+  s2 -->|resolver| r2
+  s3 -->|resolver| r3
+  classDef registry fill:#f4f5f7,stroke:#abb4c2,stroke-width:1.5px
+  classDef resolver fill:#f0f5ff,stroke:#7298df,stroke-width:1.5px
+  class platform,registry registry
+  class r1,r2,r3 resolver
