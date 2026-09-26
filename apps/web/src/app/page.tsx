@@ -31,7 +31,7 @@ export default function Home() {
             </Link>
           </Button>
           <Button asChild size="lg" variant="outline">
-            <a href="#stack">Explore the story</a>
+            <a href="#stack">See the payment flow</a>
           </Button>
         </div>
         <div className="mx-auto mt-10 flex max-w-xl flex-wrap items-center justify-center gap-x-8 gap-y-4 rounded-2xl border bg-card/70 px-6 py-4">
@@ -60,12 +60,12 @@ export default function Home() {
           <div>
             <p className="eyebrow">From discovery to delivery</p>
             <h2 className="mt-3 font-heading text-3xl sm:text-4xl">
-              Follow one agent. See every decision.
+              One payment. Six clear steps.
             </h2>
           </div>
           <p className="max-w-xs text-sm leading-6 text-muted-foreground">
-            Scroll down to move through the story. Choose a service or try a
-            different outcome.
+            Read the flow from start to finish. ENS and risk checks happen before
+            your wallet signs.
           </p>
         </div>
         <ServicePreview />

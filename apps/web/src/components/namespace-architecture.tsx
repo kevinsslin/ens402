@@ -1,12 +1,8 @@
 import { ArrowDown, ArrowRight, Database, Wallet } from "lucide-react";
 
-const admin = "0x0D2FDDee5b84540A9766c025ad26dCaFb9FeF380";
-const ops = "0x03eEe8Be9682D6DF713563FDf7f8D1eD78d7479D";
-const treasury = "0x0Ca23D06479560bb9A916c19Df5a2948a8ed3346";
 const grants = [
   {
     wallet: "Platform owner",
-    address: admin,
     target: "Platform UserRegistry",
     scope: "Root resource · 0",
     roles: ["ROLE_REGISTRAR", "ROLE_REGISTRAR_ADMIN"],
@@ -14,7 +10,6 @@ const grants = [
   },
   {
     wallet: "Company Admin",
-    address: admin,
     target: "Platform UserRegistry",
     scope: "kevin name resource",
     roles: ["ROLE_SET_SUBREGISTRY"],
@@ -22,7 +17,6 @@ const grants = [
   },
   {
     wallet: "Company Admin",
-    address: admin,
     target: "Kevin UserRegistry",
     scope: "Root resource · 0",
     roles: ["ROLE_REGISTRAR", "ROLE_REGISTRAR_ADMIN"],
@@ -30,7 +24,6 @@ const grants = [
   },
   {
     wallet: "Service Admin",
-    address: admin,
     target: "Kevin UserRegistry",
     scope: "search name resource",
     roles: [
@@ -42,7 +35,6 @@ const grants = [
   },
   {
     wallet: "Service Admin",
-    address: admin,
     target: "Search Resolver",
     scope: "Root resource · 0",
     roles: ["ROLE_SET_TEXT", "ROLE_SET_TEXT_ADMIN"],
@@ -50,7 +42,6 @@ const grants = [
   },
   {
     wallet: "Ops",
-    address: ops,
     target: "Search Resolver",
     scope: 'keccak256("agent-endpoint[x402]")',
     roles: ["ROLE_SET_TEXT"],
@@ -59,7 +50,6 @@ const grants = [
   },
   {
     wallet: "Treasury",
-    address: treasury,
     target: "Search Resolver",
     scope: 'keccak256("ens402.payment")',
     roles: ["ROLE_SET_TEXT"],
@@ -95,7 +85,7 @@ function Registry({
   );
 }
 
-/** Planned company hierarchy; wallet addresses are real, grants are not live attestations. */
+/** Illustrative company hierarchy and intended native grants. */
 export function NamespaceArchitecture() {
   return (
     <figure
@@ -107,9 +97,8 @@ export function NamespaceArchitecture() {
           Names route to contracts. Contracts enforce permissions.
         </p>
         <p className="mt-3 max-w-4xl text-sm leading-7 text-muted-foreground">
-          The parent name is registered. The company hierarchy below is the
-          proposed next layer, not a deployed service directory. These are the
-          assigned demo wallets and intended grants, not a live role audit.
+          Each company manages a registry. Each service has its own resolver.
+          Separate wallets control API updates and payment settings.
         </p>
       </div>
       <div className="grid gap-8 p-5 sm:p-7 lg:grid-cols-[1fr_1.1fr]">
@@ -118,7 +107,7 @@ export function NamespaceArchitecture() {
           <div className="rounded-xl border bg-background p-5">
             <p className="font-mono text-base">ens402.eth</p>
             <p className="mt-2 text-xs text-muted-foreground">
-              Parent ownership verified on ENSv2 Sepolia
+              ENS parent name · Sepolia
             </p>
           </div>
           <Pointer>Subregistry pointer</Pointer>
@@ -186,61 +175,90 @@ export function NamespaceArchitecture() {
         </div>
       </div>
       <div className="border-t p-5 sm:p-7">
-        <p className="eyebrow">03 / Wallet → native grant → target contract</p>
-        <p className="mt-3 text-sm leading-7 text-muted-foreground">
-          Company Admin and Service Admin use the same demo wallet, with
-          separate grants on separate contracts. Ops and Treasury use different
-          wallets.
-        </p>
-        <div className="mt-6 divide-y rounded-xl border">
-          {grants.map((g, i) => (
-            <div
-              key={i}
-              className="grid gap-4 p-5 lg:grid-cols-[1fr_1.15fr_1fr] lg:gap-7"
-            >
-              <div className="min-w-0">
-                <p className="flex items-center gap-2 text-sm font-semibold">
-                  <Wallet className="size-4" aria-hidden="true" />
-                  {g.wallet}
-                </p>
-                <p className="mt-2 break-all font-mono text-xs leading-6 text-muted-foreground">
-                  {g.address}
-                </p>
-              </div>
-              <div className="min-w-0">
-                <p className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                  <ArrowRight className="size-4" aria-hidden="true" />
-                  Native roles
-                </p>
-                {g.roles.map((role) => (
-                  <p
-                    key={role}
-                    className="mt-1 break-all font-mono text-xs leading-6"
-                  >
-                    {role}
-                  </p>
-                ))}
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-semibold">{g.target}</p>
-                <p className="mt-2 break-all font-mono text-xs leading-6 text-primary">
-                  Resource: {g.scope}
-                </p>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  {g.action}
-                </p>
-              </div>
+        <p className="eyebrow">03 / Who can change Search?</p>
+        <div className="mt-5 grid gap-4 md:grid-cols-3">
+          {[
+            ["Ops wallet", "API URL only", "ROLE_SET_TEXT", "Endpoint key"],
+            [
+              "Treasury wallet",
+              "Payment settings only",
+              "ROLE_SET_TEXT",
+              "Payment key",
+            ],
+            [
+              "Service Admin",
+              "All text records and permissions",
+              "ROLE_SET_TEXT + ROLE_SET_TEXT_ADMIN",
+              "Resolver root",
+            ],
+          ].map(([name, action, role, scope]) => (
+            <div key={name} className="rounded-xl border p-5">
+              <p className="flex items-center gap-2 text-sm font-semibold">
+                <Wallet className="size-4" aria-hidden="true" />
+                {name}
+              </p>
+              <p className="mt-3 text-base">{action}</p>
+              <p className="mt-3 break-words font-mono text-xs leading-6 text-muted-foreground">
+                {role}
+              </p>
+              <p className="mt-2 text-xs text-primary">Scope: {scope}</p>
             </div>
           ))}
         </div>
+        <details className="mt-6 rounded-xl border">
+          <summary className="cursor-pointer p-5 text-sm font-medium">
+            View all native grants and contract scopes
+          </summary>
+          <div className="divide-y border-t">
+            {grants.map((g, i) => (
+              <div
+                key={i}
+                className="grid gap-4 p-5 lg:grid-cols-[1fr_1.15fr_1fr] lg:gap-7"
+              >
+                <div className="min-w-0">
+                  <p className="flex items-center gap-2 text-sm font-semibold">
+                    <Wallet className="size-4" aria-hidden="true" />
+                    {g.wallet}
+                  </p>
+                </div>
+                <div className="min-w-0">
+                  <p className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                    <ArrowRight className="size-4" aria-hidden="true" />
+                    Native roles
+                  </p>
+                  {g.roles.map((role) => (
+                    <p
+                      key={role}
+                      className="mt-1 break-all font-mono text-xs leading-6"
+                    >
+                      {role}
+                    </p>
+                  ))}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">{g.target}</p>
+                  <p className="mt-2 break-all font-mono text-xs leading-6 text-primary">
+                    Resource: {g.scope}
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                    {g.action}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="border-t p-5 text-xs leading-7 text-muted-foreground">
+            Root applies to that contract only. Names do not inherit permissions
+            from a shared suffix. Parent control and existing root grants remain
+            trust assumptions. Transferring a name does not transfer its
+            resolver administrator.
+          </p>
+        </details>
       </div>
       <figcaption className="border-t bg-background p-5 text-xs leading-7 text-muted-foreground sm:px-7">
-        Root means all resources in that specific contract. Roles are not
-        inherited just because names share a suffix. ServiceRegistrar can
-        receive ROLE_REGISTRAR on the company registry for onboarding; it
-        removes its resolver bootstrap roles after registration. Parent control
-        and existing root grants remain trust assumptions. Moving a name does
-        not transfer its separate resolver administrator.
+        Illustrative architecture. The company directory is planned; the parent
+        name is registered. Grants shown here describe the design, not live
+        wallet permissions.
       </figcaption>
     </figure>
   );
