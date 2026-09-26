@@ -4,7 +4,7 @@ import { prepareSetupStep, setupReceipt } from "../src/server/setup-transaction"
 import { createEnsClient } from "../../../packages/server/src/ens-rpc";
 import { sharedResolverPlan } from "../../../scripts/ens/provider-shared";
 import { currentDeployment } from "@ens402/sdk/ens";
-import { TransactionReceiptNotFoundError } from "viem";
+import { BlockNotFoundError, TransactionNotFoundError, TransactionReceiptNotFoundError } from "viem";
 const hash = `0x${"ab".repeat(32)}`;
 const owner="0x1111111111111111111111111111111111111111", ops="0x2222222222222222222222222222222222222222", treasury="0x3333333333333333333333333333333333333333";
 const step={signer:owner, to:ops,data:"0x1234",description:"Create provider registry"};
@@ -22,7 +22,7 @@ it("tracks a submitted hash through pending to confirmation without resubmitting
  expect(request.mock.calls.every(([url])=>String(url).includes('/receipt?hash='))).toBe(true);
 });
 it("keeps unknown confirmation separate from a reverted transaction",async()=>{
- await expect(confirmSetup({hash,step},{fetch:async()=>new Response('',{status:503})})).rejects.toThrow("transaction is saved");
+ await expect(confirmSetup({hash,step},{attempts:2,delay:async()=>{},fetch:async()=>new Response('',{status:503})})).rejects.toThrow("transaction is saved");
  await expect(confirmSetup({hash,step},{attempts:1,fetch:async()=>Response.json({status:"pending"})})).rejects.toThrow("without signing again");
  await expect(confirmSetup({hash,step},{fetch:async()=>Response.json({status:"reverted",hash,from:owner,to:ops,data:"0x1234",value:"0"})})).resolves.toMatchObject({status:"reverted"});
 });
@@ -61,4 +61,33 @@ it("accepts an EOA as Treasury Admin without querying its code",async()=>{
 it("does not advance a deployment without its contract address",async()=>{
  const creation={...step,to:undefined};
  await expect(confirmSetup({hash,step:creation},{fetch:async()=>Response.json({status:"success",hash,from:owner,to:null,data:"0x1234",value:"0",contractAddress:null})})).rejects.toThrow("missing its contract address");
+});
+
+it("automatically retries temporary receipt failures without another wallet request", async () => {
+ const request = vi.fn()
+  .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+  .mockResolvedValueOnce(new Response(null, {status:503}))
+  .mockResolvedValueOnce(new Response(null, {status:429}))
+  .mockResolvedValueOnce(Response.json({status:"success",hash,from:owner,to:ops,data:"0x1234",value:"0"}));
+ const delay=vi.fn().mockResolvedValue(undefined);
+ await expect(confirmSetup({hash,step},{fetch:request,delay})).resolves.toMatchObject({status:"success"});
+ expect(request).toHaveBeenCalledTimes(4);
+ expect(delay).toHaveBeenCalledTimes(3);
+ expect(request.mock.calls.every(([url])=>String(url).includes('/receipt?hash='))).toBe(true);
+});
+it("does not retry invalid requests or receipt mismatches", async () => {
+ const request=vi.fn().mockResolvedValue(new Response(null,{status:400}));
+ await expect(confirmSetup({hash,step},{fetch:request})).rejects.toThrow("Could not check");
+ expect(request).toHaveBeenCalledTimes(1);
+});
+it("waits when transaction or block reads lag behind a mined receipt", async () => {
+ const client={
+  getTransactionReceipt:vi.fn().mockResolvedValue({blockNumber:100n,blockHash:hash}),
+  getTransaction:vi.fn().mockRejectedValue(new TransactionNotFoundError({hash:hash as `0x${string}`})),
+  getBlock:vi.fn().mockResolvedValue({hash}),
+ };
+ await expect(setupReceipt(hash,client as never)).resolves.toEqual({status:"pending"});
+ client.getTransaction.mockResolvedValue({blockHash:hash});
+ client.getBlock.mockRejectedValue(new BlockNotFoundError({blockNumber:100n}));
+ await expect(setupReceipt(hash,client as never)).resolves.toEqual({status:"pending"});
 });
