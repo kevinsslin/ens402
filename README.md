@@ -4,6 +4,12 @@
 
 This is the single current scope and status overview. Updated September 27, 2026 against the current implementation. A feature being implemented or tested on Anvil does not mean it is configured on the public testnet.
 
+## Demo experience
+
+**Search services** opens a prompt-first keyword/semantic search, with results directly below the input. Search is public; selecting a service prompts login before current ENS inspection and checkout. **Onboard your service** opens provider setup. The footer repeats these destinations and links to docs and architecture.
+
+The human demo confirms the current fixed price and payment wallet. It does not expose recurring authorization management, daily-budget fields, agent-key creation or World ID. The existing payment backend still binds checkout to the inspected endpoint, recipient and price, with a short-lived internal payment context; Guard checks and wallet signing remain required. The SDK's existing advanced integrations remain separate from this UI.
+
 ## What works, and what does not yet
 
 | Area | Status | What that means |

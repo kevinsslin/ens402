@@ -11,8 +11,9 @@ import { preparePostInput } from "@ens402/sdk/call";
 import type { ResourceRequest } from "@ens402/sdk/request";
 import type { PaymentReceipt } from "@ens402/sdk/http";
 import { selectedWallet } from "./wallet-session";
+import { DiscoveryConsole } from "./discovery-console";
 import { ReceiptDetails } from "./receipt-details";
-import { units, usdc, approvalStatus, statusLabel } from "./console-format";
+import { usdc, approvalStatus, statusLabel } from "./console-format";
 
 type ApprovalRow = {
   mode: "hosted" | "self";
@@ -71,7 +72,7 @@ export function OperatorConsole({
     return () => clearInterval(timer);
   }, []);
   const [mode, setMode] = useState<"hosted" | "self">("hosted");
-  const [newKey, setNewKey] = useState("");
+  const [checkoutId, setCheckoutId] = useState("");
   const storageKey = `ens402-pending-attempt:${account?.id ?? "operator"}`;
   const [token, setToken] = useState("");
   const [connected, setConnected] = useState(!!account);
@@ -92,15 +93,13 @@ export function OperatorConsole({
       candidate &&
       /^[a-z0-9.-]+\.eth$/.test(candidate) &&
       candidate.length <= 255
-    )
+    ) {
       setName(candidate);
+      if (account) void inspect(candidate);
+    }
   }, []);
 
   const [service, setService] = useState<ResolvedService | null>(null);
-  const [endpoints, setEndpoints] = useState("");
-  const [limit, setLimit] = useState("0.01");
-  const [daily, setDaily] = useState("1");
-  const [hours, setHours] = useState("24");
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -139,6 +138,7 @@ export function OperatorConsole({
         .then((data) => setSetup(data.configured))
         .catch(() => setError("Cannot load setup status."));
     try {
+      setCheckoutId(sessionStorage.getItem(`${storageKey}:checkout`) || "");
       const stored = sessionStorage.getItem(storageKey);
       if (stored) setAttempt(JSON.parse(stored));
     } catch {}
@@ -202,11 +202,15 @@ export function OperatorConsole({
       setConnected(true);
     });
   }
-  async function inspect() {
+  async function inspect(selectedName = name) {
+    setName(selectedName);
+    setService(null);
     await run("inspect", async () => {
-      const result = await api<ResolvedService>({ action: "inspect", name });
+      const result = await api<ResolvedService>({
+        action: "inspect",
+        name: selectedName,
+      });
       setService(result);
-      setEndpoints(result.endpoint);
       setRecord("agent-endpoint[x402]");
       setValue(result.endpoint);
       setApprovalKey(crypto.randomUUID());
@@ -217,13 +221,9 @@ export function OperatorConsole({
     event.preventDefault();
     await run("approve", async () => {
       if (!service) return;
-      if (
-        BigInt(units(limit)) <= 0n ||
-        BigInt(units(daily)) < BigInt(units(limit))
-      )
-        throw new Error(
-          "Set a positive payment limit and a daily limit at least as large.",
-        );
+      if (service.payment.version === 1)
+        throw new Error("This demo requires a published fixed price.");
+      const price = service.payment.pricing.amount;
       let payer: string | undefined;
       if (mode === "self") {
         const provider = await wallet();
@@ -237,23 +237,19 @@ export function OperatorConsole({
         name: service.name,
         authority: service.authority,
         payTo: service.payment.payTo,
-        fixedPrice:
-          service.payment.version !== 1
-            ? service.payment.pricing.amount
-            : undefined,
-        endpoints: endpoints
-          .split("\n")
-          .map((s) => s.trim())
-          .filter(Boolean),
-        maxAmount: units(limit),
-        dailyLimit: units(daily),
-        durationSeconds: Number(hours) * 3600,
+        fixedPrice: price,
+        endpoints: [service.endpoint],
+        maxAmount: price,
+        dailyLimit: price,
+        durationSeconds: 600,
       });
+      setCheckoutId(approvalKey);
+      sessionStorage.setItem(`${storageKey}:checkout`, approvalKey);
       await refresh();
       setNotice(
         mode === "hosted"
           ? "Managed wallet created. Fund its address below with Base Sepolia USDC."
-          : "Your signing wallet is approved. ENS402 will check each purchase before asking you to sign.",
+          : "Wallet ready. Review the price below, then confirm payment.",
       );
       setApprovalKey(crypto.randomUUID());
     });
@@ -418,6 +414,12 @@ export function OperatorConsole({
       setPlan(null);
     });
   }
+  useEffect(() => {
+    if (service && view === "buy")
+      document
+        .getElementById("service-review")
+        ?.scrollIntoView({ block: "start" });
+  }, [service, view]);
   const pending = state.executions.some((e) =>
     ["reserved", "submitting", "uncertain"].includes(e.state),
   );
@@ -426,10 +428,15 @@ export function OperatorConsole({
       <p className="eyebrow">Workspace</p>
       <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-medium tracking-tight">Console</h1>
+          <h1 className="text-4xl font-medium tracking-tight">
+            {view === "activity"
+              ? "Payment activity"
+              : view === "services"
+                ? "Service settings"
+                : "Search services"}
+          </h1>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-muted-foreground">
-            Buy from an ENS service, manage your service settings, or review a
-            payment.
+            Find a service, review payment terms, and buy when you are ready.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -568,8 +575,7 @@ export function OperatorConsole({
           >
             {(
               [
-                ["buy", "Buy"],
-                ["services", "Manage"],
+                ["buy", "Search services"],
                 ["activity", "Activity"],
               ] as const
             ).map(([id, label]) => (
@@ -583,6 +589,15 @@ export function OperatorConsole({
               </Button>
             ))}
           </nav>
+          {view === "buy" && (
+            <DiscoveryConsole
+              embedded
+              selecting={!!busy}
+              onSelect={(selectedName) => {
+                void inspect(selectedName);
+              }}
+            />
+          )}
           {view === "services" && (
             <div className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-xl border bg-card p-6">
               <div>
@@ -600,39 +615,42 @@ export function OperatorConsole({
               </a>
             </div>
           )}
-          {view !== "activity" && (
-            <section className="mt-10">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-2xl font-medium">
+          {(view === "buy" || view === "services") && (
+            <section id="service-review" className="mt-6 scroll-mt-24">
+              <details
+                open={view === "services"}
+                className="rounded-xl border bg-card p-4"
+              >
+                <summary className="cursor-pointer text-sm font-medium">
                   {view === "services"
-                    ? "Find your service"
-                    : "Find a service to buy"}
-                </h2>
-              </div>
-              <div className="mt-5 flex flex-wrap items-end gap-3">
-                <label className="min-w-0 w-full sm:w-auto sm:min-w-64 flex-1 text-sm">
-                  ENS service name
-                  <input
-                    placeholder="weather.yourname.eth"
-                    list="service-names"
-                    className={field}
-                    value={name}
-                    onChange={(e) => {
-                      setName(e.target.value);
-                      setService(null);
-                      setPlan(null);
-                    }}
-                  />
-                  <datalist id="service-names">
-                    {state.names.map((n) => (
-                      <option key={n} value={n} />
-                    ))}
-                  </datalist>
-                </label>
-                <Button disabled={!!busy || !name} onClick={inspect}>
-                  Look up service
-                </Button>
-              </div>
+                    ? "Find your service by ENS name"
+                    : "Already have an ENS service name?"}
+                </summary>
+                <div className="mt-5 flex flex-wrap items-end gap-3">
+                  <label className="min-w-0 w-full sm:w-auto sm:min-w-64 flex-1 text-sm">
+                    ENS service name
+                    <input
+                      placeholder="weather.yourname.eth"
+                      list="service-names"
+                      className={field}
+                      value={name}
+                      onChange={(e) => {
+                        setName(e.target.value);
+                        setService(null);
+                        setPlan(null);
+                      }}
+                    />
+                    <datalist id="service-names">
+                      {state.names.map((n) => (
+                        <option key={n} value={n} />
+                      ))}
+                    </datalist>
+                  </label>
+                  <Button disabled={!!busy || !name} onClick={() => inspect()}>
+                    Look up service
+                  </Button>
+                </div>
+              </details>
               {service && (
                 <Card className="mt-5">
                   <CardContent className="grid gap-5 p-6 sm:grid-cols-2">
@@ -667,7 +685,7 @@ export function OperatorConsole({
                       <p className="mt-2 text-sm">
                         {service.payment.version !== 1
                           ? `${usdc(service.payment.pricing.amount)} USDC / request`
-                          : "Legacy record: only buyer amount limits apply"}
+                          : "Fixed price required for this demo"}
                       </p>
                     </div>
                     <details className="sm:col-span-2">
@@ -700,14 +718,14 @@ export function OperatorConsole({
           )}
           {view === "buy" && service && (
             <section className="mt-10">
-              <h2 className="text-2xl font-medium">Set your spending limits</h2>
+              <h2 className="text-2xl font-medium">Confirm payment</h2>
               <form
                 onSubmit={approve}
                 className="mt-5 rounded-xl border bg-card p-6"
               >
                 <fieldset className="mb-6">
                   <legend className="text-sm font-medium">
-                    Who signs payments?
+                    Payment wallet
                   </legend>
                   <div className="mt-3 grid gap-3 sm:grid-cols-2">
                     {(["hosted", "self"] as const).map((value) => (
@@ -726,351 +744,230 @@ export function OperatorConsole({
                           className="mr-2"
                         />
                         {value === "hosted"
-                          ? "Managed agent wallet"
-                          : "Use my own signer"}
+                          ? "ENS402 managed wallet"
+                          : "Use my connected wallet"}
                         <p className="mt-2 text-xs leading-6 text-muted-foreground">
                           {value === "hosted"
-                            ? "Fund a dedicated Privy wallet. Your agent can purchase within your limits without a wallet popup. ENS402 controls this wallet."
-                            : "Keep your wallet. We check the payment and request your signature. Direct payments outside ENS402 bypass these checks."}
+                            ? "Fund a dedicated Privy wallet managed by ENS402."
+                            : "Pay from your connected wallet. Confirm the signature when the payment checks pass."}
                         </p>
                       </label>
                     ))}
                   </div>
                 </fieldset>
-                <details>
-                  <summary className="cursor-pointer text-sm">
-                    Allowed API URLs
-                  </summary>
-                  <label className="mt-4 block text-sm">
-                    Approved API URLs, one per line
-                    <textarea
-                      className={`${field} min-h-24 font-mono text-xs`}
-                      value={endpoints}
-                      onChange={(e) => {
-                        setEndpoints(e.target.value);
-                        setApprovalKey(crypto.randomUUID());
-                      }}
-                      required
-                    />
-                  </label>
-                  {!account &&
-                    service.endpoint.endsWith("/api/merchant/search") && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        className="mt-2"
-                        onClick={() => {
-                          const next = new URL(
-                            "/api/merchant/search-v2",
-                            service.endpoint,
-                          ).href;
-                          setEndpoints((text) =>
-                            text.includes(next) ? text : `${text}\n${next}`,
-                          );
-                          setApprovalKey(crypto.randomUUID());
-                        }}
-                      >
-                        Also approve the demo v2 route
-                      </Button>
-                    )}
-                </details>
-                <div className="mt-5 grid gap-5 sm:grid-cols-3">
-                  <label className="text-sm">
-                    Maximum per payment (USDC)
-                    <input
-                      className={field}
-                      value={limit}
-                      inputMode="decimal"
-                      onChange={(e) => {
-                        setLimit(e.target.value);
-                        setApprovalKey(crypto.randomUUID());
-                      }}
-                      required
-                    />
-                  </label>
-                  <label className="text-sm">
-                    Daily limit (USDC, resets at 00:00 UTC)
-                    <input
-                      className={field}
-                      value={daily}
-                      inputMode="decimal"
-                      onChange={(e) => {
-                        setDaily(e.target.value);
-                        setApprovalKey(crypto.randomUUID());
-                      }}
-                      required
-                    />
-                  </label>
-                  <label className="text-sm">
-                    Approval duration, hours
-                    <input
-                      className={field}
-                      type="number"
-                      min="1"
-                      max="720"
-                      value={hours}
-                      onChange={(e) => {
-                        setHours(e.target.value);
-                        setApprovalKey(crypto.randomUUID());
-                      }}
-                      required
-                    />
-                  </label>
-                </div>
-                <p className="mt-5 text-sm leading-7 text-muted-foreground">
-                  These are spending limits, not the service price. Each HTTP
-                  402 response supplies the actual price, which must fit these
-                  limits and match the ENS recipient.{" "}
-                  {mode === "hosted"
-                    ? "Privy constrains each signature; the backend reserves the daily budget."
-                    : "Your wallet signs. Backend limits apply only to purchases submitted through ENS402."}{" "}
-                  A changed recipient or ownership observation requires another
-                  approval.
+                <p className="text-2xl font-medium">
+                  {service.payment.version !== 1
+                    ? `${usdc(service.payment.pricing.amount)} USDC`
+                    : "Fixed price unavailable"}
+                  <span className="ml-2 text-sm font-normal text-muted-foreground">
+                    per request
+                  </span>
+                </p>
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                  ENS402 checks the current endpoint, recipient, price and
+                  recipient risk before signing. Nothing is paid when you
+                  continue.
                 </p>
                 <Button
                   className="mt-5"
                   disabled={!!busy || service.status !== "active"}
                 >
                   {mode === "hosted"
-                    ? "Approve and create agent wallet"
-                    : "Approve my signing wallet"}
+                    ? "Prepare payment wallet"
+                    : "Continue to payment"}
                 </Button>
               </form>
             </section>
           )}
-          <section hidden={view !== "buy"} className="mt-10">
-            <h2 className="text-2xl font-medium">Your approved services</h2>
+          <section
+            id="payment-checkout"
+            hidden={
+              view !== "buy" ||
+              !state.approvals.some(
+                (row) =>
+                  row.id === attempt?.approvalId ||
+                  (row.id === checkoutId &&
+                    (!service || row.service.name === service.name)),
+              )
+            }
+            className="mt-10"
+          >
+            <h2 className="text-2xl font-medium">Complete your purchase</h2>
             <div className="mt-5 grid gap-4 lg:grid-cols-2">
-              {state.approvals.length === 0 && (
-                <p className="text-sm text-muted-foreground">
-                  No approved services yet. Look up a name above to get started.
-                </p>
-              )}
-              {state.approvals.map((row) => (
-                <Card key={row.id}>
-                  <CardHeader>
-                    <CardTitle className="flex flex-wrap justify-between gap-3 text-base">
-                      {row.approval.name}
-                      <Badge variant="outline">
-                        {statusLabel(approvalStatus(row, now))}
-                      </Badge>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground">
-                      {usdc(row.approval.maxAmount)} USDC maximum per purchase ·{" "}
-                      {usdc(row.daily_limit)} USDC daily
-                    </p>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      {row.mode === "self"
-                        ? "Your signer"
-                        : "Managed by ENS402"}
-                    </p>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      Expires{" "}
-                      {new Date(row.approval.expiresAt * 1000).toLocaleString()}
-                    </p>
-                    <p className="mt-5 text-xs text-muted-foreground">
-                      Payment wallet · Base Sepolia USDC
-                    </p>
-                    <p className="mt-2 break-all font-mono text-xs">
-                      {row.payer ||
-                        "Provisioning incomplete. Retry the same approval."}
-                    </p>
-                    {balances[row.id] && (
-                      <p className="mt-2 text-sm text-primary">
-                        Last checked balance: {balances[row.id]} USDC
+              {state.approvals
+                .filter(
+                  (row) =>
+                    row.id === attempt?.approvalId ||
+                    (row.id === checkoutId &&
+                      (!service || row.service.name === service.name)),
+                )
+                .map((row) => (
+                  <Card key={row.id}>
+                    <CardHeader>
+                      <CardTitle className="flex flex-wrap justify-between gap-3 text-base">
+                        {row.approval.name}
+                        <Badge variant="outline">
+                          {row.state === "provisioning"
+                            ? "Wallet setup pending"
+                            : approvalStatus(row, now) === "active"
+                              ? "Ready to pay"
+                              : "Checkout closed"}
+                        </Badge>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground">
+                        {usdc(
+                          row.approval.fixedPrice ?? row.approval.maxAmount,
+                        )}{" "}
+                        USDC / request
                       </p>
-                    )}
-                    {row.service.call?.method === "POST" &&
-                      !row.service.endpoint.endsWith(
-                        "/api/merchant/register",
-                      ) && (
-                        <details className="mt-5 rounded-lg border p-4" open>
-                          <summary className="cursor-pointer text-sm font-medium">
-                            POST request input
-                          </summary>
-                          <p className="mt-2 text-xs leading-6 text-muted-foreground">
-                            Enter a JSON object. ENS402 adds an orderId and
-                            binds the exact request to this purchase. The
-                            merchant must support ENS402 request binding.
-                          </p>
-                          <label className="mt-3 block text-sm">
-                            JSON input
-                            <textarea
-                              className={`${field} min-h-28 font-mono text-xs`}
-                              aria-label={`JSON input for ${row.service.name}`}
-                              value={
-                                (attempt?.approvalId === row.id
-                                  ? attempt.request?.body
-                                  : undefined) ??
-                                postInputs[row.id] ??
-                                JSON.stringify(
-                                  row.service.call.example ?? {},
-                                  null,
-                                  2,
-                                )
-                              }
-                              maxLength={8192}
-                              disabled={!!attempt}
-                              onChange={(event) =>
-                                setPostInputs((previous) => ({
-                                  ...previous,
-                                  [row.id]: event.target.value,
-                                }))
-                              }
-                            />
-                          </label>
-                          {row.service.call.inputSchema && (
-                            <details className="mt-3 text-xs">
-                              <summary className="cursor-pointer">
-                                Provider input schema
-                              </summary>
-                              <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-all">
-                                {JSON.stringify(
-                                  row.service.call.inputSchema,
-                                  null,
-                                  2,
-                                )}
-                              </pre>
-                            </details>
-                          )}
-                        </details>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {row.mode === "self"
+                          ? "Your signer"
+                          : "Managed by ENS402"}
+                      </p>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Complete checkout before{" "}
+                        {new Date(
+                          row.approval.expiresAt * 1000,
+                        ).toLocaleString()}
+                      </p>
+                      <p className="mt-5 text-xs text-muted-foreground">
+                        Payment wallet · Base Sepolia USDC
+                      </p>
+                      <p className="mt-2 break-all font-mono text-xs">
+                        {row.payer ||
+                          "Provisioning incomplete. Retry the same approval."}
+                      </p>
+                      {balances[row.id] && (
+                        <p className="mt-2 text-sm text-primary">
+                          Last checked balance: {balances[row.id]} USDC
+                        </p>
                       )}
-                    <div className="mt-5 flex flex-wrap gap-2">
-                      {row.state === "provisioning" && (
+                      {row.service.call?.method === "POST" &&
+                        !row.service.endpoint.endsWith(
+                          "/api/merchant/register",
+                        ) && (
+                          <details className="mt-5 rounded-lg border p-4" open>
+                            <summary className="cursor-pointer text-sm font-medium">
+                              POST request input
+                            </summary>
+                            <p className="mt-2 text-xs leading-6 text-muted-foreground">
+                              Enter a JSON object. ENS402 adds an orderId and
+                              binds the exact request to this purchase. The
+                              merchant must support ENS402 request binding.
+                            </p>
+                            <label className="mt-3 block text-sm">
+                              JSON input
+                              <textarea
+                                className={`${field} min-h-28 font-mono text-xs`}
+                                aria-label={`JSON input for ${row.service.name}`}
+                                value={
+                                  (attempt?.approvalId === row.id
+                                    ? attempt.request?.body
+                                    : undefined) ??
+                                  postInputs[row.id] ??
+                                  JSON.stringify(
+                                    row.service.call.example ?? {},
+                                    null,
+                                    2,
+                                  )
+                                }
+                                maxLength={8192}
+                                disabled={!!attempt}
+                                onChange={(event) =>
+                                  setPostInputs((previous) => ({
+                                    ...previous,
+                                    [row.id]: event.target.value,
+                                  }))
+                                }
+                              />
+                            </label>
+                            {row.service.call.inputSchema && (
+                              <details className="mt-3 text-xs">
+                                <summary className="cursor-pointer">
+                                  Provider input schema
+                                </summary>
+                                <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-all">
+                                  {JSON.stringify(
+                                    row.service.call.inputSchema,
+                                    null,
+                                    2,
+                                  )}
+                                </pre>
+                              </details>
+                            )}
+                          </details>
+                        )}
+                      <div className="mt-5 flex flex-wrap gap-2">
+                        {row.state === "provisioning" && (
+                          <Button
+                            disabled={!!busy}
+                            onClick={() =>
+                              run("provision", async () => {
+                                await api({
+                                  action: "resume-approval",
+                                  id: row.id,
+                                });
+                                await refresh();
+                              })
+                            }
+                          >
+                            Resume wallet setup
+                          </Button>
+                        )}
                         <Button
-                          disabled={!!busy}
+                          variant="outline"
+                          disabled={!!busy || !row.payer}
                           onClick={() =>
-                            run("provision", async () => {
-                              await api({
-                                action: "resume-approval",
+                            run("balance", async () => {
+                              const balance = await api<{ units: string }>({
+                                action: "balance",
                                 id: row.id,
                               });
-                              await refresh();
+                              setBalances((b) => ({
+                                ...b,
+                                [row.id]: usdc(balance.units),
+                              }));
                             })
                           }
                         >
-                          Resume wallet setup
+                          Check balance
                         </Button>
-                      )}
-                      <Button
-                        variant="outline"
-                        disabled={!!busy || !row.payer}
-                        onClick={() =>
-                          run("balance", async () => {
-                            const balance = await api<{ units: string }>({
-                              action: "balance",
-                              id: row.id,
-                            });
-                            setBalances((b) => ({
-                              ...b,
-                              [row.id]: usdc(balance.units),
-                            }));
-                          })
-                        }
-                      >
-                        Check balance
-                      </Button>
-                      <Button
-                        disabled={
-                          !!busy ||
-                          approvalStatus(row, now) !== "active" ||
-                          (pending && attempt?.approvalId !== row.id) ||
-                          (!!attempt && attempt.approvalId !== row.id)
-                        }
-                        onClick={() => buy(row.id)}
-                      >
-                        {attempt?.approvalId === row.id
-                          ? "Resume same attempt"
-                          : "Buy once"}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        disabled={!!busy || row.state === "revoked"}
-                        onClick={() =>
-                          run("revoke", async () => {
-                            await api({ action: "revoke", id: row.id });
-                            await refresh();
-                            setNotice(
-                              "Future purchases revoked. Issued signatures are not cancelled.",
-                            );
-                          })
-                        }
-                      >
-                        Revoke
-                      </Button>
-                    </div>
-                    {account && approvalStatus(row, now) === "active" && (
-                      <Button
-                        variant="outline"
-                        className="mt-3"
-                        disabled={!!busy}
-                        onClick={() =>
-                          run("agent-key", async () => {
-                            const key = await api<{ token: string }>({
-                              action: "create-key",
-                              approvalId: row.id,
-                              label: `Agent for ${row.approval.name}`,
-                            });
-                            setNewKey(key.token);
-                            await refresh();
-                          })
-                        }
-                      >
-                        Create agent API key
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
+                        <Button
+                          disabled={
+                            !!busy ||
+                            approvalStatus(row, now) !== "active" ||
+                            (pending && attempt?.approvalId !== row.id) ||
+                            (!!attempt && attempt.approvalId !== row.id)
+                          }
+                          onClick={() => buy(row.id)}
+                        >
+                          {attempt?.approvalId === row.id
+                            ? "Resume same attempt"
+                            : "Buy once"}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          disabled={!!busy || row.state === "revoked"}
+                          onClick={() =>
+                            run("revoke", async () => {
+                              await api({ action: "revoke", id: row.id });
+                              await refresh();
+                              setNotice(
+                                "Checkout cancelled. Already-issued payment signatures are not cancelled.",
+                              );
+                            })
+                          }
+                        >
+                          Cancel checkout
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
             </div>
-            {newKey && (
-              <div className="mt-5 rounded-xl border border-primary p-5">
-                <p className="font-medium">
-                  Copy this agent key now. It will not be shown again.
-                </p>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  It can purchase only under its approval. It cannot create
-                  wallets or raise limits.
-                </p>
-                <code className="mt-3 block break-all text-xs">{newKey}</code>
-                <Button
-                  variant="outline"
-                  className="mt-3"
-                  onClick={() => setNewKey("")}
-                >
-                  I saved it
-                </Button>
-              </div>
-            )}
-            {state.keys?.map((key) => (
-              <div
-                key={key.id}
-                className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4 text-sm"
-              >
-                <span>
-                  {key.label} ·{" "}
-                  {key.revoked_at
-                    ? "Revoked"
-                    : Date.parse(key.expires_at) <= now * 1000
-                      ? "Expired"
-                      : `Expires ${new Date(key.expires_at).toLocaleString()}`}
-                </span>
-                <Button
-                  variant="ghost"
-                  disabled={!!busy || !!key.revoked_at}
-                  onClick={() =>
-                    run("revoke-key", async () => {
-                      await api({ action: "revoke-key", id: key.id });
-                      await refresh();
-                    })
-                  }
-                >
-                  Revoke key
-                </Button>
-              </div>
-            ))}
             {pending && (
               <p className="mt-4 text-sm text-muted-foreground">
                 An attempt needs confirmation. Refresh its status or reconcile
@@ -1236,7 +1133,7 @@ export function OperatorConsole({
             <p className="mt-4 text-sm text-muted-foreground">
               {seller
                 ? "Uses your selected wallet. Submitting this change may ask you to switch to Ethereum Sepolia."
-                : "Connect a wallet at the top of the page to edit this service. Managed agent wallets are for purchases."}
+                : "Connect a wallet at the top of the page to edit this service. ENS402 managed wallets are for purchases."}
             </p>
             {seller && service && (
               <form onSubmit={prepare} className="mt-5 rounded-xl border p-6">

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { RegistrationConsole } from "./registration-console";
 import { ProviderConsole } from "./provider-console";
 import { MerchantConsole } from "./merchant-console";
+import { DiscoveryConsole } from "./discovery-console";
 import { OperatorConsole } from "./operator-console";
 
 type Registration = {
@@ -41,16 +42,43 @@ function AccountWorkspace({
         Loading secure sign-in…
       </div>
     );
+  if (!authenticated && !registration && !workspace)
+    return (
+      <>
+        <DiscoveryConsole
+          onSelect={(name) => {
+            window.history.replaceState(
+              null,
+              "",
+              `/console?service=${encodeURIComponent(name)}`,
+            );
+            login();
+          }}
+        />
+        <div className="section-shell max-w-5xl pb-12">
+          <Button variant="outline" onClick={() => login()}>
+            Sign in to your purchases
+          </Button>
+        </div>
+      </>
+    );
   if (!authenticated)
     return (
       <section className="section-shell py-20">
         <p className="eyebrow">ENS402 Console</p>
-        <h1 className="mt-4 text-4xl font-medium">Your workspace.</h1>
+        <h1 className="mt-4 text-4xl font-medium">
+          {workspace === "provider"
+            ? "Onboard your service."
+            : registration
+              ? "Publish your service."
+              : "Your services."}
+        </h1>
         <p className="mt-6 max-w-xl leading-7 text-muted-foreground">
-          Sign in to inspect services, set payment limits and view activity.
+          Sign in to register your service, manage its ENS settings and track
+          activity.
         </p>
         <a
-          href="/discover"
+          href="/console"
           className="mt-6 block text-sm text-primary underline"
         >
           Browse services without signing in
