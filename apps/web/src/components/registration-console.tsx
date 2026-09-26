@@ -668,6 +668,7 @@ export function RegistrationConsole({
                   {(
                     {
                       hello: "Hello World",
+                      "bounty-info": "ETHGlobal bounty info",
                       weather: "Tokyo weather",
                       fx: "USD / JPY",
                       research: "Agent research",

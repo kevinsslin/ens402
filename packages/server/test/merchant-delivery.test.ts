@@ -10,11 +10,11 @@ vi.mock('@x402/core/http',async original=>({...await original<typeof import('@x4
 import {serveMerchant} from '../src/merchant';
 import {fixtureCall,fixtureDefinitions} from '../src/fixture-metadata';
 afterEach(()=>{vi.unstubAllEnvs();vi.resetAllMocks();});
-it('delivers Hello World only after signature verification and verified settlement',async()=>{
- const account=privateKeyToAccount(`0x${'11'.repeat(32)}`);const payTo='0x2222222222222222222222222222222222222222';const url='https://merchant.example/api/merchant/fixtures/hello';
+it.each(['hello', 'bounty-info'] as const)('delivers %s only after signature verification and verified settlement',async(service)=>{
+ const account=privateKeyToAccount(`0x${'11'.repeat(32)}`);const payTo='0x2222222222222222222222222222222222222222';const url=`https://merchant.example/api/merchant/fixtures/${service}`;
  vi.stubEnv('MERCHANT_PAY_TO',payTo);vi.stubEnv('MERCHANT_PRICE_UNITS','10000');
- const deliver=vi.fn(async()=>({fixture:true,liveData:false,service:'hello',...fixtureDefinitions.hello.data}));
- const resource={url,description:fixtureDefinitions.hello.description,call:fixtureCall('hello'),deliver};
+ const deliver=vi.fn(async()=>({fixture:true,liveData:false,service,...fixtureDefinitions[service].data}));
+ const resource={url,description:fixtureDefinitions[service].description,call:fixtureCall(service),deliver};
  const unpaid=await serveMerchant(new Request(url),'v1',resource);expect(unpaid.status).toBe(402);expect(deliver).not.toHaveBeenCalled();
  const challenge=decodePaymentRequiredHeader(unpaid.headers.get('payment-required')!);const accepted=challenge.accepts[0]!;
  const authorization={from:account.address,to:payTo,value:'10000',validAfter:'0',validBefore:String(Math.floor(Date.now()/1000)+50),nonce:`0x${'ab'.repeat(32)}`};
@@ -22,6 +22,6 @@ it('delivers Hello World only after signature verification and verified settleme
  const header=encodePaymentSignatureHeader({x402Version:2,resource:challenge.resource,accepted,payload:{authorization,signature}});
  f.response.mockResolvedValue(null);f.claim.mockResolvedValue({claimed:true});f.verify.mockResolvedValue({isValid:true,payer:account.address});f.settle.mockResolvedValue({success:true,payer:account.address,network:'eip155:84532',transaction:`0x${'cd'.repeat(32)}`});f.verifySettlement.mockResolvedValue(undefined);
  const response=await serveMerchant(new Request(url,{headers:{'payment-signature':header}}),'v1',resource);
- expect(response.status).toBe(200);expect(await response.json()).toMatchObject({message:'Hello, world!',fixture:true,liveData:false});expect(f.verifySettlement).toHaveBeenCalledOnce();expect(deliver).toHaveBeenCalledOnce();
+ expect(response.status).toBe(200);expect(await response.json()).toMatchObject({...fixtureDefinitions[service].data,fixture:true,liveData:false});expect(f.verifySettlement).toHaveBeenCalledOnce();expect(deliver).toHaveBeenCalledOnce();
  f.verifySettlement.mockRejectedValueOnce(Error('Receipt mismatch'));const failed=await serveMerchant(new Request(url,{headers:{'payment-signature':header}}),'v1',resource);expect(failed.status).toBe(503);expect(deliver).toHaveBeenCalledOnce();
 });

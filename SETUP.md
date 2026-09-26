@@ -453,3 +453,11 @@ Image uploads use the existing application `DATABASE_URL`, not the discovery dat
 ## Agent CLI
 
 Download [the standalone CLI](https://ens402.vercel.app/downloads/ens402.mjs) (Node.js 22+). Run `node ens402.mjs search "Tokyo weather"`. For payment, export an active checkout from Console; follow the [CLI reference](apps/web/public/skills/ens402-discovery/references/cli.md). Local signing uses `ENS402_PRIVATE_KEY` only in the local process, never the hosted environment. Source workflow: `pnpm cli:build`, `pnpm test:cli`.
+
+## ETHGlobal bounty info demo
+
+In the provider workspace, choose **Publish service -> ETHGlobal bounty info**. The preset fills label `bounty-info`, description, call schemas and the endpoint `https://ens402.vercel.app/api/merchant/fixtures/bounty-info`. GET returns an x402 challenge; verified testnet settlement delivers the sample bounty JSON. The response explicitly labels example sponsors, requirements and rewards as fictional, not official ETHGlobal prize information.
+
+The configured merchant recipient must match the new service-name holder. Keep the preset description and payment terms aligned with the endpoint. Under `ethglobal.ens402.eth`, the resulting name is `bounty-info.ethglobal.ens402.eth`. The endpoint itself does not register a name or add a search result.
+
+After publication and finality, use **Refresh listings**, then Search Service with `help me find ETHGlobal bounty information`. **Copy Skill** uses the existing public search API; an agent can use the same prompt. Discovery requires no wallet; purchasing still requires Guard and an approved payment. A different ENS root must be supported by provider setup and included in the indexer's configured roots before it is searchable.
