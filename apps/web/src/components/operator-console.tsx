@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ResolvedService, EnsTransaction } from "@ens402/sdk/ens";
 import type { Approval } from "@ens402/sdk";
 import type { PaymentReceipt } from "@ens402/sdk/http";
+import { selectedWallet } from "./wallet-session";
 import { ReceiptDetails } from "./receipt-details";
 import { units, usdc, approvalStatus, statusLabel } from "./console-format";
 
@@ -49,6 +50,7 @@ export function OperatorConsole({
 }: {
   account?: {
     id: string;
+    walletAddress?: string;
     getToken: () => Promise<string | null>;
     getProvider: () => Promise<Provider>;
   };
@@ -90,16 +92,22 @@ export function OperatorConsole({
     approvalId: string;
   } | null>(null);
   const [balances, setBalances] = useState<Record<string, string>>({});
-  const [seller, setSeller] = useState("");
+  const [operatorWallet, setOperatorWallet] = useState("");
+  const seller = account ? (account.walletAddress ?? "") : operatorWallet;
   const [record, setRecord] = useState("agent-endpoint[x402]");
   const [operation, setOperation] = useState("set");
   const [value, setValue] = useState("");
   const [operator, setOperator] = useState("");
   const [plan, setPlan] = useState<{
     transaction: EnsTransaction;
+    signer: string;
     broadTextPermission: boolean;
     note: string;
   } | null>(null);
+  useEffect(() => {
+    setPlan(null);
+    setApprovalKey(crypto.randomUUID());
+  }, [seller]);
   const [reconcileId, setReconcileId] = useState("");
   const [tx, setTx] = useState("");
   useEffect(() => {
@@ -197,11 +205,7 @@ export function OperatorConsole({
       let payer: string | undefined;
       if (mode === "self") {
         const provider = await wallet();
-        const accounts = (await provider.request({
-          method: "eth_requestAccounts",
-        })) as string[];
-        payer = accounts[0];
-        if (!payer) throw new Error("Connect a wallet first.");
+        payer = await selectedWallet(provider, account?.walletAddress);
       }
       await api({
         action: "approve",
@@ -246,15 +250,11 @@ export function OperatorConsole({
         });
         if (result.state === "reserved" && result.prepared) {
           const provider = await wallet();
-          await provider.request({
-            method: "wallet_switchEthereumChain",
-            params: [{ chainId: "0x14a34" }],
-          });
-          const accounts = (await provider.request({
-            method: "eth_requestAccounts",
-          })) as string[];
-          if (accounts[0]?.toLowerCase() !== row.payer?.toLowerCase())
-            throw new Error("Select the wallet recorded on this approval.");
+          const signerAddress = await selectedWallet(
+            provider,
+            row.payer ?? undefined,
+            "0x14a34",
+          );
           const { createWalletClient, custom } = await import("viem");
           const { baseSepolia } = await import("viem/chains");
           const client = createWalletClient({
@@ -263,7 +263,7 @@ export function OperatorConsole({
           });
           const signature = await client.signTypedData({
             ...result.prepared.typedData,
-            account: accounts[0],
+            account: signerAddress,
           } as Parameters<typeof client.signTypedData>[0]);
           result = await api<Execution>({
             action: "submit-external",
@@ -298,14 +298,10 @@ export function OperatorConsole({
   async function connectSeller() {
     await run("seller", async () => {
       const provider = await wallet();
-      await provider.request({
-        method: "wallet_switchEthereumChain",
-        params: [{ chainId: "0xaa36a7" }],
-      });
       const accounts = (await provider.request({
         method: "eth_requestAccounts",
       })) as string[];
-      setSeller(accounts[0] || "");
+      setOperatorWallet(accounts[0] || "");
       setPlan(null);
     });
   }
@@ -313,30 +309,30 @@ export function OperatorConsole({
     event.preventDefault();
     await run("prepare", async () => {
       setPlan(null);
-      setPlan(
-        await api({
-          action: "ens",
-          operation,
-          name,
-          from: seller,
-          key: record,
-          value,
-          operator,
-        }),
-      );
+      await selectedWallet(await wallet(), seller);
+      const prepared = await api<{
+        transaction: EnsTransaction;
+        broadTextPermission: boolean;
+        note: string;
+      }>({
+        action: "ens",
+        operation,
+        name,
+        from: seller,
+        key: record,
+        value,
+        operator,
+      });
+      setPlan({ ...prepared, signer: seller });
     });
   }
   async function sendEns() {
     await run("send-ens", async () => {
       if (!plan) return;
       const provider = await wallet();
-      if ((await provider.request({ method: "eth_chainId" })) !== "0xaa36a7")
-        throw new Error("Switch your wallet to Sepolia.");
-      const accounts = (await provider.request({
-        method: "eth_accounts",
-      })) as string[];
-      if (accounts[0]?.toLowerCase() !== seller.toLowerCase())
-        throw new Error("Wallet account changed. Connect and simulate again.");
+      await selectedWallet(provider, plan.signer, "0xaa36a7");
+      if (seller.toLowerCase() !== plan.signer.toLowerCase())
+        throw new Error("Wallet changed. Prepare this change again.");
       const hash = await provider.request({
         method: "eth_sendTransaction",
         params: [
@@ -635,25 +631,26 @@ export function OperatorConsole({
                       required
                     />
                   </label>
-                  {!account && service.endpoint.endsWith("/api/merchant/search") && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="mt-2"
-                      onClick={() => {
-                        const next = new URL(
-                          "/api/merchant/search-v2",
-                          service.endpoint,
-                        ).href;
-                        setEndpoints((text) =>
-                          text.includes(next) ? text : `${text}\n${next}`,
-                        );
-                        setApprovalKey(crypto.randomUUID());
-                      }}
-                    >
-                      Also approve the demo v2 route
-                    </Button>
-                  )}
+                  {!account &&
+                    service.endpoint.endsWith("/api/merchant/search") && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="mt-2"
+                        onClick={() => {
+                          const next = new URL(
+                            "/api/merchant/search-v2",
+                            service.endpoint,
+                          ).href;
+                          setEndpoints((text) =>
+                            text.includes(next) ? text : `${text}\n${next}`,
+                          );
+                          setApprovalKey(crypto.randomUUID());
+                        }}
+                      >
+                        Also approve the demo v2 route
+                      </Button>
+                    )}
                 </details>
                 <div className="mt-5 grid gap-5 sm:grid-cols-3">
                   <label className="text-sm">
@@ -1036,7 +1033,8 @@ export function OperatorConsole({
             <p className="mt-4 text-sm leading-7 text-muted-foreground">
               Ops updates the API URL. Treasury updates the recipient. Admin
               manages who can make these changes. Look up your service and
-              connect the wallet with the matching permission.
+              select the wallet with the matching permission at the top of this
+              page.
             </p>
             <a
               href="/permissions"
@@ -1044,20 +1042,22 @@ export function OperatorConsole({
             >
               Wallet roles, resources and setup flow
             </a>
-            <Button
-              variant="outline"
-              className="mt-5"
-              disabled={!!busy}
-              onClick={connectSeller}
-            >
-              <Wallet aria-hidden="true" />
-              {seller ? "Reconnect Sepolia wallet" : "Connect Sepolia wallet"}
-            </Button>
-            {seller && (
-              <p className="mt-3 break-all font-mono text-xs text-muted-foreground">
-                {seller}
-              </p>
+            {!account && (
+              <Button
+                variant="outline"
+                className="mt-5"
+                disabled={!!busy}
+                onClick={connectSeller}
+              >
+                <Wallet aria-hidden="true" />
+                {seller ? "Change wallet" : "Connect wallet"}
+              </Button>
             )}
+            <p className="mt-4 text-sm text-muted-foreground">
+              {seller
+                ? "Uses your selected wallet. Submitting this change may ask you to switch to Ethereum Sepolia."
+                : "Connect a wallet at the top of the page to edit this service. Managed agent wallets are for purchases."}
+            </p>
             {seller && service && (
               <form onSubmit={prepare} className="mt-5 rounded-xl border p-6">
                 <div className="grid gap-4 sm:grid-cols-2">

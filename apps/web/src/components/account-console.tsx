@@ -17,10 +17,10 @@ function AccountWorkspace({ registration }: { registration?: Registration }) {
     user,
     connectWallet,
   } = usePrivy();
-  const { wallets } = useWallets();
+  const { wallets, ready: walletsReady } = useWallets();
   const [selected, setSelected] = useState("");
   const wallet = wallets.find((w) => w.address === selected) ?? wallets[0];
-  if (!ready)
+  if (!ready || (authenticated && !walletsReady))
     return (
       <div className="section-shell py-20" role="status">
         Loading secure sign-in…
@@ -57,9 +57,9 @@ function AccountWorkspace({ registration }: { registration?: Registration }) {
         <div className="flex flex-wrap items-center gap-2">
           {wallets.length > 0 && (
             <label className="text-xs">
-              Signing wallet
+              Connected wallet
               <select
-                aria-label="Signing wallet"
+                aria-label="Connected wallet"
                 className="ml-2 max-w-52 rounded-md border bg-background p-2"
                 value={wallet?.address ?? ""}
                 onChange={(e) => setSelected(e.target.value)}
@@ -76,7 +76,7 @@ function AccountWorkspace({ registration }: { registration?: Registration }) {
             </label>
           )}
           <Button variant="outline" onClick={() => connectWallet()}>
-            Connect wallet
+            {wallet ? "Use another wallet" : "Connect wallet"}
           </Button>
           <Button variant="ghost" onClick={() => logout()}>
             Sign out
@@ -86,19 +86,27 @@ function AccountWorkspace({ registration }: { registration?: Registration }) {
       {registration ? (
         <RegistrationConsole
           {...registration}
+          walletAddress={wallet?.address}
           getProvider={async () => {
-            if (!wallet) throw new Error("Connect wallet first.");
+            if (!wallet)
+              throw new Error(
+                "Connect a wallet using the wallet control at the top of this page.",
+              );
             return wallet.getEthereumProvider();
           }}
         />
       ) : (
         <OperatorConsole
-          key={`${user?.id}:${wallet?.address ?? ""}`}
+          key={user?.id}
           account={{
             id: user!.id,
+            walletAddress: wallet?.address,
             getToken: getAccessToken,
             getProvider: async () => {
-              if (!wallet) throw new Error("Connect wallet first.");
+              if (!wallet)
+                throw new Error(
+                  "Connect a wallet using the wallet control at the top of this page.",
+                );
               return wallet.getEthereumProvider();
             },
           }}

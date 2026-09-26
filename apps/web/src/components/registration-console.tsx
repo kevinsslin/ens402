@@ -1,4 +1,5 @@
 "use client";
+import { selectedWallet } from "./wallet-session";
 import { useState } from "react";
 import {
   bytesToHex,
@@ -33,10 +34,12 @@ export function RegistrationConsole({
   registrar,
   parent,
   getProvider,
+  walletAddress,
 }: {
   registrar: string;
   parent: string;
   getProvider: () => Promise<Provider>;
+  walletAddress?: string;
 }) {
   const [label, setLabel] = useState(""),
     [endpoint, setEndpoint] = useState(""),
@@ -52,15 +55,11 @@ export function RegistrationConsole({
     setMessage("");
     try {
       const provider = await getProvider();
-      await provider.request({
-        method: "wallet_switchEthereumChain",
-        params: [{ chainId: "0xaa36a7" }],
-      });
-      const accounts = (await provider.request({
-        method: "eth_requestAccounts",
-      })) as Address[];
-      const owner = accounts[0];
-      if (!owner) throw new Error("Connect a wallet first.");
+      const owner = (await selectedWallet(
+        provider,
+        walletAddress,
+        "0xaa36a7",
+      )) as Address;
       const client = createPublicClient({
           chain: sepolia,
           transport: custom(provider),
