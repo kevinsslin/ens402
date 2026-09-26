@@ -90,7 +90,7 @@ export function NamespaceArchitecture() {
                 <p className={styles.kind}>1 · Platform Registry</p>
                 <h4>ens402.eth</h4>
               </div>
-              <span className={styles.nodeId}>A</span>
+              
             </div>
             <div className={styles.nameEntry}>
               <span>Name entry</span>
@@ -100,7 +100,7 @@ export function NamespaceArchitecture() {
           </div>
           <WalletGrant name="Platform owner">
             <Roles
-              scope="A · Registry root"
+              scope="Platform Registry · Register providers"
               roles={["ROLE_REGISTRAR", "ROLE_REGISTRAR_ADMIN"]}
             />
             <p className={styles.job}>
@@ -119,7 +119,7 @@ export function NamespaceArchitecture() {
                 <p className={styles.kind}>2 · Provider Registry</p>
                 <h4>provider.ens402.eth</h4>
               </div>
-              <span className={styles.nodeId}>B</span>
+              
             </div>
             <p className={styles.nodeDescription}>
               This provider’s service directory. A dedicated resolver per service.
@@ -146,9 +146,9 @@ export function NamespaceArchitecture() {
             </div>
           </div>
           <WalletGrant name="Provider Admin">
-            <Roles scope="A · provider name" roles={["ROLE_SET_SUBREGISTRY"]} />
+            <Roles scope="Provider name · Choose its registry" roles={["ROLE_SET_SUBREGISTRY"]} />
             <Roles
-              scope="B · Registry root"
+              scope="Provider Registry · Register services"
               roles={["ROLE_REGISTRAR", "ROLE_REGISTRAR_ADMIN"]}
             />
             <p className={styles.job}>
@@ -185,7 +185,7 @@ export function NamespaceArchitecture() {
                   <p className={styles.kind}>3 · Service / PermissionedResolver</p>
                   <h4>Service 1 · Resolver 1</h4>
                 </div>
-                <span className={styles.nodeId}>C1</span>
+                
               </div>
               <code className={styles.fullName}>
                 service1.provider.ens402.eth
@@ -201,7 +201,7 @@ export function NamespaceArchitecture() {
             <WalletGrant name="Service Admin">
               <p className={styles.job}>Control this name, its settings and its delegates.</p>
               <Roles
-                scope="B · service1 name"
+                scope="Service name · Choose its resolver"
                 roles={[
                   "ROLE_SET_RESOLVER",
                   "ROLE_SET_RESOLVER_ADMIN",
@@ -209,7 +209,7 @@ export function NamespaceArchitecture() {
                 ]}
               />
               <Roles
-                scope="C1 · Resolver root"
+                scope="Service resolver · All settings & delegates"
                 roles={["ROLE_SET_TEXT", "ROLE_SET_TEXT_ADMIN"]}
               />
             </WalletGrant>
@@ -229,7 +229,7 @@ export function NamespaceArchitecture() {
             </div>
             <WalletGrant name="Ops wallet">
               <Roles
-                scope="C1 · Separate grants for description and avatar"
+                scope="Description & picture · Separate key grants"
                 roles={["ROLE_SET_TEXT"]}
               />
               <p className={styles.job}>
@@ -248,7 +248,7 @@ export function NamespaceArchitecture() {
               <p>https://api.example.com/v1/service</p>
             </div>
             <WalletGrant name="Ops wallet">
-              <Roles scope="C1 · Endpoint key only" roles={["ROLE_SET_TEXT"]} />
+              <Roles scope="API endpoint · This key only" roles={["ROLE_SET_TEXT"]} />
               <p className={styles.job}>
                 Update the URL. No payment-record permission.
               </p>
@@ -288,7 +288,7 @@ export function NamespaceArchitecture() {
               </p>
             </div>
             <WalletGrant name="Treasury wallet">
-              <Roles scope="C1 · Payment key only" roles={["ROLE_SET_TEXT"]} />
+              <Roles scope="Payment settings · This key only" roles={["ROLE_SET_TEXT"]} />
               <p className={styles.job}>
                 Edit price and payTo. This wallet need not receive the payment.
               </p>
@@ -335,24 +335,7 @@ export function NamespaceArchitecture() {
           </span>
         </div>
       </div>
-      <figcaption className={styles.caption}>
-        <p>Target architecture · Service permissions fork-tested · Public setup pending</p>
-        <details>
-          <summary className="cursor-pointer py-2 font-medium text-primary">Permission boundaries & implementation status</summary>
-          <p>
-            Platform and Provider Registry are native ENSv2 UserRegistry instances.
-            Grants apply to a contract and resource, not automatically to its children.
-            Each resolver needs its own Ops and Treasury grants. Admin retains
-            full text control and grant management. Payment signing is separate.
-          </p>
-          <p>
-            Provider onboarding and multi-namespace indexing still need implementation.
-            Metadata publishing and fixed-price checks are implemented.
-            The roles shown are intended grants, not a live permission audit.
-          </p>
-        </details>
-        <a href="/diagrams/ens402-contracts.mmd" download>Download Mermaid reference ↓</a>
-      </figcaption>
+
     </figure>
   );
 }
