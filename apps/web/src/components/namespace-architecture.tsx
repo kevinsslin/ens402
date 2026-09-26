@@ -90,7 +90,7 @@ export function NamespaceArchitecture() {
                 <p className={styles.kind}>1 · Platform Registry</p>
                 <h4>ens402.eth</h4>
               </div>
-              
+
             </div>
             <div className={styles.nameEntry}>
               <span>Name entry</span>
@@ -119,7 +119,7 @@ export function NamespaceArchitecture() {
                 <p className={styles.kind}>2 · Provider Registry</p>
                 <h4>provider.ens402.eth</h4>
               </div>
-              
+
             </div>
             <p className={styles.nodeDescription}>
               This provider’s service directory. A dedicated resolver per service.
@@ -185,7 +185,7 @@ export function NamespaceArchitecture() {
                   <p className={styles.kind}>3 · Service / PermissionedResolver</p>
                   <h4>Service 1 · Resolver 1</h4>
                 </div>
-                
+
               </div>
               <code className={styles.fullName}>
                 service1.provider.ens402.eth
