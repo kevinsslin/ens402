@@ -25,7 +25,7 @@ beforeEach(() => {
 });
 it("finds an owned provider without a catalog or browser hints", async () => {
   const result = await providerDirectory(owner);
-  expect(result.providers).toEqual([{ name: "demo.ens402.eth", owner, registry, role: "Provider owner" }]);
+  expect(result.providers).toEqual([{ name: "demo.ens402.eth", owner, registry, role: "Provider owner", serviceNames: ["demo.demo.ens402.eth"], servicesUnavailable: false }]);
   expect(client.getLogs).toHaveBeenCalledWith(expect.objectContaining({ address: registry, fromBlock: 90n, toBlock: 100n }));
   expect(client.getCode).not.toHaveBeenCalled();
 });
@@ -64,4 +64,24 @@ it("does not present an empty directory when deployment provenance is missing", 
   const { providerDirectory: coldDirectory } = await import("../src/server/provider-directory");
   client.getLogs.mockResolvedValue([]);
   await expect(coldDirectory(owner)).rejects.toThrow("deployment was not found");
+});
+
+it("keeps workspace access when listing its services fails", async () => {
+  let registrations = 0;
+  client.getLogs.mockImplementation(async ({ event }) => {
+    if (event.name === "ProxyDeployed") return [{ blockNumber: 90n, args: { implementation: currentDeployment.registryImplementation } }];
+    if (++registrations > 1) throw Error("Service logs unavailable");
+    return [{ args: { label: "demo" } }];
+  });
+  const result = await providerDirectory(owner);
+  expect(result.providers[0]).toMatchObject({ name: "demo.ens402.eth", servicesUnavailable: true, serviceNames: [] });
+});
+it("omits expired services while keeping the provider", async () => {
+  let registrations = 0;
+  client.getLogs.mockImplementation(async ({ event }) => event.name === "ProxyDeployed"
+    ? [{ blockNumber: 90n, args: { implementation: currentDeployment.registryImplementation } }]
+    : [{ args: { label: ++registrations === 1 ? "demo" : "expired-service" } }]);
+  const original = client.readContract.getMockImplementation()!;
+  client.readContract.mockImplementation(async input => input.functionName === "findExpiry" && input.args[0] === "expired-service" ? 900n : original(input));
+  expect((await providerDirectory(owner)).providers[0]?.serviceNames).toEqual([]);
 });

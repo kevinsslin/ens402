@@ -1,0 +1,11 @@
+import {beforeEach,expect,it,vi} from 'vitest';
+const {auth,save,limit}=vi.hoisted(()=>({auth:vi.fn(),save:vi.fn(),limit:vi.fn()}));
+vi.mock('@ens402/server/platform',()=>({authenticate:auth}));
+vi.mock('@ens402/server',()=>({getStore:()=>({rateLimit:limit,saveServiceImage:save})}));
+import {POST} from '../src/app/api/service-images/route';
+const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=','base64');
+const request=(body:Buffer=png,origin='https://ens402.example')=>new Request('https://ens402.example/api/service-images',{method:'POST',headers:{origin,authorization:'Bearer user'},body:new Uint8Array(body)});
+beforeEach(()=>{vi.clearAllMocks();auth.mockResolvedValue({kind:'user',ownerId:'test'});limit.mockResolvedValue(undefined);save.mockResolvedValue('a'.repeat(64));});
+it('requires same origin and authenticated human upload',async()=>{expect((await POST(request(png,'https://evil.example'))).status).toBe(403);auth.mockRejectedValueOnce(Error());expect((await POST(request())).status).toBe(401);auth.mockResolvedValueOnce({kind:'agent'});expect((await POST(request())).status).toBe(403);expect(save).not.toHaveBeenCalled();});
+it('rejects active formats and oversized bodies before storage',async()=>{expect((await POST(request(Buffer.from('<svg/>')))).status).toBe(400);expect((await POST(request(Buffer.alloc(1048577)))).status).toBe(413);expect(save).not.toHaveBeenCalled();});
+it('returns a public URL after bounded image upload',async()=>{const r=await POST(request());expect(r.status).toBe(200);expect((await r.json()).url).toBe(`https://ens402.example/api/service-images/${'a'.repeat(64)}`);expect(save).toHaveBeenCalledWith(png);});

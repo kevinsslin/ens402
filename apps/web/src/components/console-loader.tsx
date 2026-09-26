@@ -18,7 +18,7 @@ export function ConsoleLoader({
   parent,
 }: {
   appId: string;
-  workspace?: "provider" | "merchant";
+  workspace?: "provider" | "merchant" | "service";
   parent?: string;
   registration?: {
     registrar: string;

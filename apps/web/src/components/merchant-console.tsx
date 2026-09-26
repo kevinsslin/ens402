@@ -284,7 +284,7 @@ export function MerchantConsole({
                         )}
                         <a
                           className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary"
-                          href={`/console?service=${encodeURIComponent(row.name)}${row.controlled ? "&manage=1" : ""}`}
+                          href={row.controlled ? `/service?name=${encodeURIComponent(row.name)}` : `/console?service=${encodeURIComponent(row.name)}`}
                         >
                           {row.controlled ? "Manage service" : "Open service"}
                           <ArrowUpRight className="size-3" />

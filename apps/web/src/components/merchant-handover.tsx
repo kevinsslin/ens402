@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   createPublicClient,
   createWalletClient,
@@ -8,6 +8,8 @@ import {
   type Hex,
 } from "viem";
 import { sepolia } from "viem/chains";
+import { CheckCircle2 } from "lucide-react";
+import { Spinner } from "./ui/spinner";
 import { Button } from "./ui/button";
 import { selectedWallet } from "./wallet-session";
 type Provider = {
@@ -33,8 +35,28 @@ export function MerchantHandover({
   const [incoming, setIncoming] = useState(""),
     [busy, setBusy] = useState(false),
     [notice, setNotice] = useState("");
+  const [accepted, setAccepted] = useState(false);
+  const [finished, setFinished] = useState(false);
   const scopeUnknown = !!registry && !resolver;
   const key = `ens402-handover:${nameRegistry}:${name}`;
+  useEffect(() => {
+    setAccepted(false);
+    try {
+      const saved = JSON.parse(localStorage.getItem(key) || "null");
+      if (
+        saved?.acceptance &&
+        saved.input?.deadline > Date.now() / 1000 &&
+        saved.input.nameRegistry?.toLowerCase() ===
+          nameRegistry.toLowerCase() &&
+        saved.input.label === name.split(".")[0] &&
+        saved.input.registry?.toLowerCase() === registry?.toLowerCase() &&
+        saved.input.resolver?.toLowerCase() === resolver?.toLowerCase()
+      ) {
+        setIncoming(saved.input.incoming);
+        setAccepted(true);
+      }
+    } catch {}
+  }, [key, name, nameRegistry, registry, resolver]);
   async function api(action: string, input: unknown, acceptance?: string) {
     const response = await fetch("/api/provider/manage", {
       method: "POST",
@@ -79,6 +101,7 @@ export function MerchantHandover({
           message: result.message,
         });
         localStorage.setItem(key, JSON.stringify({ input, acceptance }));
+        setAccepted(true);
         setNotice(
           "Incoming wallet accepted. Connect the outgoing owner and continue the handover.",
         );
@@ -95,6 +118,8 @@ export function MerchantHandover({
           throw Error("Saved handover target differs; request new acceptance");
         const result = await api("handover", input, acceptance);
         if (!result.transaction) {
+          setFinished(true);
+          localStorage.removeItem(key);
           setNotice(
             `Handover ${result.stage}. Current authority has been verified.`,
           );
@@ -125,6 +150,10 @@ export function MerchantHandover({
             ? `Confirmed. Next step: ${next.transaction.purpose}`
             : `Handover ${next.stage}; authority verified.`,
         );
+        if (!next.transaction) {
+          setFinished(true);
+          localStorage.removeItem(key);
+        }
         onChanged();
       }
     } catch (error) {
@@ -146,8 +175,9 @@ export function MerchantHandover({
           : resolver
             ? "Moves the service name and dedicated resolver administration. Holder-derived payment recipients follow the new owner."
             : "Moves the service name only. Shared provider resolver administration stays with the provider. Holder-derived payment recipients follow the new owner."}{" "}
-        Incoming acceptance is required. Each outgoing transaction is simulated
-        and checked after confirmation.
+        The new owner first signs consent without gas. Then the current
+        administrator submits the on-chain transfer. Provider transfers may
+        require several transactions.
       </p>
       {scopeUnknown && (
         <p role="alert" className="mt-3 text-sm">
@@ -156,25 +186,68 @@ export function MerchantHandover({
         </p>
       )}
       <label className="mt-3 block text-sm">
-        Incoming owner
+        New owner wallet
         <input
           value={incoming}
-          onChange={(e) => setIncoming(e.target.value)}
+          disabled={busy || finished}
+          placeholder="0x…"
+          onChange={(e) => {
+            setIncoming(e.target.value);
+            setAccepted(false);
+            localStorage.removeItem(key);
+          }}
           className="mt-1 w-full rounded border p-2"
         />
       </label>
-      <div className="mt-3 flex flex-wrap gap-2">
-        <Button
-          variant="outline"
-          disabled={busy || scopeUnknown}
-          onClick={() => run(true)}
-        >
-          Accept with incoming wallet
-        </Button>
-        <Button disabled={busy || scopeUnknown} onClick={() => run(false)}>
-          Continue handover
-        </Button>
-      </div>
+      <ol className="mt-5 grid gap-3 sm:grid-cols-2">
+        <li className="rounded-xl border bg-background p-4">
+          <h4 className="flex items-center gap-2 font-medium">
+            {accepted && <CheckCircle2 className="size-4 text-primary" />}1. New
+            owner agrees
+          </h4>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Connect the new owner wallet and sign consent. This is a message
+            signature, with no gas fee.
+          </p>
+          <Button
+            className="mt-4"
+            variant="outline"
+            disabled={
+              busy ||
+              scopeUnknown ||
+              accepted ||
+              finished ||
+              !/^0x[0-9a-fA-F]{40}$/.test(incoming)
+            }
+            onClick={() => run(true)}
+          >
+            {accepted ? "Consent signed" : "Sign as new owner"}
+          </Button>
+        </li>
+        <li className="rounded-xl border bg-background p-4">
+          <h4 className="flex items-center gap-2 font-medium">
+            {finished && <CheckCircle2 className="size-4 text-primary" />}2.
+            Current admin transfers
+          </h4>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Switch back to the current administrator wallet to confirm the
+            transfer on Sepolia. Gas is required.
+          </p>
+          <Button
+            className="mt-4"
+            disabled={busy || scopeUnknown || !accepted || finished}
+            onClick={() => run(false)}
+          >
+            {finished ? "Transfer complete" : "Confirm transfer as admin"}
+          </Button>
+        </li>
+      </ol>
+      {busy && (
+        <p role="status" className="mt-3 flex items-center gap-2 text-sm">
+          <Spinner />
+          Processing the current step…
+        </p>
+      )}
       {notice && (
         <p role="status" className="mt-3 break-all text-xs">
           {notice}

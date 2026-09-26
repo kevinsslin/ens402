@@ -195,3 +195,11 @@ The browser verification did not sign in as the real owner or execute wallet tra
 - A live finalized reconstruction populated one service and one embedding with zero exclusions or embedding failures. Public search returned HTTP 200. Analytics was deferred and is not claimed verified by this run.
 - `hello.demo.ens402.eth` registered at block 11789056, later than observed finalized block 11789010. It correctly awaits finality and the next refresh.
 - Merchant status distinguishes first sync from catalog failure. Indexed demo services can be searchable, and schema equality ignores object-key ordering. Frontend tests (78), refresh/route tests (11), and production build passed.
+
+## Workspace and service editor (2026-09-27)
+
+- Onboarding separates workspaces from registered service names, discovered from native registration events and checked for current ownership/expiry. Incomplete setup actions require a fresh plan; a saved browser draft alone no longer displays Continue setup.
+- `/service?name=...` reads current native settings and field permissions without buyer approvals, Base recipient checks or payment-ledger state. Updates validate fields and native permission, simulate, and batch changed records on the resolver. Legacy `console?manage=1` redirects here.
+- Live read and two-record simulation passed for `weather.demo.ens402.eth`. No ENS write was submitted. The missing production shared-provider pins were configured; the former buyer inspector then passed with those pins.
+- Authenticated raster upload accepts PNG/JPEG/WebP signatures up to 1 MB, rate limits uploads, stores content-addressed bytes in the application database, and serves them with fixed media type, nosniff and sandbox headers. Public image URLs are recorded on ENS only after an owner-authorized update. Production image schema and byte-for-byte storage round trip verified.
+- Browser QA: workspace and service lists, prefilled description, 0.01 USDC display, read-only transaction simulation reaching Confirm in wallet, and two-step transfer explanations. Mobile viewport 390 px had no horizontal overflow. Transfer signatures themselves were not performed.

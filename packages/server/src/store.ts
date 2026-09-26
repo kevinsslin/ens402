@@ -1,3 +1,4 @@
+import { serviceImagesSchema, serviceImage } from "./service-images";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { Pool, type PoolClient } from "pg";
 import type { Approval } from "@ens402/sdk";
@@ -5,7 +6,8 @@ import type { ResolvedService } from "@ens402/sdk/ens";
 import type { PaymentReceipt, PublicAuthorization } from "@ens402/sdk/http";
 import type { PaymentRequirements } from "@x402/core/types";
 
-export const schema = `
+export const schema = `${serviceImagesSchema}
+
 CREATE TABLE IF NOT EXISTS ens402_registration_orders (
  id uuid PRIMARY KEY, parent text NOT NULL, label text NOT NULL, recipient text NOT NULL, nonce_key text NOT NULL UNIQUE,
  state text NOT NULL DEFAULT 'awaiting_payment', settlement jsonb, raw_transaction text, transaction_hash text, result jsonb,
@@ -76,6 +78,14 @@ export class Store {
       connectionTimeoutMillis: 5000,
       idleTimeoutMillis: 10000,
     });
+  }
+  async saveServiceImage(bytes: Uint8Array) {
+    const image = serviceImage(bytes);
+    await this.pool.query("INSERT INTO ens402_service_images(id,media_type,bytes) VALUES($1,$2,$3) ON CONFLICT(id) DO NOTHING", [image.id,image.mediaType,image.bytes]);
+    return image.id;
+  }
+  async getServiceImage(id: string) {
+    return (await this.pool.query("SELECT media_type,bytes FROM ens402_service_images WHERE id=$1", [id])).rows[0] as {media_type:string;bytes:Buffer}|undefined;
   }
   async migrate() {
     await this.pool.query(schema);

@@ -130,8 +130,11 @@ export async function POST(request: Request) {
     // Provider exceptions can contain credential-bearing RPC URLs. Never echo them.
     return Response.json(
       {
-        error:
-          "Operation could not complete. Check setup, current approval, balance and permissions. Refresh the activity list before retrying a payment.",
+        error: input.action === "inspect"
+          ? "Could not verify this service's ENS configuration or payment recipient. Retry the lookup, or ask the provider to check its registry and resolver configuration."
+          : input.action === "ens"
+            ? "Could not prepare this ENS update. Check the selected wallet's record permissions and field values. No update was sent."
+            : "Operation could not complete. Check setup, current approval, balance and permissions. Refresh the activity list before retrying a payment.",
       },
       { status: 409, headers: { "Cache-Control": "no-store" } },
     );

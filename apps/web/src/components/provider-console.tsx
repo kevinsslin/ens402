@@ -111,6 +111,46 @@ export function ProviderConsole({
   const [directoryError, setDirectoryError] = useState("");
   const [directoryLoading, setDirectoryLoading] = useState(true);
   const [directoryVersion, setDirectoryVersion] = useState(0);
+  const [workspacePlans, setWorkspacePlans] = useState<Record<string, Plan>>(
+    {},
+  );
+  useEffect(() => {
+    const controller = new AbortController();
+    setWorkspacePlans({});
+    for (const provider of directory?.providers ?? []) {
+      let saved: ProviderSetup;
+      try {
+        saved = JSON.parse(
+          localStorage.getItem(`ens402-provider:${provider.name}`) ||
+            localStorage.getItem(`ens402-provider-setup:${parent}`) ||
+            "null",
+        );
+        if (!saved || `${saved.label}.${saved.parent}` !== provider.name)
+          continue;
+      } catch {
+        continue;
+      }
+      void fetch("/api/provider/plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(saved),
+        signal: controller.signal,
+      })
+        .then(async (response) => {
+          if (!response.ok) return;
+          const current = (await response.json()) as Plan;
+          if (!controller.signal.aborted)
+            setWorkspacePlans((previous) => ({
+              ...previous,
+              [provider.name]: current,
+            }));
+        })
+        .catch(() => {
+          /* Workspace management remains available if setup verification is temporarily unavailable. */
+        });
+    }
+    return () => controller.abort();
+  }, [directory, parent]);
   const [creating, setCreating] = useState(false);
   const [publicationMode, setPublicationMode] = useState(false);
   useEffect(() => {
@@ -426,12 +466,12 @@ export function ProviderConsole({
       <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-4xl sm:text-5xl">
-            {publicationMode ? "Publish your API" : "Your service workspace"}
+            {publicationMode ? "Publish your API" : "Your services"}
           </h1>
           <p className="mt-3 max-w-xl text-muted-foreground">
             {publicationMode
               ? "Choose a demo or connect your own x402 endpoint."
-              : "Manage your providers, or create a home for your APIs on ENS."}
+              : "Manage your workspaces and registered services in one place."}
           </p>
         </div>
         {directory && directory.providers.length > 0 && (
@@ -441,7 +481,7 @@ export function ProviderConsole({
             onClick={startNew}
           >
             <Plus className="mr-2 size-4" />
-            Create provider
+            Create workspace
           </Button>
         )}
       </div>
@@ -488,65 +528,141 @@ export function ProviderConsole({
           </div>
         </div>
       )}
-      {(!publicationMode || !setup.registrar) &&
-        directory &&
-        directory.providers.length > 0 && (
-          <div className="mt-8 grid gap-4 sm:grid-cols-2">
-            {directory.providers.map((provider) => (
-              <article
-                key={provider.name}
-                className="rounded-2xl border bg-white p-6"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="rounded-xl bg-primary/10 p-3 text-primary">
-                    <Building2 className="size-5" />
-                  </div>
-                  <span className="text-xs font-medium text-primary">
-                    {provider.role}
-                  </span>
-                </div>
-                <h2 className="mt-4 break-all text-xl">{provider.name}</h2>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Manage service listings, settings and permissions.
+      {!publicationMode && directory && directory.providers.length > 0 && (
+        <div className="mt-10 space-y-10">
+          <section aria-labelledby="workspaces-heading">
+            <h2 id="workspaces-heading" className="text-2xl">
+              Service workspaces
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Manage your team's wallets, shared permissions and publishing
+              setup.
+            </p>
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              {directory.providers.map((provider) => {
+                const current =
+                  plan?.name === provider.name
+                    ? plan
+                    : workspacePlans[provider.name];
+                const incomplete = current && !current.ready;
+                return (
+                  <article
+                    key={provider.name}
+                    className="rounded-2xl border bg-card p-6"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Building2 className="size-5 text-primary" />
+                      <h3 className="break-all font-semibold">
+                        {provider.name}
+                      </h3>
+                    </div>
+                    <p className="mt-3 text-sm text-muted-foreground">
+                      {provider.role}
+                      {incomplete
+                        ? " · Setup incomplete"
+                        : current?.ready
+                          ? " · Ready"
+                          : ""}
+                    </p>
+                    {incomplete ? (
+                      <Button
+                        className="mt-5"
+                        disabled={busy || !!pending}
+                        onClick={() => {
+                          setSetup(current.setup);
+                          setPlan(current);
+                          setCreating(true);
+                          setPublicationMode(false);
+                        }}
+                      >
+                        Continue setup <ArrowRight className="ml-2 size-4" />
+                      </Button>
+                    ) : (
+                      <Button asChild variant="outline" className="mt-5">
+                        <Link
+                          href={`/merchant?provider=${encodeURIComponent(provider.name)}`}
+                        >
+                          Manage workspace{" "}
+                          <ArrowRight className="ml-2 size-4" />
+                        </Link>
+                      </Button>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+          <section aria-labelledby="registered-services-heading">
+            <h2 id="registered-services-heading" className="text-2xl">
+              Registered services
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Open a service to edit its endpoint, payment terms and public
+              details. Newly registered services appear here before search
+              indexing.
+            </p>
+            <div className="mt-5 space-y-3">
+              {directory.providers.flatMap((provider) =>
+                provider.serviceNames.map((name) => (
+                  <article
+                    key={name}
+                    className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border bg-card p-5"
+                  >
+                    <div>
+                      <h3 className="break-all font-semibold">{name}</h3>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {provider.name}
+                      </p>
+                    </div>
+                    <Button asChild variant="outline">
+                      <Link href={`/service?name=${encodeURIComponent(name)}`}>
+                        Manage service <ArrowRight className="ml-2 size-4" />
+                      </Link>
+                    </Button>
+                  </article>
+                )),
+              )}
+              {directory.providers.some(
+                (provider) => provider.servicesUnavailable,
+              ) && (
+                <p role="status" className="rounded-xl border p-5 text-sm">
+                  Some services could not be loaded. You can still open their
+                  workspace above.
                 </p>
-                <Button asChild className="mt-5">
-                  <Link
-                    href={`/merchant?provider=${encodeURIComponent(provider.name)}`}
+              )}
+              {directory.providers.every(
+                (provider) =>
+                  !provider.servicesUnavailable &&
+                  provider.serviceNames.length === 0,
+              ) && (
+                <p className="rounded-xl border border-dashed p-6 text-sm text-muted-foreground">
+                  No registered services yet. Publish your first API from a
+                  workspace.
+                </p>
+              )}
+            </div>
+            <div className="mt-4 flex flex-wrap gap-3">
+              {directory.providers.map((provider) => (
+                <Button asChild key={provider.name} variant="ghost">
+                  <a
+                    href={`/provider?provider=${encodeURIComponent(provider.name)}#publish-first-service`}
                   >
-                    Manage provider <ArrowRight className="ml-2 size-4" />
-                  </Link>
+                    <Plus className="mr-2 size-4" />
+                    Publish service
+                    {directory.providers.length > 1
+                      ? ` · ${provider.name}`
+                      : ""}
+                  </a>
                 </Button>
-                {`${setup.label}.${setup.parent}` === provider.name && (
-                  <Button
-                    variant="ghost"
-                    className="mt-5 ml-2"
-                    disabled={busy}
-                    onClick={() => {
-                      setCreating(true);
-                      void run();
-                    }}
-                  >
-                    Continue setup
-                  </Button>
-                )}
-              </article>
-            ))}
-          </div>
-        )}
-      {directory && (
-        <p className="mt-4 text-xs text-muted-foreground">
-          Providers you own or can register services under. Have an Operations
-          or Treasury Admin role?{" "}
-          <Link
-            href="/merchant"
-            className="text-primary underline underline-offset-4"
-          >
-            Open your provider by name.
-          </Link>
-        </p>
+              ))}
+            </div>
+          </section>
+        </div>
       )}
-      {directory && !directory.platformReady &&
-        directory.platformOwner.toLowerCase() === walletAddress?.toLowerCase() && (
+      {directory &&
+        !directory.platformReady &&
+        directory.platformOwner.toLowerCase() ===
+          walletAddress?.toLowerCase() && (
           <PlatformBootstrap
             parent={parent}
             walletAddress={walletAddress}
@@ -767,7 +883,9 @@ export function ProviderConsole({
               <SetupProgressCard
                 phase={pending?.phase ?? plan?.phase ?? 0}
                 activity={activity}
-                transactions={plan?.transactions ?? (pending ? [pending.step] : [])}
+                transactions={
+                  plan?.transactions ?? (pending ? [pending.step] : [])
+                }
                 parties={{
                   ops: setup.ops,
                   treasury: setup.treasury,

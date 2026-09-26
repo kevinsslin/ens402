@@ -474,3 +474,9 @@ On the verified provider publication screen, choose **Set up one-transaction pub
 Provider setup uses native multicall for consecutive permission updates on the same verified Resolver. A complete legacy-publisher replacement normally takes five transactions: deploy, grant six resolver setters, grant new registry registration permission, revoke old registry registration permission, revoke six old resolver setters. Already-completed steps are skipped. Wallets need not be Safe accounts. This is native contract batching, not a third-party MultiSend contract.
 
 In the merchant service card, open **Permissions and ownership**. Permissions shows live Resolver Admin, Operations and Treasury Admin holders. The current wallet is read-only; if multiple narrow holders exist, select from verified on-chain holders. Enter only the new wallet. Replacing a delegate grants and revokes the selected keys in one transaction and affects all services sharing the resolver. Ownership is a separate tab. The demo reader scans at most 200,000 blocks of complete resolver history and fails closed when it cannot verify holders.
+
+### Service management
+
+Onboarding has separate **Service workspaces** and **Registered services** sections. **Manage service** opens `/service?name=<service ENS>` with current values and native field permissions. Ops can edit public metadata, Treasury Admin can edit payment terms, and Resolver Admin can edit both. Review changes simulates one resolver transaction; confirmation saves it on Sepolia. Keep endpoint metadata aligned and refresh search after finality.
+
+Image uploads use the existing application `DATABASE_URL`, not the discovery database. `pnpm db:migrate` includes the `ens402_service_images` table (already installed for this deployment). Images are public and content-addressed, up to 1 MB PNG/JPEG/WebP; an external HTTPS image URL also works. No new storage credential is required.

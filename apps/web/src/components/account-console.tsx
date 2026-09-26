@@ -7,6 +7,7 @@ import { RegistrationConsole } from "./registration-console";
 import { ProviderConsole } from "./provider-console";
 import { MerchantConsole } from "./merchant-console";
 import { DiscoveryConsole } from "./discovery-console";
+import { ServiceSettings } from "./service-settings";
 import { OperatorConsole } from "./operator-console";
 
 type Registration = {
@@ -21,7 +22,7 @@ function AccountWorkspace({
   parent,
 }: {
   registration?: Registration;
-  workspace?: "provider" | "merchant";
+  workspace?: "provider" | "merchant" | "service";
   parent?: string;
 }) {
   const {
@@ -145,6 +146,11 @@ function AccountWorkspace({
             return wallet.getEthereumProvider();
           }}
         />
+      ) : workspace === "service" ? (
+        <ServiceSettings walletAddress={wallet?.address} getToken={getAccessToken} getProvider={async () => {
+          if (!wallet) throw Error("Connect a wallet to update settings");
+          return wallet.getEthereumProvider();
+        }}/>
       ) : registration ? (
         <RegistrationConsole
           {...registration}
@@ -185,7 +191,7 @@ export function AccountConsole({
   parent,
 }: {
   appId: string;
-  workspace?: "provider" | "merchant";
+  workspace?: "provider" | "merchant" | "service";
   parent?: string;
   registration?: Registration;
 }) {
