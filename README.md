@@ -116,13 +116,15 @@ Obsolete proposals and duplicate status files were removed. Provider source snap
 
 ## Discovery comparison
 
-The landing page compares functional capabilities, not ENS-specific technology adoption, overall decentralization or production maturity.
+The landing page compares publication and governance guarantees. Decentralization refers to the configuration source, not every component or overall product quality.
 
-| Capability | ENS402 | Bazaar extension | x402scan discovery |
+| Dimension | ENS402 | Bazaar (CDP hosted catalog) | x402scan |
 | --- | --- | --- | --- |
-| Public service descriptions and call metadata | Yes | Yes | Yes |
-| Reconstruct published service configuration from onchain records/history | Yes, supported roots; hosted setup pending | Not specified by this extension | Not specified by this discovery spec |
-| Customize discovery and indexing | Yes | Yes, open extension | Yes, open source |
-| Expose machine-readable call schemas | Yes, published JSON metadata | Yes | Yes |
+| Directory source | Public ENS records; decentralized source | Centralized facilitator catalog of API metadata | Centralized operator index of API metadata |
+| Configuration independent of the API | Separate ENS source for payment comparison | Not specified by the discovery specification | Not specified by the discovery specification |
+| Separate Ops/Treasury permissions enforced onchain | Native key-scoped writer roles | Not specified by the discovery specification | Not specified by the discovery specification |
+| Public, verifiable configuration edit history | Chain transactions and events | Not specified by the discovery specification | Not specified by the discovery specification |
+
+ENS402 hosted search is operator-run; namespace admission and Admin powers remain. Public testnet setup is pending. Bazaar's open extension does not prescribe storage or governance, and x402scan is open source. Independent implementations can add controls; “not specified” does not mean impossible. This table describes configuration edit history, not payment history, which other explorers also index.
 
 Sources checked September 27, 2026: [Bazaar specification](https://github.com/coinbase/x402/blob/main/specs/extensions/bazaar.md), [x402scan discovery specification](https://github.com/Merit-Systems/x402scan/blob/main/docs/DISCOVERY.md), and [x402scan README](https://github.com/Merit-Systems/x402scan). Bazaar is an open extension with facilitator-side cataloging. x402scan is open source, supports OpenAPI/well-known discovery and URL submission, and its discovery spec treats runtime 402 as authoritative over static metadata. Neither should be described as manual-only or impossible to self-host. Absence from these specifications is not evidence that third-party integrations cannot add the feature.
