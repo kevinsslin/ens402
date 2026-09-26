@@ -1,7 +1,8 @@
 import Link from "next/link";
+import { AgentDiscoveryFlow } from "./agent-discovery-flow";
 import { DiscoveryComparison } from "./discovery-comparison";
 import { PaymentVerificationFlow } from "./payment-verification-flow";
-import { ArrowDown, ArrowRight, Check, LockKeyhole, Search, ShieldCheck, X } from "lucide-react";
+import { ArrowRight, Check, LockKeyhole, Search, ShieldCheck, X } from "lucide-react";
 
 const panel = "rounded-2xl border bg-white p-6 sm:p-8";
 const step = "rounded-xl border bg-background px-5 py-4";
@@ -9,7 +10,8 @@ const step = "rounded-xl border bg-background px-5 py-4";
 /** Explain each layer's purpose separately from the registry/resolver implementation diagram. */
 export function LandingLayers() {
   return <div className="section-shell divide-y">
-    <section id="discovery" className="grid items-center gap-10 py-16 lg:grid-cols-2 lg:gap-20 sm:py-24">
+    <section id="discovery" className="py-12 sm:py-20">
+      <div className="grid items-center gap-8 lg:grid-cols-2 lg:gap-16">
       <div>
         <p className="eyebrow flex items-center gap-3"><Search size={18} /> 01 / Discover</p>
         <h2 className="mt-5 text-4xl leading-tight sm:text-5xl">A public context layer<br />for agent services.</h2>
@@ -18,22 +20,10 @@ export function LandingLayers() {
         <p className="mt-4 leading-7 text-muted-foreground">As agent-to-agent services multiply, discovery should be rebuildable. Use our SDK or MCP, or run the open-source indexer and build your own search.</p>
         <Link href="/discover" className="mt-6 inline-flex items-center gap-2 font-medium text-primary">Explore services <ArrowRight size={17} /></Link>
       </div>
-      <div className={panel}>
-        <p className="mb-5 text-sm font-medium">Public context → searchable services.</p>
-        <div className={step}>
-          <p className="break-all font-mono text-sm text-primary">service2.provider.ens402.eth</p>
-          <p className="mt-3 text-lg font-medium">What it does. How to call it.</p>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">Description · endpoint · call schema · payment terms</p>
-        </div>
-        <div className="flex items-center justify-center gap-3 py-4 text-sm text-muted-foreground"><ArrowDown size={18} /> Public records + onchain history</div>
-        <ol className="space-y-3" aria-label="Service discovery pipeline">
-          {[["01", "Indexer", "Reconstruct supported ENS service records."], ["02", "Search API", "Rank candidates with keywords and meaning."], ["03", "SDK / MCP", "Let an agent discover and inspect services."]].map(([number, label, detail], index) => <li key={label}><div className="flex items-start gap-4 rounded-lg border border-primary/20 bg-primary/5 p-4"><span className="font-mono text-xs text-primary">{number}</span><div><p className="text-sm font-semibold">{label}</p><p className="mt-1 text-sm text-muted-foreground">{detail}</p></div></div>{index < 2 && <ArrowDown size={16} className="mx-auto mt-3 text-primary" aria-hidden="true" />}</li>)}
-        </ol>
-        <p className="mt-5 text-sm leading-6 text-muted-foreground">Use our hosted stack or run your own indexer and API. The SDK can connect to either. The public ENS source stays the same.</p>
-        <p className="mt-4 border-t pt-4 text-xs leading-5 text-muted-foreground">Verifiable publication does not guarantee service quality. Search ranking helps agents find candidates; Guard checks the chosen service before payment.</p>
+      <AgentDiscoveryFlow />
       </div>
+      <DiscoveryComparison />
     </section>
-    <DiscoveryComparison />
     <section id="govern" className="grid items-center gap-10 py-16 lg:grid-cols-2 lg:gap-20 sm:py-24">
       <div>
         <p className="eyebrow flex items-center gap-3"><LockKeyhole size={18} /> 02 / Govern</p>

@@ -123,6 +123,6 @@ The landing page compares functional capabilities, not ENS-specific technology a
 | Public service descriptions and call metadata | Yes | Yes | Yes |
 | Reconstruct published service configuration from onchain records/history | Yes, supported roots; hosted setup pending | Not specified by this extension | Not specified by this discovery spec |
 | Customize discovery and indexing | Yes | Yes, open extension | Yes, open source |
-| Check API payment changes against independently governed configuration | Yes, tested | Not specified by this discovery extension | Not specified by this discovery spec |
+| Expose machine-readable call schemas | Yes, published JSON metadata | Yes | Yes |
 
 Sources checked September 27, 2026: [Bazaar specification](https://github.com/coinbase/x402/blob/main/specs/extensions/bazaar.md), [x402scan discovery specification](https://github.com/Merit-Systems/x402scan/blob/main/docs/DISCOVERY.md), and [x402scan README](https://github.com/Merit-Systems/x402scan). Bazaar is an open extension with facilitator-side cataloging. x402scan is open source, supports OpenAPI/well-known discovery and URL submission, and its discovery spec treats runtime 402 as authoritative over static metadata. Neither should be described as manual-only or impossible to self-host. Absence from these specifications is not evidence that third-party integrations cannot add the feature.
