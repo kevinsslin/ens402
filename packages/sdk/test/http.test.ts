@@ -82,7 +82,19 @@ describe('actual HTTP payment exchange', () => {
   });
   it('does not trust an HTTP success without chain receipt verification', async () => {
     const args = options(); args.verifySettlement.mockRejectedValue(new Error('wrong nonce'));
-    expect((await purchaseResource(args)).state).toBe('uncertain');
+    const receipt = await purchaseResource(args);
+    expect(receipt.state).toBe('uncertain'); expect(receipt.steps.at(-1)).toEqual({ stage: 'stop', detail: 'Could not confirm the settlement transaction onchain' });
+  });
+  it('keeps a reported settlement failure uncertain but records its reason code', async () => {
+    const failed = { success: false, errorReason: 'invalid_exact_evm_transaction_failed', errorMessage: 'Details: replacement transaction underpriced\n<raw tx>', transaction: '', network: 'eip155:84532' as const };
+    const args = options(); args.transport.mockReset().mockResolvedValueOnce(invoice()).mockResolvedValue(new Response('{"error":"Settlement failed"}', { status: 402, headers: { 'PAYMENT-RESPONSE': encodePaymentResponseHeader(failed) } }));
+    const receipt = await purchaseResource(args);
+    expect(receipt.state).toBe('uncertain'); expect(args.signer.signTypedData).toHaveBeenCalledTimes(1);
+    expect(receipt.steps.at(-1)).toEqual({ stage: 'stop', detail: 'Merchant reported a failed settlement: invalid_exact_evm_transaction_failed' });
+  });
+  it('records a missing settlement receipt with the merchant status', async () => {
+    const args = options(); args.transport.mockReset().mockResolvedValueOnce(invoice()).mockResolvedValue(new Response(null, { status: 503 }));
+    expect((await purchaseResource(args)).steps.at(-1)).toEqual({ stage: 'stop', detail: 'Merchant returned HTTP 503 without a settlement receipt' });
   });
   it('records payment even when the service failed to deliver', async () => {
     const args = options(); args.transport.mockReset().mockResolvedValueOnce(invoice()).mockResolvedValue(new Response('service error', { status: 500, headers: { 'PAYMENT-RESPONSE': encodePaymentResponseHeader(settlement) } }));

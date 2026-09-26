@@ -287,6 +287,7 @@ export async function submitResourcePayment(options: {
   const step = (stage: string, detail: string) =>
     receipt.steps.push({ stage, detail });
   let transmitted = false;
+  let failure = "Merchant request failed or timed out";
   try {
     const fullPayload: PaymentPayload = {
       x402Version: 2,
@@ -311,10 +312,12 @@ export async function submitResourcePayment(options: {
       signal: AbortSignal.timeout(45000),
     });
     const header = paid.headers.get("payment-response");
+    failure = `Merchant returned HTTP ${paid.status} without a settlement receipt`;
     if (!header || header.length > 32768) {
       await paid.body?.cancel();
       throw new Error("Missing settlement receipt");
     }
+    failure = "Merchant settlement receipt could not be decoded";
     const settlement = decodePaymentResponseHeader(header);
     if (
       !settlement.success ||
@@ -322,10 +325,18 @@ export async function submitResourcePayment(options: {
       !/^0x[0-9a-fA-F]{64}$/.test(settlement.transaction) ||
       !sameAddress(settlement.payer ?? "", authorization.from)
     ) {
+      // Merchant-controlled text: keep only a short machine-readable reason code.
+      const code = /^[a-z0-9_:.-]{1,80}$/i.test(settlement.errorReason ?? "")
+        ? `: ${settlement.errorReason}`
+        : "";
+      failure = settlement.success
+        ? "Merchant settlement receipt does not match this payment"
+        : `Merchant reported a failed settlement${code}`;
       await paid.body?.cancel();
       throw new Error("Invalid settlement receipt");
     }
     receipt.settlement = settlement;
+    failure = "Could not confirm the settlement transaction onchain";
     try {
       await options.verifySettlement(settlement, authorization, requirement);
     } catch (error) {
@@ -353,6 +364,7 @@ export async function submitResourcePayment(options: {
     receipt.reason = transmitted
       ? "Submission outcome is uncertain; reconcile before retrying"
       : "No payment submitted";
+    if (transmitted) step("stop", failure);
     return receipt;
   }
 }

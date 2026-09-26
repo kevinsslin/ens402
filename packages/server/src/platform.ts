@@ -30,7 +30,9 @@ export async function platformAction(principal: Principal, input: Record<string,
   };
   if (principal.kind === 'agent' && !['inspect','execute','prepare-external','submit-external','execution','balance','cancel','reconcile'].includes(action)) throw new Error('This operation requires user login');
   switch(action) {
-    case 'state': return {...await store.userState(principal.ownerId),names:(process.env.SERVICE_ENS_NAME || '').split(',').filter(Boolean)};
+    case 'state':
+      await store.releaseStaleReservations(principal.ownerId,Math.floor(Date.now()/1000));
+      return {...await store.userState(principal.ownerId),names:(process.env.SERVICE_ENS_NAME || '').split(',').filter(Boolean)};
     case 'inspect': {
       if (principal.kind === 'agent') { const row = await assertApproval(principal.approvalId); if (input.name !== row.approval.name) throw new Error('Service is outside agent scope'); }
       return inspectService(input.name);

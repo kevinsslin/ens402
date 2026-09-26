@@ -9,12 +9,83 @@ import {
   encodePaymentResponseHeader,
   HTTPFacilitatorClient,
 } from "@x402/core/http";
-import { verifyTypedData, type Address, type Hex } from "viem";
+import { SettleError, type SettleResponse } from "@x402/core/types";
+import { parseAbi, verifyTypedData, type Address, type Hex } from "viem";
 import { authorizationTypes } from "@x402/evm";
 import { NETWORK, USDC, sameAddress } from "@ens402/sdk";
 import type { PublicAuthorization } from "@ens402/sdk/http";
 import { getStore } from "./index";
 import { amount, requireEnv } from "./config";
+
+/** Relayer errors that prove the facilitator's own transaction never entered the mempool. */
+const UNSENT_RELAYER_ERROR =
+  /replacement transaction underpriced|nonce too low|nonce has already been used/i;
+const SETTLE_RETRY_DELAYS_MS = [1000, 2000, 4000];
+const SETTLE_RETRY_MARGIN_SECONDS = 10;
+const authorizationStateAbi = parseAbi([
+  "function authorizationState(address authorizer, bytes32 nonce) view returns (bool)",
+]);
+
+/**
+ * Settle once, retrying only failures that prove the relayer broadcast nothing.
+ * EIP-3009 lets a nonce transfer at most once, so a retry cannot double charge.
+ */
+export async function settleWithRetry(
+  settle: () => Promise<SettleResponse>,
+  authorization: PublicAuthorization,
+  options: {
+    authorizationUsed: () => Promise<boolean>;
+    now?: () => number;
+    sleep?: (ms: number) => Promise<void>;
+  },
+): Promise<SettleResponse> {
+  const now = options.now ?? (() => Math.floor(Date.now() / 1000));
+  const sleep =
+    options.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
+  const unsent = (result: SettleResponse) =>
+    !result.success &&
+    !result.transaction &&
+    UNSENT_RELAYER_ERROR.test(
+      `${result.errorReason ?? ""} ${result.errorMessage ?? ""}`,
+    );
+  for (let attempt = 0; ; attempt++) {
+    let result: SettleResponse;
+    try {
+      result = await settle();
+    } catch (error) {
+      // Other thrown failures have an unknown outcome and stay with reconciliation.
+      if (!(error instanceof SettleError)) throw error;
+      result = {
+        success: false,
+        errorReason: error.errorReason,
+        errorMessage: error.errorMessage,
+        payer: error.payer,
+        transaction: error.transaction,
+        network: error.network,
+      };
+      if (!unsent(result)) throw error;
+    }
+    const delay = SETTLE_RETRY_DELAYS_MS[attempt];
+    if (
+      !unsent(result) ||
+      delay === undefined ||
+      Number(authorization.validBefore) - now() - delay / 1000 <
+        SETTLE_RETRY_MARGIN_SECONDS
+    )
+      return result;
+    await sleep(delay);
+    let used: boolean;
+    try {
+      used = await options.authorizationUsed();
+    } catch {
+      return result;
+    }
+    if (used)
+      throw new Error(
+        "Authorization was consumed outside this settlement; reconcile before responding",
+      );
+  }
+}
 
 /** A small, real x402 v2 testnet merchant. Resource data is explicitly demo data. */
 export type PaidResource = {
@@ -192,7 +263,19 @@ export async function serveMerchant(
     );
   }
   // After a settlement attempt starts, a failure never deletes the nonce claim.
-  const settlement = await facilitator.settle(payload, requirement);
+  const settlement = await settleWithRetry(
+    () => facilitator.settle(payload, requirement),
+    a,
+    {
+      authorizationUsed: () =>
+        baseClient().readContract({
+          address: USDC,
+          abi: authorizationStateAbi,
+          functionName: "authorizationState",
+          args: [a.from as Address, a.nonce as Hex],
+        }),
+    },
+  );
   const headers = {
     "PAYMENT-RESPONSE": encodePaymentResponseHeader(settlement),
     "Cache-Control": "no-store",

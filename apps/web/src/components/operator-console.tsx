@@ -319,22 +319,32 @@ export function OperatorConsole({
           request: resourceRequest,
         });
         if (result.state === "reserved" && result.prepared) {
-          const provider = await wallet();
-          const signerAddress = await selectedWallet(
-            provider,
-            row.payer ?? undefined,
-            "0x14a34",
-          );
-          const { createWalletClient, custom } = await import("viem");
-          const { baseSepolia } = await import("viem/chains");
-          const client = createWalletClient({
-            chain: baseSepolia,
-            transport: custom(provider),
-          });
-          const signature = await client.signTypedData({
-            ...result.prepared.typedData,
-            account: signerAddress,
-          } as Parameters<typeof client.signTypedData>[0]);
+          let signature: `0x${string}`;
+          try {
+            const provider = await wallet();
+            const signerAddress = await selectedWallet(
+              provider,
+              row.payer ?? undefined,
+              "0x14a34",
+            );
+            const { createWalletClient, custom } = await import("viem");
+            const { baseSepolia } = await import("viem/chains");
+            const client = createWalletClient({
+              chain: baseSepolia,
+              transport: custom(provider),
+            });
+            signature = await client.signTypedData({
+              ...result.prepared.typedData,
+              account: signerAddress,
+            } as Parameters<typeof client.signTypedData>[0]);
+          } catch (error) {
+            // Nothing was signed, so closing the reservation cannot lose a payment.
+            await api({ action: "cancel", id: current.id }).catch(() => {});
+            setAttempt(null);
+            sessionStorage.removeItem(storageKey);
+            await refresh();
+            throw error;
+          }
           result = await api<Execution>({
             action: "submit-external",
             id: current.id,

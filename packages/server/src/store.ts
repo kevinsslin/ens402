@@ -294,6 +294,27 @@ export class Store {
       throw new Error("Attempt may already be submitted; reconcile instead");
     return result.rows[0] as Execution;
   }
+  /** Close reservations that can no longer submit, so they stop blocking new purchases. */
+  async releaseStaleReservations(owner: string, now: number) {
+    const receipt: PaymentReceipt = {
+      state: "held",
+      reason: "Signing window expired before submission; no payment was sent",
+      steps: [
+        {
+          stage: "expire",
+          detail: "Reservation closed; a concurrent worker cannot submit it",
+        },
+      ],
+    };
+    // Unprepared reservations outlive any request that could still be preparing them after 5 minutes.
+    await this.pool.query(
+      `UPDATE ens402_executions e SET state='held',receipt=$3,updated_at=now() FROM ens402_approvals a
+       WHERE a.id=e.approval_id AND a.owner_id=$1 AND e.state='reserved' AND (
+         (e.prepared->'typedData'->'message'->>'validBefore')::bigint <= $2
+         OR (e.prepared IS NULL AND e.created_at < to_timestamp($2::double precision) - interval '5 minutes'))`,
+      [owner, now, receipt],
+    );
+  }
   async getExecution(id: string): Promise<Execution> {
     const result = await this.pool.query(
       "SELECT * FROM ens402_executions WHERE id=$1",

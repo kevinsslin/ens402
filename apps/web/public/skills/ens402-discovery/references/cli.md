@@ -24,7 +24,9 @@ The CLI shows the current recipient, signer and exact price and asks for confirm
 
 The hosted quote API provides fresh ENS inspection and Intercepta evidence. Local SDK Guard compares HTTP 402, metadata and the approved terms, re-reads ENS before signing, then verifies the settlement receipt on Base Sepolia. This uses the default ENS402 verification provider; it does not claim independent local ENS resolution. Local signer control remains with the user.
 
-Keep `.ens402/payments/UUID.json`. A repeated ID never signs again, including after interruption. On uncertainty, use `status --id YOUR_UUID`; if a transaction hash is known, use `reconcile --id YOUR_UUID --tx 0x...`. Successful reconciliation proves payment, not delivery. Do not create a new ID to retry an uncertain charge. Direct mode currently supports GET; POST and hosted Privy signing use the existing checkout flow below.
+Keep `.ens402/payments/UUID.json`. A repeated ID never signs again, including after interruption. If settlement is uncertain, `pay` checks the authorization on Base Sepolia until it settles or expires (up to about a minute). An authorization that expired unused can never move funds, so the CLI then retries once with a new authorization under the same ID and records the first one in `previousAttempts`. A used authorization is matched to its settlement transaction and reported as `paid_delivery_failed`, never retried.
+
+`status --id YOUR_UUID` rechecks an uncertain attempt onchain and updates the journal: `not_paid` means it is safe to pay again with a new ID; `paid_delivery_failed` includes the verified transaction. If a transaction hash is known, `reconcile --id YOUR_UUID --tx 0x...` verifies it directly. Successful reconciliation proves payment, not delivery. Do not create a new ID while an attempt is still `uncertain`. Direct mode currently supports GET; POST and hosted Privy signing use the existing checkout flow below.
 
 ## Managed wallet or POST checkout
 

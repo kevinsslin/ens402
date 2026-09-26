@@ -1,4 +1,4 @@
-import { directQuote, directPay, directApproval, directSummary, directReconcile } from "./direct";
+import { directQuote, directPay, directApproval, directSummary, directReconcile, directStatus } from "./direct";
 import { privateKeyToAccount } from "viem/accounts";
 import { parseArgs } from "node:util";
 import { readFile } from "node:fs/promises";
@@ -25,6 +25,8 @@ Self signing: node --env-file=.env ens402.mjs pay ...
 The file must set ENS402_PRIVATE_KEY for your funded local payer.
 Use --yes only after the user approves this service and maximum price.
 Save each --id and reuse it for status/reconciliation, never blindly retry.
+Direct pay resolves an uncertain settlement onchain and retries once only after the
+previous authorization expired unused. Direct status rechecks uncertain attempts onchain.
 `;
 
 async function main() {
@@ -65,7 +67,7 @@ async function main() {
       try {confirmed=(await terminal.question("Pay once? Type yes: ")).trim()==="yes";} finally {terminal.close();}
     }
     if(!confirmed) throw new CliError("Payment not confirmed. Use --yes only with user approval of this service and maximum price");
-    const result=await directPay({origin,name:query,id:values.id,maximum:values["max-price-atomic"],key:key!,quote,rpc:process.env.BASE_SEPOLIA_RPC_URL});
+    const result=await directPay({origin,name:query,id:values.id,maximum:values["max-price-atomic"],key:key!,quote,rpc:process.env.BASE_SEPOLIA_RPC_URL,log:message=>console.error(message)});
     console.log(JSON.stringify(result,null,2));
     if(result.state!=="settled") process.exitCode=2;
     return;
@@ -74,7 +76,7 @@ async function main() {
     console.log(JSON.stringify(await directReconcile(values.id,values.tx,process.env.BASE_SEPOLIA_RPC_URL),null,2)); return;
   }
   if (command === "status" && !values.config && values.id && uuid(values.id)) {
-    console.log(await readFile(`.ens402/payments/${values.id}.json`,"utf8")); return;
+    console.log(JSON.stringify(await directStatus(values.id,process.env.BASE_SEPOLIA_RPC_URL),null,2)); return;
   }
   if (positionals.length !== 1 || !values.config || !values.id || !uuid(values.id)) throw new CliError("Provide --config checkout.json and --id UUID");
   if (values["base-url"]) throw new CliError("Payment API is pinned by the exported checkout; --base-url is only for search/inspect");

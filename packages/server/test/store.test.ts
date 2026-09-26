@@ -52,6 +52,24 @@ describe('real PostgreSQL execution ledger',()=>{
     const approvalId=await approval(),id=randomUUID();await store.reserve(id,approvalId,Math.floor(Date.now()/1000));await store.revoke(approvalId);await expect(store.beforeSubmit(id,authorization,requirement)).rejects.toThrow('revoked');
   });
   it('cancels unsent reservations and prevents a late worker from submitting',async()=>{const approvalId=await approval(),id=randomUUID();await store.reserve(id,approvalId,Math.floor(Date.now()/1000));await other.cancelReserved(id);await expect(store.beforeSubmit(id,authorization,requirement)).rejects.toThrow('cannot submit again');});
+  it('releases only reservations that can no longer submit',async()=>{
+    const approvalId=await approval('100000'),now=Math.floor(Date.now()/1000);
+    const expired=randomUUID(),live=randomUUID(),unprepared=randomUUID(),submitted=randomUUID();
+    for(const id of [expired,live,unprepared,submitted])await store.reserve(id,approvalId,now);
+    await store.savePrepared(expired,{typedData:{message:{validBefore:String(now-1)}}});
+    await store.savePrepared(live,{typedData:{message:{validBefore:String(now+60)}}});
+    await store.beforeSubmit(submitted,authorization,requirement);
+    await other.releaseStaleReservations('operator',now);
+    expect((await store.getExecution(expired)).state).toBe('held');
+    expect((await store.getExecution(live)).state).toBe('reserved');
+    expect((await store.getExecution(unprepared)).state).toBe('reserved');
+    await expect(store.beforeSubmit(expired,authorization,requirement)).rejects.toThrow('cannot submit again');
+    await other.releaseStaleReservations('someone-else',now+301);
+    expect((await store.getExecution(unprepared)).state).toBe('reserved');
+    await other.releaseStaleReservations('operator',now+301);
+    expect((await store.getExecution(unprepared)).state).toBe('held');
+    expect((await store.getExecution(submitted)).state).toBe('submitting');
+  });
   it('cannot cancel a submitted authorization',async()=>{const approvalId=await approval(),id=randomUUID();await store.reserve(id,approvalId,Math.floor(Date.now()/1000));await store.beforeSubmit(id,authorization,requirement);await expect(other.cancelReserved(id)).rejects.toThrow('already be submitted');});
   it('isolates idempotency keys between approvals',async()=>{
     const one=await approval(),two=await approval(),id=randomUUID();await store.reserve(id,one,Math.floor(Date.now()/1000));await expect(other.reserve(id,two,Math.floor(Date.now()/1000))).rejects.toThrow('another approval');

@@ -225,6 +225,16 @@ export async function submitExternal(
     }))
   )
     throw new Error("Signature does not match approved payment");
+  // An expired authorization can never transfer, so close it instead of leaving it reserved.
+  if (Number(a.validBefore) <= Math.floor(Date.now() / 1000)) {
+    const reason = "Signing window expired before submission; no payment was sent";
+    return store.finish(id, {
+      ...receipt,
+      state: "held",
+      reason,
+      steps: [...receipt.steps, { stage: "expire", detail: reason }],
+    });
+  }
   const now = Math.floor(Date.now() / 1000),
     fresh = await inspectService(row.approval.name);
   if (
