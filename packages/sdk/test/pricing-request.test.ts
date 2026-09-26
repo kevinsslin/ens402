@@ -137,6 +137,13 @@ it("validates metadata and prepares native scoped setters", () => {
     prepareTextPermission(name, "avatar", account.address, true).description,
   ).toContain("dedicated resolver");
 });
+it("requires explicit and bounded call metadata for native record updates", () => {
+  const name = { name: service.name, resolver: payTo as Address, deployment: "current" as const };
+  expect(prepareRecordUpdate(name, "ens402.call", '{"method":"GET","example":{}}').data).toMatch(/^0x/);
+  for (const invalid of ['{}', '{"method":"DELETE"}', '{"method":"POST","example":[]}', 'invalid']) {
+    expect(() => prepareRecordUpdate(name, "ens402.call", invalid)).toThrow();
+  }
+});
 it("binds the exact order, recipient and endpoint into a real USDC signature", async () => {
   const order = {
     orderId: randomUUID(),

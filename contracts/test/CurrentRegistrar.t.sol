@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
+import {IServiceRegistrar} from "../src/interfaces/IServiceRegistrar.sol";
 import {ServiceRegistrar} from "../src/ServiceRegistrar.sol";
 import {
     INativeRegistry,
@@ -79,7 +80,7 @@ contract CurrentRegistrarTest {
     }
 
     function testDescriptionPictureAndFixedPricePublication() public {
-        ServiceRegistrar.Service memory s = ServiceRegistrar.Service(
+        IServiceRegistrar.Service memory s = IServiceRegistrar.Service(
             "priced",
             "https://weather.example/api",
             treasury,
@@ -87,7 +88,8 @@ contract CurrentRegistrarTest {
             treasury,
             "Weather forecast",
             "https://weather.example/icon.png",
-            10000
+            10000,
+            '{"method":"GET"}'
         );
         bytes32 secret = bytes32(uint256(77));
         registrar.commit(registrar.makeCommitment(s, owner, secret));
@@ -108,6 +110,15 @@ contract CurrentRegistrarTest {
                 ),
             "missing fixed price"
         );
+        require(
+            keccak256(bytes(_text(dns, node, "ens402.call"))) == keccak256(bytes('{"method":"GET"}')),
+            "missing call metadata"
+        );
+        vm.prank(ops);
+        ICurrentResolver(resolver).setText(dns, "ens402.call", '{"method":"POST","example":{}}');
+        vm.expectPartialRevert(bytes4(0x4b27a133));
+        vm.prank(treasury);
+        ICurrentResolver(resolver).setText(dns, "ens402.call", '{"method":"GET"}');
         vm.prank(ops);
         ICurrentResolver(resolver).setText(dns, "description", "Updated listing");
         vm.prank(ops);
@@ -118,19 +129,35 @@ contract CurrentRegistrarTest {
     }
 
     function testOpsCannotAlsoBeServiceAdmin() public {
-        ServiceRegistrar.Service memory service = ServiceRegistrar.Service(
-            "weather", "https://weather.example/api", treasury, owner, treasury, "Weather forecast", "", 10000
+        IServiceRegistrar.Service memory service = IServiceRegistrar.Service(
+            "weather",
+            "https://weather.example/api",
+            treasury,
+            owner,
+            treasury,
+            "Weather forecast",
+            "",
+            10000,
+            '{"method":"GET"}'
         );
         registrar.commit(registrar.makeCommitment(service, owner, bytes32(uint256(2))));
         vm.warp(block.timestamp + 60);
-        vm.expectPartialRevert(ServiceRegistrar.InvalidRecord.selector);
+        vm.expectPartialRevert(IServiceRegistrar.InvalidRecord.selector);
         vm.prank(owner);
         registrar.register(service, bytes32(uint256(2)));
     }
 
     function testCurrentNativeRegistrationAndSetterRoles() public {
-        ServiceRegistrar.Service memory s = ServiceRegistrar.Service(
-            "weather", "https://weather.example/api", treasury, ops, treasury, "Weather forecast", "", 10000
+        IServiceRegistrar.Service memory s = IServiceRegistrar.Service(
+            "weather",
+            "https://weather.example/api",
+            treasury,
+            ops,
+            treasury,
+            "Weather forecast",
+            "",
+            10000,
+            '{"method":"GET"}'
         );
         registrar.commit(registrar.makeCommitment(s, owner, bytes32(uint256(1))));
         vm.warp(block.timestamp + 60);

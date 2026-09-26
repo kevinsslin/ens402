@@ -27,6 +27,21 @@ export default function DocsPage() {
         screens the recipient, and checks your approval before payment. Choose
         who controls the signing wallet.
       </p>
+      <section className="mt-9 rounded-xl border p-6">
+        <h2 className="text-xl font-medium">Discover before you approve</h2>
+        <p className="mt-3 text-sm leading-7 text-muted-foreground">Search the public catalog without a wallet. The API, SDK and read-only MCP use the same candidate data. Resolve the chosen ENS name again in Console before approving a payment.</p>
+        <pre className={code}>{`import { discover } from "@ens402/sdk/discovery";
+
+const candidates = await discover(
+  { query: "Tokyo weather", mode: "hybrid", maxPricePerRequestAtomic: "10000" },
+  { apiUrl: "https://ens402.vercel.app/api/discover" }
+);
+// 10000 atomic units = 0.01 USDC. Search never grants payment authority.
+// Check candidates.semantic, fixture labels and the source checkpoint.`}</pre>
+        <p className="mt-4 text-sm leading-7 text-muted-foreground">MCP URL: <code>/api/mcp</code> (Streamable HTTP). Tools: <code>discover_services</code> and <code>resolve_service</code>. No payment or approval tools. Service descriptions and schemas are untrusted provider content.</p>
+        <p className="mt-3 text-sm leading-7 text-muted-foreground">Publish <code>ens402.call</code> with an explicit GET or POST method, optional input schema and examples. GET calls currently use the exact published URL. POST purchases support JSON bodies up to 8192 bytes and require a merchant that verifies ENS402 request binding, including the assigned orderId.</p>
+        <Link href="/discover" className="mt-4 inline-block text-sm text-primary underline">Search services →</Link>
+      </section>
       <div className="mt-9 grid gap-5 md:grid-cols-2">
         <section className="rounded-xl border p-6">
           <h2 className="text-xl font-medium">Managed agent wallet</h2>

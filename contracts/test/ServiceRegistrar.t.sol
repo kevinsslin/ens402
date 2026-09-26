@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 import {NativeENSTest} from "./NativeENS.t.sol";
+import {IServiceRegistrar} from "../src/interfaces/IServiceRegistrar.sol";
 import {ServiceRegistrar} from "../src/ServiceRegistrar.sol";
 import {INativeResolver} from "../src/interfaces/INativeENS.sol";
 import {ENSRoles} from "../src/libraries/ENSRoles.sol";
@@ -16,8 +17,8 @@ contract ServiceRegistrarTest is NativeENSTest {
         registry.grantRootRoles(ENSRoles.ROLE_REGISTRAR, address(registrar));
     }
 
-    function _service(string memory label) internal pure returns (ServiceRegistrar.Service memory) {
-        return ServiceRegistrar.Service(
+    function _service(string memory label) internal pure returns (IServiceRegistrar.Service memory) {
+        return IServiceRegistrar.Service(
             label,
             "https://weather.example/forecast",
             address(0x4004),
@@ -25,12 +26,13 @@ contract ServiceRegistrarTest is NativeENSTest {
             treasury,
             "Weather forecast",
             "",
-            10000
+            10000,
+            '{"method":"GET"}'
         );
     }
 
     function _register(string memory label) internal returns (INativeResolver result) {
-        ServiceRegistrar.Service memory s = _service(label);
+        IServiceRegistrar.Service memory s = _service(label);
         registrar.commit(registrar.makeCommitment(s, merchant, bytes32(uint256(1))));
         vm.warp(block.timestamp + 60);
         vm.prank(merchant);
@@ -62,32 +64,32 @@ contract ServiceRegistrarTest is NativeENSTest {
 
     function testCommitmentBindsOwnerAndEveryRecord() public {
         _deploy();
-        ServiceRegistrar.Service memory s = _service("weather");
+        IServiceRegistrar.Service memory s = _service("weather");
         bytes32 secret = bytes32(uint256(3));
         registrar.commit(registrar.makeCommitment(s, merchant, secret));
         vm.warp(block.timestamp + 60);
-        vm.expectPartialRevert(ServiceRegistrar.CommitmentNotReady.selector);
+        vm.expectPartialRevert(IServiceRegistrar.CommitmentNotReady.selector);
         registrar.register(s, secret);
         s.payTo = operator;
-        vm.expectPartialRevert(ServiceRegistrar.CommitmentNotReady.selector);
+        vm.expectPartialRevert(IServiceRegistrar.CommitmentNotReady.selector);
         vm.prank(merchant);
         registrar.register(s, secret);
     }
 
     function testCommitmentDelayExpiryAndReplay() public {
         _deploy();
-        ServiceRegistrar.Service memory s = _service("weather");
+        IServiceRegistrar.Service memory s = _service("weather");
         bytes32 secret = bytes32(uint256(3));
         registrar.commit(registrar.makeCommitment(s, merchant, secret));
-        vm.expectPartialRevert(ServiceRegistrar.CommitmentNotReady.selector);
+        vm.expectPartialRevert(IServiceRegistrar.CommitmentNotReady.selector);
         vm.prank(merchant);
         registrar.register(s, secret);
         vm.warp(block.timestamp + 1 days + 1);
-        vm.expectPartialRevert(ServiceRegistrar.CommitmentNotReady.selector);
+        vm.expectPartialRevert(IServiceRegistrar.CommitmentNotReady.selector);
         vm.prank(merchant);
         registrar.register(s, secret);
         _register("prices");
-        vm.expectPartialRevert(ServiceRegistrar.CommitmentNotReady.selector);
+        vm.expectPartialRevert(IServiceRegistrar.CommitmentNotReady.selector);
         vm.prank(merchant);
         registrar.register(_service("prices"), bytes32(uint256(1)));
     }
@@ -101,7 +103,7 @@ contract ServiceRegistrarTest is NativeENSTest {
 
     function testNativeRegistrarRevocationStopsRegistrationAtomically() public {
         _deploy();
-        ServiceRegistrar.Service memory s = _service("weather");
+        IServiceRegistrar.Service memory s = _service("weather");
         bytes32 secret = bytes32(uint256(1));
         bytes32 commitment = registrar.makeCommitment(s, merchant, secret);
         registrar.commit(commitment);
@@ -114,14 +116,66 @@ contract ServiceRegistrarTest is NativeENSTest {
         require(registry.findOwner("weather") == address(0), "partial registration");
     }
 
+    function testInterfaceRevealAtMaximumAgeAndCommitmentConsumption() public {
+        _deploy();
+        IServiceRegistrar api = IServiceRegistrar(address(registrar));
+        IServiceRegistrar.Service memory service = _service("boundary");
+        bytes32 secret = keccak256("interface-boundary");
+        bytes32 commitment = api.makeCommitment(service, merchant, secret);
+        api.commit(commitment);
+        uint256 committedAt = api.commitments(commitment);
+        vm.warp(committedAt + api.MAX_COMMITMENT_AGE());
+        vm.expectPartialRevert(IServiceRegistrar.CommitmentExists.selector);
+        api.commit(commitment);
+        vm.prank(merchant);
+        (address resolverAddress,) = api.register(service, secret);
+        require(resolverAddress.code.length > 0, "resolver not created through interface");
+        require(api.commitments(commitment) == 0, "commitment not consumed");
+        require(api.registry().findOwner("boundary") == merchant, "interface registered wrong owner");
+    }
+
+    function testExpiredCommitmentCanBeReplacedButRegistrarExpiryIsFinal() public {
+        _deploy();
+        IServiceRegistrar api = IServiceRegistrar(address(registrar));
+        IServiceRegistrar.Service memory service = _service("expired");
+        bytes32 secret = keccak256("expired-boundary");
+        bytes32 commitment = api.makeCommitment(service, merchant, secret);
+        api.commit(commitment);
+        vm.warp(block.timestamp + api.MAX_COMMITMENT_AGE() + 1);
+        api.commit(commitment);
+        require(api.commitments(commitment) == block.timestamp, "expired commitment not replaced");
+        vm.warp(api.registrationExpiry());
+        vm.expectPartialRevert(IServiceRegistrar.RegistrationExpired.selector);
+        vm.prank(merchant);
+        api.register(service, secret);
+        require(api.commitments(commitment) != 0, "expired reveal consumed commitment");
+    }
+
+    function testExplicitCallMetadataRequiredAndCommitmentBound() public {
+        _deploy();
+        IServiceRegistrar.Service memory service = _service("weather");
+        service.callConfig = "";
+        vm.expectPartialRevert(IServiceRegistrar.InvalidRecord.selector);
+        vm.prank(merchant);
+        registrar.register(service, bytes32(0));
+        service = _service("weather");
+        bytes32 secret = keccak256("call-metadata");
+        registrar.commit(registrar.makeCommitment(service, merchant, secret));
+        vm.warp(block.timestamp + 60);
+        service.callConfig = '{"method":"POST"}';
+        vm.expectPartialRevert(IServiceRegistrar.CommitmentNotReady.selector);
+        vm.prank(merchant);
+        registrar.register(service, secret);
+    }
+
     function testInvalidLabelAndOverlappingWritersRejected() public {
         _deploy();
-        ServiceRegistrar.Service memory s = _service("Bad.Label");
-        vm.expectPartialRevert(ServiceRegistrar.InvalidLabel.selector);
+        IServiceRegistrar.Service memory s = _service("Bad.Label");
+        vm.expectPartialRevert(IServiceRegistrar.InvalidLabel.selector);
         registrar.register(s, bytes32(0));
         s = _service("weather");
         s.treasury = s.endpointOperator;
-        vm.expectPartialRevert(ServiceRegistrar.InvalidRecord.selector);
+        vm.expectPartialRevert(IServiceRegistrar.InvalidRecord.selector);
         registrar.register(s, bytes32(0));
     }
 }

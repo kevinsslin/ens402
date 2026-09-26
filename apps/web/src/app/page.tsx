@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DiscoveryPipeline } from "@/components/discovery-pipeline";
 import { ServiceLayers } from "@/components/service-layers";
 import { NamespaceArchitecture } from "@/components/namespace-architecture";
 import { ServicePreview } from "@/components/service-preview";
@@ -69,6 +70,7 @@ export default function Home() {
           </p>
         </div>
         <ServiceLayers />
+        <DiscoveryPipeline />
       </section>
       <section id="use-cases" className="section-shell pb-14 sm:pb-20">
         <p className="eyebrow">What this changes</p>
@@ -80,7 +82,7 @@ export default function Home() {
             [
               "A directory drops a listing",
               "Rebuild the catalog from supported ENS roots and public history.",
-              "Indexer planned",
+              "Independent catalog reconstruction",
             ],
             [
               "An API moves to a new URL",

@@ -13,7 +13,9 @@
     "./http": "./src/http.ts",
     "./settlement": "./src/settlement.ts",
     "./platform": "./src/platform.ts",
-    "./ens/registration": "./src/ens/registration.ts"
+    "./ens/registration": "./src/ens/registration.ts",
+    "./discovery": "./src/discovery.ts",
+    "./call": "./src/call.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

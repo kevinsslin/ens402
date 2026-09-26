@@ -1,0 +1,16 @@
+# Raw event journal remains independent of model/ranking choices.
+type NativeEvent {
+  id: ID!
+  chainId: Int!
+  contract: String! @index
+  kind: String! @index
+  blockNumber: BigInt! @index
+  blockHash: String!
+  logIndex: Int!
+  params: String!
+}
+
+type IndexedHead {
+  id: ID!
+  blockNumber: BigInt!
+}

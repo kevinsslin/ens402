@@ -43,7 +43,7 @@ export async function auditTextPermissions(
           expected:
             root ||
             (wallet === "ops"
-              ? ["agent-endpoint[x402]", "description", "avatar"].includes(key)
+              ? ["agent-endpoint[x402]", "description", "avatar", "ens402.call"].includes(key)
               : key === "ens402.payment"),
         })),
         { key: "root:text", role: 16n, expected: root },

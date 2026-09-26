@@ -11,7 +11,10 @@
     "./registration-merchant": "./src/registration-merchant.ts",
     "./merchant": "./src/merchant.ts",
     "./platform": "./src/platform.ts",
-    "./external": "./src/external.ts"
+    "./external": "./src/external.ts",
+    "./discovery": "./src/discovery.ts",
+    "./discovery-runtime": "./src/discovery-runtime.ts",
+    "./discovery-store": "./src/discovery-store.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

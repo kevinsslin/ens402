@@ -1,3 +1,4 @@
+import { parseCallMetadata } from "../call";
 import {
   bytesToHex,
   decodeFunctionResult,
@@ -20,6 +21,8 @@ import {
   type ResolvedService,
 } from "./index";
 import { factoryAbi, recordKeys, universalAbi, resolverAbi } from "./abi";
+import { checkResolverPolicy, type CurrentResolverPolicy } from "./resolver-policy";
+export type { CurrentResolverPolicy } from "./resolver-policy";
 export const currentDeployment = {
   chainId: 11155111,
   sourceCommit: "71a3b7339dbc55ab47667abdfe8303bac4f4c24e",
@@ -51,11 +54,12 @@ export const currentRegistryAbi = parseAbi([
   "function getSubregistry(string label) view returns (address)",
   "function getResolver(string label) view returns (address)",
 ]);
-/** Current official deployment: native registry traversal and one resolver per service. */
+/** Current official deployment with an explicit resolver permission boundary. */
 export async function resolveCurrentService(
   client: PublicClient,
   input: string,
   now = Math.floor(Date.now() / 1000),
+  policy: CurrentResolverPolicy = { mode: "dedicated" },
 ): Promise<ResolvedService> {
   if ((await client.getChainId()) !== 11155111)
     throw new Error("ENS requires Sepolia");
@@ -147,9 +151,9 @@ export async function resolveCurrentService(
       blockNumber,
     }),
   ]);
-  // Current native key permissions span records. Sharing a resolver would cross service boundaries.
-  if (recordId !== 1n || count !== 1n)
-    throw new Error("Use a dedicated one-record resolver for this service");
+  const policyEvidence = checkResolverPolicy({
+    policy, name, parentRegistry, resolver, recordId, recordCount: count,
+  });
   const records = await Promise.all(
     recordKeys.map(async (key) => {
       const [result, actual] = await client.readContract({
@@ -185,6 +189,7 @@ export async function resolveCurrentService(
         resolver.toLowerCase(),
         implementation.toLowerCase(),
         String(recordId),
+        ...policyEvidence.authorityParts,
       ].join(":"),
     ),
   );
@@ -195,6 +200,7 @@ export async function resolveCurrentService(
     payment: parsePaymentRecord(records[1]!),
     description: validateDescription(records[3]!),
     picture: validatePicture(records[4]!),
+    call: records[5] ? parseCallMetadata(records[5]) : undefined,
     status: records[2]!,
     authority,
     block: String(block.number),
@@ -209,8 +215,8 @@ export async function resolveCurrentService(
       "native ancestor ownership and registry pointers",
       "exact owner",
       "factory-verified resolver",
-      "dedicated record",
-      "root administrators remain trusted",
+      ...policyEvidence.coverage,
+      "root administrators remain trusted; root, linking and upgrade grants are not audited",
     ],
   };
 }

@@ -1,64 +1,21 @@
----
-config:
-  htmlLabels: false
-  theme: base
-  fontFamily: Arial, sans-serif
-  themeCSS: "text { font-family: Arial, sans-serif; }"
-  themeVariables:
-    fontFamily: 'Inter, Arial, sans-serif'
-    fontSize: 17px
-    primaryColor: '#ffffff'
-    primaryTextColor: '#242936'
-    primaryBorderColor: '#cbd1da'
-    lineColor: '#8b95a5'
-    edgeLabelBackground: '#ffffff'
-  flowchart:
-    htmlLabels: false
-    curve: linear
-    nodeSpacing: 18
-    rankSpacing: 30
-    padding: 12
----
 flowchart TB
-  accTitle: ENS402 namespace and contract tree
-  accDescr: ens402.eth points to Platform Registry A. Its provider name points to Provider Registry B. Three service names each point to a separate resolver C1, C2 or C3. Each resolver stores an API URL, payment settings and status. Wallet permissions are listed separately below the diagram.
-  parent["ens402.eth"]
-  platform["A · Platform Registry"]
-  provider["provider.ens402.eth"]
-  registry["B · Provider Registry"]
-  s1["service1"]
-  s2["service2"]
-  s3["service3"]
-  r1["C1<br/>Resolver 1"]
-  r2["C2<br/>Resolver 2"]
-  r3["C3<br/>Resolver 3"]
-  parent -->|subregistry| platform
-  platform -.->|name entry| provider
-  provider -->|subregistry| registry
-  registry -.->|name entry| s1 & s2 & s3
-  s1 -->|resolver| r1
-  s2 -->|resolver| r2
-  s3 -->|resolver| r3
-  classDef registry fill:#f4f5f7,stroke:#abb4c2,stroke-width:1.5px
-  classDef resolver fill:#f0f5ff,stroke:#7298df,stroke-width:1.5px
-  class platform,registry registry
-  class r1,r2,r3 resolver
-  platformOwner["Platform Owner<br/>A root: ROLE_REGISTRAR + ROLE_REGISTRAR_ADMIN"]
-  providerAdmin["Provider Admin<br/>A provider entry: ROLE_SET_SUBREGISTRY<br/>B root: ROLE_REGISTRAR + ROLE_REGISTRAR_ADMIN"]
-  serviceAdmin["Service Admin<br/>B service entry: ROLE_SET_RESOLVER + ROLE_SET_RESOLVER_ADMIN + ROLE_CAN_TRANSFER_ADMIN<br/>C1 root: ROLE_SET_TEXT + ROLE_SET_TEXT_ADMIN"]
-  ops["Ops<br/>C1 endpoint / description / avatar keys<br/>ROLE_SET_TEXT"]
-  treasury["Treasury delegate<br/>C1 payment key<br/>ROLE_SET_TEXT<br/>Separate from payTo recipient"]
-  registrar["ServiceRegistrar<br/>Selected registry: ROLE_REGISTRAR<br/>Register + configure + grant delegates"]
-  platformOwner -.->|root grants| platform
-  providerAdmin -.->|name control| provider
-  providerAdmin -.->|root grants| registry
-  serviceAdmin -.->|name control| s1
-  serviceAdmin -.->|text administration| r1
-  ops -.->|key-scoped writes| r1
-  treasury -.->|payment writes| r1
-  registrar -.->|registration authority| registry
-  status["Target architecture, not live grants<br/>Direct-service registration fork-tested<br/>Provider onboarding and full role handovers pending<br/>Name transfer does not automatically transfer resolver administration"]
-  classDef wallet fill:#f5edff,stroke:#d8c2ef,color:#6b369e
-  classDef delegate fill:#edf5ff,stroke:#b8d4f8,color:#1756a9
-  class platformOwner,providerAdmin,serviceAdmin wallet
-  class ops,treasury,registrar delegate
+  accTitle: ENS402 shared provider resolver model
+  accDescr: Platform and provider registries route service names to one shared resolver per provider. Each service has a separate record bundle. Ops and Treasury Safe have distinct key-scoped writer roles across all bundles.
+  platform["Platform Registry"]
+  provider["Provider Registry: provider.ens402.eth"]
+  platform -->|provider subregistry| provider
+  provider --> s1["service1"]
+  provider --> s2["service2"]
+  provider --> s3["service3"]
+  s1 --> shared["Shared PermissionedResolver"]
+  s2 --> shared
+  s3 --> shared
+  shared --> b1["Bundle 1: endpoint, description, price, payTo 1"]
+  shared --> b2["Bundle 2: endpoint, description, price, payTo 2"]
+  shared --> b3["Bundle 3: endpoint, description, price, payTo 3"]
+  admin["Provider Admin: root ROLE_SET_TEXT + ROLE_SET_TEXT_ADMIN"] -.-> shared
+  ops["Ops: ROLE_SET_TEXT on endpoint, description, avatar"] -.-> shared
+  safe["Treasury Admin / Safe: ROLE_SET_TEXT on ens402.payment"] -.-> shared
+  registrar["Authorized shared-service registrar: native ROLE_REGISTRAR"] -.-> provider
+  registrar -.->|initialize five keys for new bundles| shared
+  note["Key grants cover all service bundles. Treasury Admin is a job title, not an EAC admin grant. Real Safe configuration and public setup require verification."]

@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ResolvedService, EnsTransaction } from "@ens402/sdk/ens";
 import type { Approval } from "@ens402/sdk";
+import { preparePostInput } from "@ens402/sdk/call";
+import type { ResourceRequest } from "@ens402/sdk/request";
 import type { PaymentReceipt } from "@ens402/sdk/http";
 import { selectedWallet } from "./wallet-session";
 import { ReceiptDetails } from "./receipt-details";
@@ -21,7 +23,7 @@ type ApprovalRow = {
   payer: string | null;
 };
 type Execution = {
-  prepared?: { typedData: Record<string, unknown> };
+  prepared?: { typedData: Record<string, unknown>; receipt?: { request?: ResourceRequest } };
   id: string;
   approval_id: string;
   state: string;
@@ -78,6 +80,11 @@ export function OperatorConsole({
     executions: [],
   });
   const [name, setName] = useState("");
+  useEffect(() => {
+    const candidate = new URLSearchParams(window.location.search).get("service");
+    if (candidate && /^[a-z0-9.-]+\.eth$/.test(candidate) && candidate.length <= 255) setName(candidate);
+  }, []);
+
   const [service, setService] = useState<ResolvedService | null>(null);
   const [endpoints, setEndpoints] = useState("");
   const [limit, setLimit] = useState("0.01");
@@ -90,10 +97,12 @@ export function OperatorConsole({
   const [attempt, setAttempt] = useState<{
     id: string;
     approvalId: string;
+    request?: ResourceRequest;
   } | null>(null);
   const [balances, setBalances] = useState<Record<string, string>>({});
   const [operatorWallet, setOperatorWallet] = useState("");
   const seller = account ? (account.walletAddress ?? "") : operatorWallet;
+  const [postInputs, setPostInputs] = useState<Record<string, string>>({});
   const [buyLabel, setBuyLabel] = useState("");
   const [buyRecipient, setBuyRecipient] = useState("");
   const [record, setRecord] = useState("agent-endpoint[x402]");
@@ -242,7 +251,7 @@ export function OperatorConsole({
     await run("purchase", async () => {
       const row = state.approvals.find((a) => a.id === approvalId);
       if (!row) throw new Error("Approval not found.");
-      const current =
+      const current: { id: string; approvalId: string; request?: ResourceRequest } =
         attempt?.approvalId === approvalId
           ? attempt
           : { id: crypto.randomUUID(), approvalId };
@@ -250,7 +259,7 @@ export function OperatorConsole({
         "/api/merchant/register",
       );
       if (
-        isRegistration &&
+        isRegistration && !current.request &&
         (!/^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$/.test(buyLabel) ||
           !/^0x[0-9a-fA-F]{40}$/.test(buyRecipient) ||
           /^0x0{40}$/.test(buyRecipient))
@@ -258,16 +267,19 @@ export function OperatorConsole({
         throw new Error(
           "Enter the subname label and recipient before purchasing.",
         );
-      const resourceRequest = isRegistration
+      const resourceRequest = current.request ?? (isRegistration
         ? {
-            method: "POST",
+            method: "POST" as const,
             body: JSON.stringify({
               orderId: current.id,
               label: buyLabel,
               recipient: buyRecipient,
             }),
           }
-        : undefined;
+        : row.service.call?.method === "POST"
+          ? preparePostInput(postInputs[row.id] ?? JSON.stringify(row.service.call.example ?? {}), current.id)
+          : undefined);
+      current.request = resourceRequest;
       setAttempt(current);
       sessionStorage.setItem(storageKey, JSON.stringify(current));
       let result: Execution;
@@ -848,6 +860,12 @@ export function OperatorConsole({
                         Last checked balance: {balances[row.id]} USDC
                       </p>
                     )}
+                    {row.service.call?.method === "POST" && !row.service.endpoint.endsWith("/api/merchant/register") && <details className="mt-5 rounded-lg border p-4" open>
+                      <summary className="cursor-pointer text-sm font-medium">POST request input</summary>
+                      <p className="mt-2 text-xs leading-6 text-muted-foreground">Enter a JSON object. ENS402 adds an orderId and binds the exact request to this purchase. The merchant must support ENS402 request binding.</p>
+                      <label className="mt-3 block text-sm">JSON input<textarea className={`${field} min-h-28 font-mono text-xs`} aria-label={`JSON input for ${row.service.name}`} value={(attempt?.approvalId === row.id ? attempt.request?.body : undefined) ?? postInputs[row.id] ?? JSON.stringify(row.service.call.example ?? {}, null, 2)} maxLength={8192} disabled={!!attempt} onChange={event => setPostInputs(previous => ({ ...previous, [row.id]: event.target.value }))} /></label>
+                      {row.service.call.inputSchema && <details className="mt-3 text-xs"><summary className="cursor-pointer">Provider input schema</summary><pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-all">{JSON.stringify(row.service.call.inputSchema, null, 2)}</pre></details>}
+                    </details>}
                     <div className="mt-5 flex flex-wrap gap-2">
                       {row.state === "provisioning" && (
                         <Button
@@ -1027,17 +1045,13 @@ export function OperatorConsole({
                         className="mt-4 mr-3"
                         disabled={!!busy}
                         onClick={() => {
-                          setAttempt({
+                          const selected = {
                             id: execution.id,
                             approvalId: execution.approval_id,
-                          });
-                          sessionStorage.setItem(
-                            storageKey,
-                            JSON.stringify({
-                              id: execution.id,
-                              approvalId: execution.approval_id,
-                            }),
-                          );
+                            request: execution.prepared?.receipt?.request ?? (attempt?.id === execution.id ? attempt.request : undefined),
+                          };
+                          setAttempt(selected);
+                          sessionStorage.setItem(storageKey, JSON.stringify(selected));
                           setNotice(
                             "Attempt selected. Use Resume same attempt on its wallet card.",
                           );
@@ -1179,6 +1193,8 @@ export function OperatorConsole({
                               ? "active"
                               : e.target.value === "description"
                                 ? (service?.description ?? "")
+                                : e.target.value === "ens402.call"
+                                  ? '{"method":"GET"}'
                                 : e.target.value === "avatar"
                                   ? (service?.picture ?? "")
                                   : (service?.endpoint ?? ""),
@@ -1191,6 +1207,7 @@ export function OperatorConsole({
                         "ens402.status",
                         "description",
                         "avatar",
+                        "ens402.call",
                       ].map((key) => (
                         <option key={key} value={key}>
                           {key === "agent-endpoint[x402]"
@@ -1199,6 +1216,8 @@ export function OperatorConsole({
                               ? "Payment settings"
                               : key === "description"
                                 ? "Description"
+                                : key === "ens402.call"
+                                  ? "Call schema"
                                 : key === "avatar"
                                   ? "Picture URL"
                                   : "Availability"}
@@ -1292,6 +1311,8 @@ export function OperatorConsole({
                     <label className="mt-4 block text-sm">
                       {record === "description"
                         ? "Service description"
+                        : record === "ens402.call"
+                          ? "Call metadata JSON (explicit GET or POST)"
                         : record === "avatar"
                           ? "Picture URL (HTTPS, optional)"
                           : "API URL"}

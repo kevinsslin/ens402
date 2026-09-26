@@ -33,5 +33,6 @@ export const recordKeys = [
   "ens402.status",
   "description",
   "avatar",
+  "ens402.call",
 ] as const;
 export type RecordKey = (typeof recordKeys)[number];

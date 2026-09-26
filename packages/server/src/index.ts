@@ -21,6 +21,7 @@ import { normalize } from "viem/ens";
 import { sameAddress, NETWORK } from "@ens402/sdk";
 import { Store } from "./store";
 import {
+  configuredResolverPolicy,
   allowedNames,
   allowedOrigins,
   amount,
@@ -66,7 +67,7 @@ function serviceName(input: unknown): string {
   return name;
 }
 export async function inspectService(input: unknown) {
-  return resolveService(ensClient(), serviceName(input));
+  return resolveService(ensClient(), serviceName(input), undefined, "current", configuredResolverPolicy());
 }
 export async function createApproval(
   input: Record<string, unknown>,

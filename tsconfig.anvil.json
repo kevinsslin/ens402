@@ -8,6 +8,10 @@
     "scripts/namespace-plan.ts",
     "scripts/ens/shared.ts",
     "scripts/ens-permissions-check.ts",
-    "scripts/audit-readiness.ts"
+    "scripts/audit-readiness.ts",
+    "scripts/provider-plan.ts",
+    "scripts/ens/provider-registrar.ts",
+    "scripts/ens/provider-plan-fork.ts",
+    "scripts/discovery-*.ts"
   ]
 }

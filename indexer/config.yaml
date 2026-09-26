@@ -1,0 +1,39 @@
+# Native ABI pinned to contracts-v2 71a3b7339dbc55ab47667abdfe8303bac4f4c24e.
+name: ens402-native
+rollback_on_reorg: true
+contracts:
+  - name: Factory
+    events:
+      - event: ProxyDeployed(address indexed sender, address indexed proxyAddress, uint256 salt, address implementation)
+  - name: Registry
+    abi_file_path: abis/UserRegistry.json
+    events:
+      - event: LabelRegistered
+      - event: LabelReserved
+      - event: LabelUnregistered
+      - event: ExpiryUpdated
+      - event: SubregistryUpdated
+      - event: ResolverUpdated
+      - event: TokenRegenerated
+      - event: TokenResource
+      - event: TransferSingle
+      - event: TransferBatch
+      - event: EACRolesChanged
+      - event: ParentUpdated
+      - event: Upgraded
+  - name: Resolver
+    events:
+      - event: TextUpdated(uint256 indexed recordId, string indexed keyHash, string key, string value)
+      - event: Linked(uint256 indexed recordId, bytes32 indexed node, bytes name)
+      - event: Cleared(uint256 indexed recordId)
+      - event: EACRolesChanged(uint256 indexed resource,address indexed account,uint256 oldRoleBitmap,uint256 newRoleBitmap)
+      - event: Upgraded(address indexed implementation)
+chains:
+  - id: 11155111
+    start_block: 11700000
+    contracts:
+      - name: Factory
+        address: 0x9e726eb570beb6bceb495ab8cda7df517d4e841c
+      - name: Registry
+        address: 0x9703dbd26dab89504490994138cf2c575251a9ce
+      - name: Resolver

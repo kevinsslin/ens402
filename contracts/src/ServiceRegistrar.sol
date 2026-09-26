@@ -8,48 +8,44 @@ import {
     ICurrentResolver,
     NativeGrant
 } from "./interfaces/INativeENS.sol";
+import {IServiceRegistrar} from "./interfaces/IServiceRegistrar.sol";
 import {ENSDeployment} from "./libraries/ENSDeployment.sol";
 import {ENSRoles} from "./libraries/ENSRoles.sol";
 
+/// @title ENS402 native service registrar
 /// @notice Free testnet service registration. Native ENS enforces record permissions.
 /// @dev Grant this contract only ROLE_REGISTRAR on a dedicated native subregistry.
 ///      The parent registry's administrators retain their native override powers.
-contract ServiceRegistrar {
-    error InvalidConfiguration();
-    error InvalidLabel();
-    error InvalidRecord();
-    error CommitmentNotReady();
-    error CommitmentExists();
-    error RegistrationExpired();
-    error ReentrantCall();
+contract ServiceRegistrar is IServiceRegistrar {
+    /// @inheritdoc IServiceRegistrar
+    uint256 public constant override MIN_COMMITMENT_AGE = 60;
+    /// @inheritdoc IServiceRegistrar
+    uint256 public constant override MAX_COMMITMENT_AGE = 1 days;
+    /// @inheritdoc IServiceRegistrar
+    INativeRegistry public immutable override registry;
+    /// @inheritdoc IServiceRegistrar
+    IVerifiableFactory public immutable override factory;
+    /// @inheritdoc IServiceRegistrar
+    address public immutable override resolverImplementation;
+    /// @inheritdoc IServiceRegistrar
+    bytes32 public immutable override parentNode;
+    /// @inheritdoc IServiceRegistrar
+    bool public immutable override currentResolver;
+    /// @inheritdoc IServiceRegistrar
+    uint64 public immutable override registrationExpiry;
+    /// @inheritdoc IServiceRegistrar
+    bytes public override parentDNS;
+    /// @inheritdoc IServiceRegistrar
+    mapping(bytes32 => uint256) public override commitments;
+    bool private registrationEntered;
 
-    uint256 public constant MIN_COMMITMENT_AGE = 60;
-    uint256 public constant MAX_COMMITMENT_AGE = 1 days;
-    INativeRegistry public immutable registry;
-    IVerifiableFactory public immutable factory;
-    address public immutable resolverImplementation;
-    bytes32 public immutable parentNode;
-    bool public immutable currentResolver;
-    uint64 public immutable registrationExpiry;
-    bytes public parentDNS;
-    mapping(bytes32 => uint256) public commitments;
-    bool private entered;
-
-    struct Service {
-        string label;
-        string endpoint;
-        address payTo;
-        address endpointOperator;
-        address treasury;
-        string description;
-        string picture;
-        uint256 price;
-    }
-    event ServiceRegistered(
-        bytes32 indexed node, address indexed owner, address indexed resolver, uint256 tokenId, string label
-    );
-    event CommitmentMade(bytes32 indexed commitment, address indexed sender);
-
+    /// @notice Configure an immutable Sepolia registration entry point.
+    /// @dev Validates pinned native deployment implementations. Does not grant registry permissions.
+    /// @param registry_ Native registry where services will be registered.
+    /// @param factory_ Pinned native verifiable proxy factory.
+    /// @param implementation_ Pinned native PermissionedResolver implementation.
+    /// @param parentDNS_ DNS wire-encoded parent name; operators must verify its registry binding.
+    /// @param expiry_ Fixed Unix expiry, in the future and at most 365 days from deployment.
     constructor(address registry_, address factory_, address implementation_, bytes memory parentDNS_, uint64 expiry_) {
         if (
             block.chainid != 11155111 || registry_.code.length == 0 || factory_.code.length == 0
@@ -65,12 +61,18 @@ contract ServiceRegistrar {
         registrationExpiry = expiry_;
     }
 
-    /// @dev Binds all settings, chain, registrar and owner. A copied reveal cannot steal the name.
-    function makeCommitment(Service calldata service, address owner, bytes32 secret) public view returns (bytes32) {
+    /// @inheritdoc IServiceRegistrar
+    function makeCommitment(Service calldata service, address owner, bytes32 secret)
+        public
+        view
+        override
+        returns (bytes32)
+    {
         return keccak256(abi.encode(block.chainid, address(this), owner, service, secret));
     }
 
-    function commit(bytes32 commitment) external {
+    /// @inheritdoc IServiceRegistrar
+    function commit(bytes32 commitment) external override {
         if (commitment == bytes32(0)) revert InvalidConfiguration();
         if (commitments[commitment] != 0 && block.timestamp <= commitments[commitment] + MAX_COMMITMENT_AGE) {
             revert CommitmentExists();
@@ -79,12 +81,15 @@ contract ServiceRegistrar {
         emit CommitmentMade(commitment, msg.sender);
     }
 
+    /// @inheritdoc IServiceRegistrar
     function register(Service calldata service, bytes32 secret)
         external
+        override
         returns (address resolverAddress, uint256 tokenId)
     {
-        if (entered) revert ReentrantCall();
-        entered = true;
+        if (registrationEntered) revert ReentrantCall();
+        _authorizeRegistration(msg.sender);
+        registrationEntered = true;
         if (block.timestamp >= registrationExpiry) revert RegistrationExpired();
         _validate(service, msg.sender);
         bytes32 commitment = makeCommitment(service, msg.sender, secret);
@@ -107,11 +112,17 @@ contract ServiceRegistrar {
             registrationExpiry
         );
         emit ServiceRegistered(node, msg.sender, resolverAddress, tokenId, service.label);
-        entered = false;
+        registrationEntered = false;
     }
 
+    /// @dev Open registration by default. Provider-specific subclasses may check native authority.
+    /// @param caller Account revealing the commitment and receiving service ownership.
+    function _authorizeRegistration(address caller) internal view virtual {}
+
+    /// @dev Create one native resolver per service and relinquish temporary bootstrap authority.
     function _configureResolver(Service calldata service, bytes32 commitment, bytes32 node, bytes memory dns)
-        private
+        internal
+        virtual
         returns (address resolverAddress)
     {
         uint256 temporaryRoles = ENSRoles.ROLE_SET_TEXT | ENSRoles.ROLE_SET_TEXT_ADMIN;
@@ -124,13 +135,7 @@ contract ServiceRegistrar {
             initialization = abi.encodeCall(INativeResolver.initialize, (address(this), temporaryRoles, new bytes[](0)));
         }
         resolverAddress = factory.deployProxy(resolverImplementation, uint256(commitment), initialization);
-        string memory payment = string.concat(
-            '{"version":2,"scheme":"exact","network":"eip155:84532","asset":"0x036cbd53842c5426634e7929541ec2318f3dcf7e","payTo":"',
-            _address(service.payTo),
-            '","pricing":{"model":"fixed","amount":"',
-            _uintString(service.price),
-            '","unit":"request"}}'
-        );
+        string memory payment = _paymentRecord(service);
         if (currentResolver) {
             ICurrentResolver resolver = ICurrentResolver(resolverAddress);
             resolver.setText(dns, "agent-endpoint[x402]", service.endpoint);
@@ -138,6 +143,10 @@ contract ServiceRegistrar {
             resolver.setText(dns, "ens402.status", "active");
             resolver.setText(dns, "description", service.description);
             resolver.setText(dns, "avatar", service.picture);
+            resolver.setText(dns, "ens402.call", service.callConfig);
+            resolver.grantSetterRoles(
+                abi.encodeCall(ICurrentResolver.setText, (dns, "ens402.call", "")), service.endpointOperator
+            );
             resolver.grantSetterRoles(
                 abi.encodeCall(ICurrentResolver.setText, (dns, "description", "")), service.endpointOperator
             );
@@ -157,6 +166,8 @@ contract ServiceRegistrar {
             resolver.setText(node, "ens402.status", "active");
             resolver.setText(node, "description", service.description);
             resolver.setText(node, "avatar", service.picture);
+            resolver.setText(node, "ens402.call", service.callConfig);
+            resolver.authorizeTextRoles(dns, "ens402.call", service.endpointOperator, true);
             resolver.authorizeTextRoles(dns, "description", service.endpointOperator, true);
             resolver.authorizeTextRoles(dns, "avatar", service.endpointOperator, true);
             resolver.authorizeTextRoles(dns, "agent-endpoint[x402]", service.endpointOperator, true);
@@ -166,7 +177,19 @@ contract ServiceRegistrar {
         INativeResolver(resolverAddress).revokeRootRoles(temporaryRoles, address(this));
     }
 
-    function _validate(Service calldata service, address admin) private pure {
+    /// @dev Serialize fixed-price payment terms in Base Sepolia USDC atomic units.
+    function _paymentRecord(Service calldata service) internal pure returns (string memory) {
+        return string.concat(
+            '{"version":2,"scheme":"exact","network":"eip155:84532","asset":"0x036cbd53842c5426634e7929541ec2318f3dcf7e","payTo":"',
+            _address(service.payTo),
+            '","pricing":{"model":"fixed","amount":"',
+            _uintString(service.price),
+            '","unit":"request"}}'
+        );
+    }
+
+    /// @dev Validate byte bounds and delegate separation; URL reachability is a client concern.
+    function _validate(Service calldata service, address admin) internal view virtual {
         bytes memory label = bytes(service.label);
         if (label.length < 3 || label.length > 32 || label[0] == "-" || label[label.length - 1] == "-") {
             revert InvalidLabel();
@@ -178,6 +201,7 @@ contract ServiceRegistrar {
         bytes memory endpoint = bytes(service.endpoint);
         if (
             endpoint.length < 9 || endpoint.length > 2048 || bytes8(endpoint) != bytes8("https://")
+                || bytes(service.callConfig).length == 0 || bytes(service.callConfig).length > 16384
                 || service.payTo == address(0) || service.endpointOperator == address(0)
                 || service.treasury == address(0) || service.endpointOperator == service.treasury
                 || service.endpointOperator == admin || service.price == 0 || bytes(service.description).length == 0
@@ -188,6 +212,7 @@ contract ServiceRegistrar {
         // URL syntax, DNS, HTTP and payment semantics are independently checked by consuming clients.
     }
 
+    /// @dev Hash a bounded DNS wire name, rejecting compression and trailing bytes.
     function _namehash(bytes memory dns, uint256 offset) private pure returns (bytes32) {
         if (dns.length < 2 || dns.length > 255 || offset >= dns.length) revert InvalidConfiguration();
         uint256 length = uint8(dns[offset]);
@@ -201,6 +226,7 @@ contract ServiceRegistrar {
         return keccak256(abi.encodePacked(_namehash(dns, offset + length + 1), label));
     }
 
+    /// @dev Encode an atomic amount without floating point or decimal scaling.
     function _uintString(uint256 value) private pure returns (string memory) {
         uint256 digits;
         uint256 remaining = value;
@@ -216,6 +242,7 @@ contract ServiceRegistrar {
         return string(output);
     }
 
+    /// @dev Encode a lowercase, 0x-prefixed address for the payment JSON record.
     function _address(address account) private pure returns (string memory) {
         bytes16 alphabet = "0123456789abcdef";
         bytes memory output = new bytes(42);

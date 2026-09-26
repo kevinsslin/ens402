@@ -153,7 +153,7 @@ Optional local `PRODUCTION_DATABASE_URL` / `PRODUCTION_DATABASE_URL_UNPOOLED` se
 
 ## Namespace setup
 
-See the [remaining setup checklist](#remaining-public-demo-setup). The official current ENSv2 testnet app is https://app.ens.dev. The current SDK defaults to the official deployment pinned at source `71a3b733`; the older deployment remains an explicit `legacy` option for historical tests. Current key grants apply within a resolver, so use one resolver per service.
+See the [remaining setup checklist](#remaining-public-demo-setup). The official current ENSv2 testnet app is https://app.ens.dev. The current SDK defaults to the official deployment pinned at source `71a3b733`; the older deployment remains an explicit `legacy` option for historical tests. Current key grants span all names within a resolver. The selected default is one resolver per provider with the same trusted writers; use separate instances for separate writer groups.
 
 After registering the parent, run `pnpm ens:namespace:plan`. It produces an unsigned plan and refuses to replace an existing subregistry. `SERVICE_REGISTRAR_ADDRESS` and `ENS_PARENT_NAME` enable `/register`. The contract uses native EAC; it does not implement a competing permission system. Parent administrators and fixed expiry remain trust boundaries. No public-network deployment is performed by tests.
 
@@ -189,18 +189,18 @@ Ops and Treasury are freshly generated test-only wallets. Their keys are stored 
 
 ## Native contract roles
 
-ENS official contracts enforce permissions. Interfaces only declare their ABI. Each service uses a dedicated native PermissionedResolver because setter-key grants apply across records within that resolver.
+ENS official contracts enforce permissions. Interfaces only declare their ABI. Provider services now share a native PermissionedResolver when the same Ops and Treasury Safe manage them. Setter-key grants apply across every bundle in that resolver. The earlier direct-service flow still uses isolated resolvers.
 
 | Wallet | Contract and scope | Native role |
 | --- | --- | --- |
 | Namespace owner | UserRegistry root | `ROLE_REGISTRAR` + `ROLE_REGISTRAR_ADMIN` |
 | Registration worker or optional ServiceRegistrar | UserRegistry root | `ROLE_REGISTRAR` only |
 | Service Admin | Service name | `ROLE_SET_RESOLVER`, `ROLE_SET_RESOLVER_ADMIN`, `ROLE_CAN_TRANSFER_ADMIN` |
-| Service Admin | Resolver root | `ROLE_SET_TEXT` + `ROLE_SET_TEXT_ADMIN` |
-| Ops | Separate hashes of endpoint, description and avatar keys | `ROLE_SET_TEXT` |
+| Provider Admin (shared mode), Service Admin (isolated mode) | Resolver root | `ROLE_SET_TEXT` + `ROLE_SET_TEXT_ADMIN` |
+| Ops | Separate hashes of endpoint, description, avatar and ens402.call keys | `ROLE_SET_TEXT` |
 | Treasury writer | Hash of `ens402.payment` key | `ROLE_SET_TEXT` |
 
-Ops must differ from Admin and Treasury. Treasury may equal Admin but then retains broader authority. A payout recipient gains no ENS role by receiving USDC. These are intended grants, not a live audit.
+Shared-provider setup requires three distinct identities: Provider Admin, Ops and Treasury Safe. The older isolated flow permits Treasury to equal Admin, which retains broader authority. A payout recipient gains no ENS role by receiving USDC. These are intended grants, not a live audit.
 
 Our optional `contracts/src/ServiceRegistrar.sol` uses commit/reveal to deploy a native resolver, publish records, grant delegates, hand root text administration to the service registrant and remove its own resolver privileges in one reverting transaction. Commitments wait 60 seconds and expire after one day. It has reentrancy protection, narrow ASCII labels and bounded inputs. Native role constants and deployment pins are in `contracts/src/libraries/`; external ABIs are in `contracts/src/interfaces/`.
 
@@ -231,4 +231,106 @@ Prepare namespace, worker, service resolver, grants, expiry and gas first. Sign 
 
 For governance scenes use a separate sample-data service: `/api/merchant/search`, `/api/merchant/search-v2` and `/api/merchant/search-mismatch`. Approve their exact URLs for the controlled demo. Show an allowed Ops endpoint update, a rejected Ops payment edit, an HTTP recipient mismatch blocked before signing, and Treasury price changes requiring renewed approval. Restore normal settings afterward. These sample Search routes are not the planned discovery Search API.
 
-Fork and provider checks do not replace a public funded rehearsal. Catalog indexing and the provider registry tree are required scope but remain unimplemented. The current setup scripts enable direct subnames only; they do not complete Platform -> Provider -> Service onboarding or Admin handovers. See TODO.md for the required provider setup and role-management acceptance criteria.
+Fork and provider checks do not replace a public funded rehearsal. Provider registry and shared-resolver setup scripts are locally implemented and Anvil-tested. Catalog reconstruction and sync are implemented locally. Public catalog hosting, onboarding UI and Admin handovers remain incomplete. See TODO.md for the required provider setup and role-management acceptance criteria.
+
+
+## Provider namespace setup
+
+`pnpm ens:provider:plan` builds artifacts and creates an unsigned, resumable plan.
+Set `ENS_PARENT_NAME`, `PROVIDER_LABEL`, `PROVIDER_ADMIN_ADDRESS`,
+`PLATFORM_REGISTRAR_ADDRESS` and `SEPOLIA_RPC_URL`. The platform child registry must already exist.
+Sign each transaction with its indicated wallet; rerun after confirmation.
+The provider receives its own native UserRegistry. No service text rights are inherited.
+
+After linking, run `pnpm ens:provider:plan --with-service-registrar` to prepare a shared provider resolver and the
+SharedProviderServiceRegistrar deployment. Shared mode also requires PROVIDER_OPS_ADDRESS
+and PROVIDER_TREASURY_SAFE_ADDRESS (three distinct Admin/Ops/Safe identities). Use
+--isolated-resolvers for separate per-service resolvers. Set `PROVIDER_SERVICE_REGISTRAR_ADDRESS`
+from its receipt, then rerun. The planner verifies runtime bytecode and constructor
+settings before preparing its ROLE_REGISTRAR grant and six specific initialization setter grants: endpoint, description, avatar, ens402.call, payment and status. Ops receives the first four; Treasury Safe receives payment. Neither delegate gets text-administration rights. Provider Admin retains root text writing and regrant authority. Never grant the permissionless
+base ServiceRegistrar to a company registry. Publication requires the caller's live
+ROLE_REGISTRAR in that same registry. No command above broadcasts transactions.
+
+Local rehearsal: `pnpm exec tsx scripts/ens/provider-plan-fork.ts` uses disposable Anvil.
+This does not complete public setup or prove ancestor emancipation.
+
+## Discovery database, indexer and worker
+
+`GET /api/discover`, `/discover`, SDK `discover()` and the read-only `/api/mcp` share the same catalog. The preferred source is `DISCOVERY_DATABASE_URL`; `DISCOVERY_CATALOG_PATH` is an explicit snapshot alternative. Missing/stale catalogs return 503. Results retain ENS source, block/hash and call metadata; they never authorize payment.
+
+### Keep three data scopes separate
+
+| Scope | Configuration | Use |
+| --- | --- | --- |
+| Accounts and payments | `DATABASE_URL` | Existing Neon account ledger; do not replace it with discovery settings |
+| Local fixture discovery | Local `DISCOVERY_DATABASE_URL` | `pnpm discovery:local` provisions isolated local PostgreSQL; current fixture source is for development |
+| Public chain discovery | Separate Neon database and role in hosted `DISCOVERY_DATABASE_URL` | Start empty, migrate, and bind to the configured live catalog source/roots |
+
+The sync rejects source/root changes. Do not point the live worker at the fixture database, overwrite the account database, or upload a localhost URL to Vercel. The indexer must not receive account-ledger access.
+
+```sh
+pnpm discovery:local
+pnpm discovery:migrate
+```
+
+For hosted discovery, provision a separate Neon database and least-privileged application role, inject its URL into the migration/worker/API environment, and run `pnpm discovery:migrate` against that database. Environment changes require redeployment. No hosted discovery database is verified by the local tests.
+
+### Index and reconstruct
+
+```sh
+npm ci --prefix indexer
+cd indexer
+npm run codegen
+npm run typecheck
+npm test
+npm run dev
+```
+
+Envio 3.12.1 watches the pinned Sepolia factory/root from block 11700000 and discovers native registries/resolvers dynamically. Factory discovery covers initializer logs earlier in the same block. Raw events retain registration, links, mutable token IDs, role and record changes; rollback is enabled. Configure an Envio HyperSync token or supported RPC source and the host's database requirements. Local `dev` needs Docker. A bounded Sepolia RPC run completed locally and its Hasura IndexedHead query succeeded; this is not a full-history or hosted deployment test. Default HyperSync requires `ENVIO_API_TOKEN` from https://envio.dev/app/api-tokens. Hosted Envio/GraphQL ingestion remains an external setup and verification step. Run the recurring worker on a persistent host such as Envio infrastructure plus a worker host, Railway, Render or a VM; Vercel hosts the web/API, not this indefinite process.
+
+From repository root, set:
+
+| Setting | Meaning |
+| --- | --- |
+| `SEPOLIA_RPC_URL` | Historical state and log access |
+| `INDEXER_ROOTS` | Comma-separated supported roots, after owner setup |
+| `INDEXER_FROM_BLOCK` | Before those registries were created; a late bound can omit names |
+| `DISCOVERY_DATABASE_URL` | Separate catalog database |
+| `ENVIO_GRAPHQL_URL` | Optional Envio journal source; without it, reconstruct registration candidates from RPC logs |
+| `ENVIO_GRAPHQL_ADMIN_SECRET` | Server-only authentication if required by that endpoint |
+| `INDEXER_POLL_SECONDS` | Serial refresh interval, default 60 |
+
+```sh
+pnpm exec tsx indexer/src/export.ts /tmp/catalog.json
+pnpm exec tsx scripts/discovery-sync.ts /tmp/catalog.json
+pnpm exec tsx indexer/src/worker.ts --once
+pnpm exec tsx indexer/src/worker.ts
+```
+
+The exporter uses finalized state; optional `INDEXER_TO_BLOCK` selects an earlier finalized block. It checks current owners, ancestor expiry, pointers, explicit records and metadata at that block, then rechecks its hash. Envio supplies candidates when configured, and must be caught up. RPC reconstruction also recovers names and records created before linking. Completed snapshots replace the catalog atomically; failed refreshes retain the previous snapshot. This is bounded reconstruction, not global ENS coverage.
+
+A discoverable service needs valid fixed-price `ens402.payment`, active/suspended status and public `ens402.call` JSON with method and optional schema/examples. Invalid records are reported as exclusions; RPC errors abort export. The worker periodically removes expired/deleted listings even when no expiry event fires.
+
+Local proof: `pnpm exec tsx indexer/src/fork.ts` tests native setup/registration, independent same-block reconstruction, pre-link records, updates, rollback and expiry, then real isolated PostgreSQL search/removal. Envio handler tests do not prove a hosted GraphQL endpoint.
+
+
+Shared mode configuration: set `PROVIDER_ENS_NAME`, `PROVIDER_REGISTRY_ADDRESS`,
+`PROVIDER_RESOLVER_ADDRESS` and `PROVIDER_SERVICE_REGISTRAR_ADDRESS` from verified receipts.
+The registration page then checks the selected shared resolver and native publisher authority.
+`PROVIDER_OPS_ADDRESS` and `PROVIDER_TREASURY_SAFE_ADDRESS` prefill existing delegates;
+registration must validate live permissions, not grant new ones. Treasury Safe is a payment-key
+writer across all services, while every service's `payTo` remains independent. Contract code
+presence does not prove Safe identity or threshold; verify the actual Safe before public use.
+
+### OpenAI embedding configuration
+
+Set these server-only values in root `.env`; copy the same values to the Vercel project and the indexer worker when deploying. Never use `NEXT_PUBLIC_`.
+
+```dotenv
+DISCOVERY_EMBEDDING_API_KEY=<your OpenAI API key>
+DISCOVERY_EMBEDDING_ENDPOINT=https://api.openai.com/v1/embeddings
+DISCOVERY_EMBEDDING_MODEL=text-embedding-3-small
+DISCOVERY_QUERY_EMBEDDINGS_PER_MINUTE=60
+```
+
+Local OpenAI vector generation is verified: three fixture vectors persisted, with zero failures. This does not verify hosted configuration or real merchant results. The implementation reads `DISCOVERY_EMBEDDING_API_KEY`, not `OPENAI_API_KEY`. All three provider fields must be set together. Run `pnpm discovery:embed` after catalog synchronization, then `pnpm discovery:check`. Restart local development or redeploy Vercel after changing environment variables. Keyword search remains available without an embedding provider.

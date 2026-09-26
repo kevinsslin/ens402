@@ -1,3 +1,6 @@
+import { isAddress, zeroAddress, type Address } from "viem";
+import { normalize } from "viem/ens";
+import type { CurrentResolverPolicy } from "@ens402/sdk/ens";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { validAmount } from "@ens402/sdk";
 
@@ -97,4 +100,19 @@ export function readiness() {
       "No automatic retry after uncertain submission",
     ],
   };
+}
+
+/** Provider pins are operator configuration, never inferred from untrusted service metadata. */
+export function configuredResolverPolicy(env: Record<string, string | undefined> = process.env): CurrentResolverPolicy {
+  const fields = [env.PROVIDER_ENS_NAME, env.PROVIDER_REGISTRY_ADDRESS, env.PROVIDER_RESOLVER_ADDRESS].map(value => value?.trim());
+  const present = fields.filter(Boolean).length;
+  if (present === 0) return { mode: "dedicated" }; // Compatibility for existing dedicated deployments.
+  if (present !== 3) throw new Error("Configure provider name, registry and resolver together");
+  const [name, registry, resolver] = fields as [string, string, string];
+  const providerName = normalize(name);
+  if (!providerName.endsWith(".eth") || providerName.split(".").length < 3 ||
+      !isAddress(registry) || !isAddress(resolver) ||
+      registry.toLowerCase() === zeroAddress || resolver.toLowerCase() === zeroAddress)
+    throw new Error("Invalid provider resolver configuration");
+  return { mode: "provider-shared", providerName, providerRegistry: registry as Address, resolver: resolver as Address };
 }

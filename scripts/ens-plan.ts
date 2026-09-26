@@ -138,6 +138,8 @@ await savePlan("ens-transactions.json", {
       "avatar",
       process.env.SERVICE_PICTURE_URL || "",
     ),
+    prepareRecordUpdate(service, "ens402.call", required("SERVICE_CALL_JSON")),
+    prepareTextPermission(service, "ens402.call", ops, true),
     prepareTextPermission(service, "description", ops, true),
     prepareTextPermission(service, "avatar", ops, true),
     prepareTextPermission(service, "agent-endpoint[x402]", ops, true),

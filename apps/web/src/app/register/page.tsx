@@ -2,8 +2,14 @@ import { ConsoleLoader } from "@/components/console-loader";
 export const dynamic = "force-dynamic";
 export default function RegisterPage() {
   const appId = process.env.PRIVY_APP_ID;
-  const registrar = process.env.SERVICE_REGISTRAR_ADDRESS;
-  const parent = process.env.ENS_PARENT_NAME;
+  const providerRegistrar = process.env.PROVIDER_SERVICE_REGISTRAR_ADDRESS;
+  const registrar = providerRegistrar || process.env.SERVICE_REGISTRAR_ADDRESS;
+  const parent = providerRegistrar ? process.env.PROVIDER_ENS_NAME : process.env.ENS_PARENT_NAME;
+  const shared = providerRegistrar && process.env.PROVIDER_RESOLVER_ADDRESS ? {
+    resolver: process.env.PROVIDER_RESOLVER_ADDRESS,
+    ops: process.env.PROVIDER_OPS_ADDRESS || "",
+    treasury: process.env.PROVIDER_TREASURY_SAFE_ADDRESS || "",
+  } : undefined;
   if (!registrar || !parent)
     return (
       <section className="section-shell py-20">
@@ -34,5 +40,5 @@ export default function RegisterPage() {
     );
   if (!appId)
     return <p className="section-shell py-20">Sign-in is being configured.</p>;
-  return <ConsoleLoader appId={appId} registration={{ registrar, parent }} />;
+  return <ConsoleLoader appId={appId} registration={{ registrar, parent, restricted: !!providerRegistrar, shared }} />;
 }

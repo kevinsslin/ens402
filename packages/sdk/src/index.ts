@@ -1,3 +1,4 @@
+import type { CallMetadata } from "./call";
 /** Wallet-independent pre-signing checks. All times are Unix seconds. */
 export const NETWORK = "eip155:84532" as const;
 export const USDC = "0x036cbd53842c5426634e7929541ec2318f3dcf7e" as const;
@@ -29,6 +30,7 @@ export type ServiceSnapshot = {
   payment: PaymentConfig;
   description?: string;
   picture?: string;
+  call?: CallMetadata;
   /** Integrator-provided identity of the approved registry/resolver/control deployment. */
   authority: string;
   block: string;

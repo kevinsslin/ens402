@@ -1,4 +1,6 @@
-import { resolveCurrentService, currentResolverAbi } from "./current";
+import { parseCallMetadata } from "../call";
+import { resolveCurrentService, currentResolverAbi, type CurrentResolverPolicy } from "./current";
+export type { CurrentResolverPolicy } from "./current";
 export {
   currentDeployment,
   currentResolverAbi,
@@ -112,9 +114,11 @@ export async function resolveService(
   input: string,
   now = Math.floor(Date.now() / 1000),
   deployment: "legacy" | "current" = "current",
+  resolverPolicy: CurrentResolverPolicy = { mode: "dedicated" },
 ): Promise<ResolvedService> {
   if (deployment === "current")
-    return resolveCurrentService(client, input, now);
+    return resolveCurrentService(client, input, now, resolverPolicy);
+  if (resolverPolicy.mode !== "dedicated") throw new Error("Shared resolver policy requires the current ENS deployment");
   if ((await client.getChainId()) !== ensDeployment.chainId)
     throw new Error("ENS requires Sepolia");
   const name = normalize(input);
@@ -241,6 +245,7 @@ export async function resolveService(
     endpoint,
     description: validateDescription(records[3]!),
     picture: validatePicture(records[4]!),
+    call: records[5] ? parseCallMetadata(records[5]) : undefined,
     status: records[2]!,
     payment,
     authority,
@@ -280,6 +285,7 @@ export function prepareRecordUpdate(
     value = JSON.stringify(parsePaymentRecord(value));
   if (key === "description") value = validateDescription(value);
   if (key === "avatar") value = validatePicture(value);
+  if (key === "ens402.call") parseCallMetadata(value);
   if (key === "ens402.status" && !["active", "suspended"].includes(value))
     throw new Error("Unsupported status");
   return {

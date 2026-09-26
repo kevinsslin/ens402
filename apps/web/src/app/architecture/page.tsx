@@ -3,6 +3,8 @@ import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ServiceLayers, ServiceStructure } from "@/components/service-layers";
+import { DiscoveryPipeline } from "@/components/discovery-pipeline";
+import { ResolverScopeDiagram } from "@/components/resolver-scope-diagram";
 import { NamespaceArchitecture } from "@/components/namespace-architecture";
 
 const section = "mt-14 border-t pt-9";
@@ -29,24 +31,44 @@ export default function Architecture() {
           ENS is the public configuration and discovery foundation. Native EAC
           governs record updates. The ENS402 SDK guards purchases by comparing
           offchain HTTP 402 requests with current ENS records and buyer
-          approval. Our Console uses this same core through its backend. Open
-          indexing is planned; fixed-price comparison is implemented.
+          approval. Our Console uses this same core through its backend. The
+          indexer reconstructs configured ENS roots for independent search.
         </p>
       </div>
       <ServiceLayers />
+      <DiscoveryPipeline />
       <NamespaceArchitecture />
       <details className="rounded-xl border p-5">
         <summary className="cursor-pointer font-medium">
-          Implementation today: direct service registration
+          Implementation today: shared provider configuration
         </summary>
         <p className="mt-4 text-sm leading-7 text-muted-foreground">
-          Platform → Provider → Service is the core target hierarchy. The current
-          registrar configures direct subnames and their dedicated resolvers.
-          Provider onboarding, role replacement and Admin handovers still need
-          implementation. Public namespace setup and indexing are also pending.
+          Platform → Provider → Service uses native registries and a shared provider
+          resolver. Restricted registration and unsigned setup plans are locally
+          tested. Full provider onboarding, role replacement, Admin handovers,
+          public namespace setup and hosted indexing remain pending.
         </p>
         <ServiceStructure />
       </details>
+      <section id="resolver-scope" className={section}>
+        <p className="eyebrow">The permission boundary</p>
+        <h2 className="mt-3 text-2xl font-medium">The resolver instance defines a writer’s reach.</h2>
+        <p className={prose}>
+          Native text grants are scoped to a key across one resolver, not to a name.
+          ENS402 shares one resolver across a provider’s services when Ops and Treasury are the same team.
+          Separate teams use separate resolvers, as illustrated below.
+          A registry records ownership and routing; it does not automatically grant text permissions.
+        </p>
+        <ResolverScopeDiagram />
+        <p className={prose}>
+          Each service has its own record bundle, including its payment recipient.
+          Shared mode must pin the provider registry and resolver. A record count
+          alone does not prove exclusive use; admin and ancestor controls remain trusted.
+        </p>
+        <a className="mt-3 inline-block text-sm text-primary underline underline-offset-4" href="https://ens.domains/blog/post/exploring-subnames-ensv2">
+          ENS: Exploring Subnames in ENSv2
+        </a>
+      </section>
       <section className={section}>
         <p className="eyebrow">01 / A concrete example</p>
         <h2 className="mt-3 text-2xl font-medium">
@@ -87,8 +109,8 @@ export default function Architecture() {
         </h2>
         <p className={prose}>
           The tested ENSv2 PermissionedResolver has native permissions scoped by
-          setter key. We deploy one resolver per service because these key
-          grants span records in the current resolver. The administrator grants
+          setter key. Services managed by the same team share one provider resolver;
+          key grants apply across its service records. The administrator grants
           an operator permission to write the endpoint key. The resolver itself
           rejects attempts to write a different key. ENS402 does not replace
           this with its own role contract.
@@ -376,7 +398,7 @@ export default function Architecture() {
             ],
             [
               "Who should change prices?",
-              "Treasury controls price together with the payment tuple. Ops edits descriptions, pictures and endpoints with separately scoped text-key grants. Service Admin retains root authority and manages grants. Fixed-price publication and comparison are implemented; a published price does not force an API to honor it.",
+              "Treasury controls price together with the payment tuple. Ops edits descriptions, pictures and endpoints with separately scoped text-key grants. Provider Admin retains shared resolver root authority and manages grants. Fixed-price publication and comparison are implemented; a published price does not force an API to honor it.",
             ],
             [
               "Why not just implement HTTP 402?",

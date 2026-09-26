@@ -2,42 +2,42 @@
 
 **Discover. Govern. Guard.** ENS402 puts x402 service configuration on ENS, governs updates with native EAC, and verifies payment requests before agents sign.
 
-This is the single current scope and status overview. Updated September 26, 2026 against implementation `d0bc5c4`. A feature being implemented or tested on Anvil does not mean it is configured on the public testnet.
+This is the single current scope and status overview. Updated September 27, 2026 against the current implementation. A feature being implemented or tested on Anvil does not mean it is configured on the public testnet.
 
 ## What works, and what does not yet
 
 | Area | Status | What that means |
 | --- | --- | --- |
-| ENS service records | Implemented and fork-tested | Resolve a known name; read description, optional picture, endpoint, status and fixed-price payment terms |
+| ENS service records | Implemented and fork-tested | Resolve a known name; read description, optional picture, endpoint, explicit call metadata, status and fixed-price payment terms |
 | Native EAC | Implemented and fork-tested | Scoped Ops/Treasury writes, Admin grants, rejected unauthorized edits, revocation and root-override detection |
 | Guard SDK | Implemented and tested | Compare actual HTTP 402 with fresh ENS, check consent and risk, sign and verify settlement |
 | Privy and self signing | Implemented | Hosted approvals, agent keys, dedicated managed wallets and independent EOA signing; live Privy signature/policy tests passed |
 | Intercepta | Implemented; live clean scan/cache tested | Ethereum-mainnet address evidence; risky/failure cases use test fixtures, not verified API-quality ratings |
 | Console and provider forms | Implemented | Landing, architecture, service inspection, approvals, native edits, receipts and editable example form |
-| Neon | Connected and migration tested | Existing accounts, approvals, budgets and payment/order ledger; no search or vector tables yet |
+| PostgreSQL | Implemented and locally tested | Separate account ledger and search database; durable catalog, keyword index, embeddings, retries and query budget |
 | Paid subname endpoint | Implemented; dual-Anvil tested | Register `<label>.ens402.eth` directly to a recipient; public namespace and worker setup still required |
 | Public funded purchase | Pending setup and verification | Parent registry, service resolver, actual grants, worker gas, buyer funding and human login remain |
-| Envio indexer | Not implemented | No chain-event ingestion, catalog reconstruction or indexer deployment yet |
-| Keyword and semantic search | Required next; not implemented | No search index, embeddings, query ranking or Search API yet |
-| SDK `discover()` | Not implemented | Existing SDK resolves known names; it does not search for unknown services |
-| MCP | Not implemented | Intended thin interface over the same discovery/resolve capabilities |
-| Agent Skill | Payment instructions exist | `integrations/agent-skill/SKILL.md`; discovery instructions/tools are not implemented |
+| Envio indexer | Implemented; public hosting pending | Dynamic native event journal, finalized catalog reconstruction, recurring sync and independent Anvil reconstruction tested |
+| Keyword and semantic search | Implemented; local live embeddings verified | PostgreSQL full-text search and hybrid ranking; OpenAI generated three persisted fixture vectors. Public indexed catalog remains pending |
+| SDK `discover()` | Implemented; catalog setup pending | Configurable candidate search API client; public API returns 503 until an operator catalog is configured |
+| MCP | Implemented and route-tested | Read-only discovery and resolution at `/api/mcp`; no signing or approval tools |
+| Agent Skill | Implemented | Discovery, source validation, fresh resolution and approved payment instructions in `integrations/agent-skill/SKILL.md` |
 | Merchant onboarding and service dashboard | Incomplete | Registration form exists; post-registration listing sync, controlled-service inventory and merchant analytics are not implemented |
 | Address-level merchant analytics | Not implemented | First release groups observed supported settlements by chain/token/payTo; exact endpoint attribution is deferred |
-| Provider registry tree | Core scope; implementation pending | Platform -> Provider -> Service is the target hierarchy. Direct subnames work in fork tests; provider onboarding and role handovers do not yet |
+| Provider registry tree | Contracts/scripts fork-tested; UI pending | Native provider setup and restricted service publication implemented; public setup, onboarding UI and full role handovers remain |
 | Buy an arbitrary `.eth` | Not implemented | Requires official ETHRegistrar availability, rent, funding and commit/reveal integration |
-| Rich call schema, version aliases | Planned | Description alone does not tell an agent every input needed to call an API |
+| Call metadata | Implemented | `ens402.call` publishes method, input schema and examples; version aliases remain deferred |
 | World, ERC-8004, session keys | Deferred | Not mandatory runtime dependencies |
 
 ## The three layers
 
-- **Discover / ENS:** publish and read what a service does, where it runs and how it gets paid. Known-name resolution exists; searchable discovery is the next implementation.
+- **Discover / ENS:** publish and read what a service does, where it runs and how it gets paid. Known-name resolution, root-scoped catalog reconstruction and search exist; public catalog setup remains pending.
 - **Govern / native EAC:** ENS contracts check permission when a wallet changes a record. Chain transactions and events make changes traceable. This does not validate an HTTP bill.
 - **Guard / SDK:** before requesting a signature, compare HTTP 402 with current ENS terms and buyer approval, then apply screening. Unrestricted keys can bypass this flow.
 
-These are functional layers. The core namespace architecture is **Platform Registry -> Provider Registry -> Service**, with a dedicated native PermissionedResolver per service. Platform and Provider registries are native ENS UserRegistry instances, not custom RBAC replacements. Provider onboarding is required scope; support for additional provider-owned roots remains a later extension.
+These are functional layers. The core namespace architecture is **Platform Registry -> Provider Registry -> Service**, with **one shared native PermissionedResolver per provider** as the selected default. Each service has a separate record bundle and payTo; Ops and Treasury Safe key grants span all bundles. Separate resolver instances remain an option for teams with different trusted writers. Platform and Provider registries are native ENS UserRegistry instances, not custom RBAC replacements. Provider onboarding is required scope; support for additional provider-owned roots remains a later extension.
 
-Provider Admin manages its registry and service registration authority. Service Admin manages its name and resolver; Ops edits endpoint/description/avatar and Treasury edits the payment record. Roles are scoped to specific contracts/resources and do not automatically inherit down the tree. Existing ServiceRegistrar registration initializes service roles atomically, but full provider onboarding, role replacement and Admin handover are still pending. The website must show the complete target tree and label implementation status separately.
+Provider Admin manages the registry and shared resolver governance. Ops edits endpoint/description/avatar/call metadata; Treasury Admin is a Safe holding the payment-key writer role, not ROLE_SET_TEXT_ADMIN. Registering wallets receive service-name control, not shared resolver administration. Roles are scoped to specific contracts/resources and do not automatically inherit down the tree. Existing ServiceRegistrar registration initializes service roles atomically, and the restricted variants check live native registration authority. SharedProviderServiceRegistrar initializes separate bundles in the existing provider resolver without granting publishers root text authority. Resumable provider setup is Anvil-tested; provider onboarding UI, role replacement and Admin handover are still pending. The website must show the complete target tree and label implementation status separately.
 
 ## Agreed discovery direction
 
@@ -52,9 +52,9 @@ ENS public records/events
   -> choose a candidate -> fresh ENS read -> Guard -> signer
 ```
 
-**User-confirmed search asset default:** Base Sepolia USDC, network `eip155:84532`, contract `0x036cbd53842c5426634e7929541ec2318f3dcf7e`, 6 decimals. This is a default for the future search interface; the current payment implementation only supports this asset.
+**User-confirmed search asset default:** Base Sepolia USDC, network `eip155:84532`, contract `0x036cbd53842c5426634e7929541ec2318f3dcf7e`, 6 decimals. This is the search interface default; the current payment implementation only supports this asset.
 
-Proposed API fields, not an implemented endpoint:
+Implemented Search API fields (persistent catalog or explicit snapshot source):
 
 | Field | Meaning |
 | --- | --- |
@@ -66,17 +66,17 @@ Proposed API fields, not an implemented endpoint:
 
 Keyword and semantic search are required. Exact-name matches should remain strong; typo similarity can be a fallback. Semantic relevance means suitability for the query, not safety, reliability or reputation. Monetary filters compare the same chain/token and integer units. `0.01 USDC = 10000` atomic units. A search filter never grants payment authority.
 
-### Storage and embeddings: proposed, not provisioned
+### Storage and embeddings
 
-- Existing Neon PostgreSQL holds application data. Envio has its own indexing/storage deployment requirements, still to be validated.
-- Prefer a separate search schema in the existing Neon database, with PostgreSQL full-text search and `pgvector` if supported by the selected deployment. A dedicated vector database is not inherently necessary. Do not give a public indexer access to buyer/payment tables.
-- Embeddings are vectors computed from public service metadata by a selected model. Recompute when the indexed content changes; store the content hash, model/version and source block. Compute a query vector at search time. Price and roles are structured data, not facts inferred from embeddings.
-- Model/provider, dimensions, Envio-to-search synchronization, retry/backfill/reorg handling and database permissions remain implementation decisions. No embedding provider credentials or vector migration are configured by this proposal.
-- Search is an offchain view. Other operators can reproduce the supported raw catalog once the indexer is built; their model and ranking may differ. Re-resolve ENS before payment. Do not claim globally complete search, fair ranking or automatic quality verification.
+- Account/payment data and discovery data use separate PostgreSQL databases. `DATABASE_URL` remains the account ledger; `DISCOVERY_DATABASE_URL` holds public service snapshots, keyword indexes, embeddings and query budgets. Provision a separate Neon database and role for hosted discovery.
+- The local discovery database currently contains an explicitly labeled fixture source. Do not reuse that source-bound database for the live chain catalog. Use a new empty discovery database for each independent source/root configuration.
+- OpenAI `text-embedding-3-small` is configured locally and has produced three persisted fixture vectors. A live query, "Convert dollars into euros", returned the currency fixture through a semantic-only match. Hosted credentials and deployment remain pending. Metadata hashes, model versions, leases and retries control embedding refresh. Current bounded ranking uses PostgreSQL arrays, not a pgvector/ANN deployment.
+- Envio journals native events. The snapshot exporter reads complete candidates from that journal or RPC logs, then re-reads canonical ENS state at one finalized block. A serial worker synchronizes complete snapshots atomically; deleted/expired services disappear and failed refreshes preserve the previous catalog.
+- Search remains an offchain view. Anyone can reconstruct supported roots from the declared start block; ranking and models may differ. Search results carry source/checkpoint evidence and require fresh ENS resolution before payment.
 
 ## Buyer and merchant product flow
 
-Target buyer flow: search a need, inspect ranked candidates with ENS identity and call instructions, choose a service, then approve and purchase through Guard. Rankings express relevance, not guaranteed quality. Search, indexing and call-schema publication still need implementation.
+Target buyer flow: search a need, inspect ranked candidates with ENS identity and call instructions, choose a service, then approve and purchase through Guard. Rankings express relevance, not guaranteed quality. `/discover`, SDK search, MCP and onchain call-schema publication are implemented. Selecting a result opens Console for fresh inspection; the public indexed catalog and funded purchase rehearsal still require setup.
 
 Target merchant flow: fill service details, register/configure its ENS name, return to a controlled-service dashboard, wait for confirmed indexing and see the listing become searchable. Use explicit registration/indexing states. Verify actual wallet/role control before offering management actions.
 
@@ -90,9 +90,11 @@ Use [TODO.md](TODO.md) for the single actionable backlog, including discovery im
 
 ## Verified evidence
 
-Latest implementation validation: **98 unit tests, 28 PostgreSQL integration tests, 32 Solidity fork tests**, complete dual-Anvil flow, typecheck and production build passed. Actual USDC contract decimals were read as 6. Live Intercepta clean scan/cache and live Privy signing/policy-denial checks passed. Browser checks covered public forms and diagrams, including 390px layout.
+Earlier payment baseline validation passed **98 unit tests, 28 PostgreSQL integration tests and 32 Solidity fork tests**, the dual-Anvil flow, typecheck and production build. Subsequent discovery/provider evidence is recorded separately in AUDIT.md. Actual USDC contract decimals were read as 6. Live Intercepta clean scan/cache and live Privy signing/policy-denial checks passed. Browser checks covered public forms and diagrams, including 390px layout.
 
 Public funded end-to-end purchase and deployed service roles remain unverified. Latest recorded parent read: Sepolia block 11786000, `ens402.eth` owned but child registry unset. See AUDIT.md for evidence scope; this table does not imply a fresh chain read on every documentation edit.
+
+Latest discovery evidence: native Anvil registration and deterministic reconstruction, isolated PostgreSQL keyword search and expiry removal, generated Envio handler tests, three live OpenAI fixture embeddings and a semantic-only currency query. These do not prove hosted Envio ingestion or public service deployment.
 
 ## Document guide
 

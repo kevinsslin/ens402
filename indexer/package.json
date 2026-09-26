@@ -1,0 +1,23 @@
+{
+  "name": "@ens402/indexer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "codegen": "envio codegen",
+    "dev": "envio dev",
+    "start": "envio start",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run src/handlers.test.ts src/journal.test.ts"
+  },
+  "dependencies": {
+    "envio": "3.12.1",
+    "viem": "^2.56.9",
+    "dotenv": "^18.0.4"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "@types/node": "^22.0.0",
+    "vitest": "^5.0.2"
+  }
+}

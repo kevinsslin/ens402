@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { RegistrationConsole } from "./registration-console";
 import { OperatorConsole } from "./operator-console";
 
-type Registration = { registrar: string; parent: string };
+type Registration = { registrar: string; parent: string; restricted?: boolean; shared?: { resolver: string; ops: string; treasury: string } };
 function AccountWorkspace({ registration }: { registration?: Registration }) {
   const {
     ready,
@@ -36,6 +36,7 @@ function AccountWorkspace({ registration }: { registration?: Registration }) {
         <p className="mt-6 max-w-xl leading-7 text-muted-foreground">
           Sign in to inspect services, set payment limits and view activity.
         </p>
+        <a href="/discover" className="mt-6 block text-sm text-primary underline">Browse services without signing in</a>
         <Button className="mt-8" onClick={() => login()}>
           Sign in
         </Button>

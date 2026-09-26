@@ -189,6 +189,7 @@ try {
       payTo: admin,
     }),
     "ens402.status": "active",
+    "ens402.call": JSON.stringify({ method: "GET", example: {} }),
     description: "Search public data",
     avatar: "https://merchant.example/icon.png",
   };
@@ -259,7 +260,7 @@ try {
   await assert.rejects(() => simulateEnsTransaction(client, ops, payment));
   checks.push("Operator payment edit rejected by the actual native resolver");
   const treasury = "0x3333333333333333333333333333333333333333" as Address;
-  for (const key of ["description", "avatar"] as const) {
+  for (const key of ["description", "avatar", "ens402.call"] as const) {
     const tx = prepareTextPermission(after, key, ops, true);
     await send(tx.to, tx.data);
   }
@@ -378,7 +379,7 @@ try {
       ],
     }),
   );
-  await assert.rejects(read, /dedicated one-record/);
+  await assert.rejects(read, /Dedicated policy requires one record bundle/);
   checks.push("SDK rejects a resolver shared across multiple records");
   const report = {
     checkedAt: new Date().toISOString(),

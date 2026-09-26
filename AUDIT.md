@@ -67,7 +67,7 @@ Production variable names confirm Neon, Privy, Intercepta and both RPCs are conf
 
 Payment and name delivery are not atomic. A name can become unavailable or registration can revert after payment. Such orders require operator investigation and, if undeliverable, a manual refund. Automated refunds, name renewal, arbitrary `.eth` purchase, generic transfer/grant endpoints and autonomous background retries are out of scope. Recipient contracts must accept native ERC1155 transfers; preflight simulates registration before charging.
 
-The worker has issuer authority within one namespace. Parent administrators retain their native powers. The SDK protects cooperating signing flows; backend credentials and unrestricted private keys remain trust boundaries. Indexer reconstruction, provider registry hierarchy and version aliasing remain separate planned work, not proven by this audit.
+The worker has issuer authority within one namespace. Parent administrators retain their native powers. The SDK protects cooperating signing flows; backend credentials and unrestricted private keys remain trust boundaries. This earlier payment audit did not prove indexer reconstruction or the provider hierarchy; their subsequent local evidence is recorded below. Version aliasing remains deferred.
 
 ## Follow-up: units, fields and observed roles
 
@@ -77,5 +77,44 @@ The worker has issuer authority within one namespace. Parent administrators reta
 - `pnpm ens:permissions:check` resolves the configured service and checks Admin/Ops/Treasury effective text permissions at a recorded block, including unwanted root and text-administration rights. Missing configuration fails closed. Actual fork tests verify the audit fails for accidental Ops root grants and missing required grants, then passes after correction. It does not enumerate all holders or prove absence of ancestor/upgrade authority.
 - Fresh public read at Sepolia block 11786000 still shows `ens402.eth` has no child registry. Public grants remain unverified; native-only setup is still required.
 - Fresh Intercepta test at 2026-09-26T11:35:40Z returned `toxicScore: 0, traits: []`; the second request used cache. This address API supplies Ethereum-mainnet attribution, not a Base Sepolia scan or service-quality guarantee. Blocking/malformed/unavailable cases are separately tested with fixtures.
-- The three functional layers are Discover (read), Govern (native authorization during writes), Guard (pre-signing verification). The platform/provider/service tree is a separate planned namespace organization, now collapsed under future architecture. Direct service subnames are implemented.
+- The three functional layers are Discover (read), Govern (native authorization during writes), Guard (pre-signing verification). The platform/provider/service tree is a separate core namespace organization. Its later contracts/scripts and shared-resolver evidence are recorded below; public owner setup remains pending.
 - Arbitrary `.eth` registration is not implemented by the paid merchant. It would integrate the official ETHRegistrar with availability, rent quotation, duration, payment-token funding/allowance and commit/reveal recovery. A service's ENS identity and the namespace of names it sells are separate choices; ENS402 does not require merchants to sell our subnames.
+
+
+## ENSv2 subname scope review, September 26
+
+Reviewed the complete official [Exploring Subnames in ENSv2](https://ens.domains/blog/post/exploring-subnames-ensv2)
+article and pinned native source at `71a3b7339dbc55ab47667abdfe8303bac4f4c24e`.
+
+- A registry represents ownership and per-name pointers. A resolver represents record bundles and writer scope. Registries are useful for independent ownership OR separate resolver routing; reserved entries can route without minting tokens.
+- Key grants span all names on one resolver. Five new native fork tests prove cross-name writes, cross-resolver isolation, denied other-key/delegation writes, per-name default fallback, shared linked bundles and action regrant through retained admin rights.
+- Shared-provider SDK policy pins the provider name, actual parent registry and resolver, and requires an exact positive record ID. Record count can grow without invalidating other service approvals. Dedicated compatibility retains its one-record check, which cannot prove exclusive use because aliases may share bundles. Shared registration creates separate bundles and grants no resolver administration to publishers.
+- Initial platform/provider registry grants are registrar and registrar-admin only. They do not automatically grant pointer/text/upgrade control. Parent-name pointer powers and expiry remain separate trust paths; no emancipation claim or public renunciation was made.
+- The permissionless ServiceRegistrar is inappropriate for a company namespace. Added ProviderServiceRegistrar, requiring the caller's live native ROLE_REGISTRAR at reveal. Tests cover unauthorized callers, revoked publishers, sibling authority and preservation of the public registrar flow.
+- Added IServiceRegistrar and NatSpec while preserving external ABI. Added commitment age/expiry tests.
+- Provider setup now includes verified restricted registrar deployment/grant planning. Disposable-Anvil rehearsal runs the actual TypeScript plan through deployment, resume, link, runtime/settings verification, grant and completed rerun.
+- Discovery foundation includes snapshot Search API, configurable SDK client, keyword/name/atomic-price filters and embedding transport with hash invalidation. This was an earlier foundation-only checkpoint. Subsequent indexer, persisted search and Console work is recorded below; public hosting remains pending.
+
+Earlier baseline validation: 110 unit tests, 47 native Solidity fork tests and full workspace typecheck passed. Shared-provider additions are validated separately below. Provider planner Anvil smoke passed. No public contract deployment, grant, revocation or payment was submitted. Database integration/payment flows were not changed or rerun in this scope.
+
+### Shared provider resolver validation
+
+- Selected default: one native resolver per provider, separate record bundles per service. Ops and Treasury Admin (Safe) are delegated key writers; the title does not imply ROLE_SET_TEXT_ADMIN. The payment key contains price, asset, network and payTo, so its writer controls the entire tuple. Provider Admin retains root text and text-administration authority.
+- SharedProviderServiceRegistrar requires live publication authority and current native delegate permissions, rejects existing or linked bundles, and grants no resolver root authority to publishers. Delegate rotation does not require redeploying the registrar. The registrar retains six scoped initialization setter grants, including ens402.call; its entry points constrain their use.
+- Final local validation: 122 unit tests and 53 native Solidity fork tests passed, along with SDK/server/web typechecks and the Anvil-script TypeScript check. Public shared-provider deployment and actual Safe owners/threshold/execution are still pending. No public transaction was sent.
+
+
+## Discovery and provider update, September 27
+
+Evidence below is local or explicitly credential-scoped; it does not establish public contract deployment or hosted indexer operation.
+
+- Envio 3.12.1 code generation, typecheck and generated-handler/journal tests passed. Native registry/resolver discovery includes same-block initializer logs; rollback is enabled. A hosted Envio database and GraphQL bridge remain unverified. Local OrbStack Docker ran Envio against a bounded Sepolia RPC range, blocks 11783980 through 11783987. Hasura reported IndexedHead 11783987 and journalCandidates succeeded with zero registrations in that range. This verifies runtime/GraphQL connectivity, not full-history ingestion. Default HyperSync requires ENVIO_API_TOKEN.
+- Native Anvil reconstruction passed: unsigned fixture plan, commit/reveal registration and indexed fixture; independent snapshots at one block; record initialization before linking; updated records; reverted-fork rebuilding; and expiry without an event. Resolver reads go through UniversalResolver.resolve, not direct text calls.
+- Temporary isolated PostgreSQL tests synchronized real reconstructed catalogs, returned keyword results, retained checkpoint evidence and removed expired services. Source/root identity is fixed per database; finalized snapshots fail closed on conflicting checkpoint/time rather than silently accepting a rollback.
+- Search API, SDK, buyer discovery UI and read-only MCP are implemented. Public catalog availability still depends on owner setup, a populated hosted discovery database and running synchronization.
+- Local OpenAI `text-embedding-3-small` generation completed 3, failed 0, producing three persisted fixture vectors. The live query "Convert dollars into euros" returned the currency fixture with a semantic-only score of approximately 0.420. Its fixture ENS label was subsequently changed from fx to rates while retaining the /fx endpoint. No claim is made here about live merchant rankings or hosted OpenAI configuration.
+- Default shared-provider setup grants Ops four key writers: endpoint, description, avatar and ens402.call. Treasury Safe controls the payment key. The shared registrar receives six initialization setters including status, while Provider Admin retains root text and text-administration governance. Public Safe owners/threshold/execution and public grants remain unverified.
+
+The persistent local discovery database is a labeled fixture source, separate from the account ledger. A new empty Neon database/role is required for the live chain source; reusing the fixture database for a different source is rejected. Setup commands are consolidated in SETUP.md.
+
+Latest root-agent receipts for this revision: 135 fast tests, 12 web tests, 11 discovery database tests, and 3 indexer tests passed; Envio codegen/typecheck, workspace typecheck and Anvil-script typecheck passed. The native discovery fork and optimized production build passed. Live semantic verification also ranked weather first for "Will I need an umbrella tomorrow?" and rates first for "Convert dollars into euros" without keyword matches. Whole-word matching and stopword filtering prevent English short words from creating spurious hits; positive cosine similarity ranks semantic suggestions, not confidence or quality guarantees.
