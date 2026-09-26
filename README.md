@@ -23,7 +23,7 @@ This is the single current scope and status overview. Updated September 26, 2026
 | MCP | Not implemented | Intended thin interface over the same discovery/resolve capabilities |
 | Agent Skill | Payment instructions exist | `integrations/agent-skill/SKILL.md`; discovery instructions/tools are not implemented |
 | Merchant onboarding and service dashboard | Incomplete | Registration form exists; post-registration listing sync, controlled-service inventory and merchant analytics are not implemented |
-| Service revenue attribution | Not implemented | Existing payment receipts are a starting point; endpoint-level totals require request-to-settlement correlation |
+| Address-level merchant analytics | Not implemented | First release groups observed supported settlements by chain/token/payTo; exact endpoint attribution is deferred |
 | Provider registry tree | Planned | Direct subnames are implemented; platform/provider/service onboarding is not |
 | Buy an arbitrary `.eth` | Not implemented | Requires official ETHRegistrar availability, rent, funding and commit/reveal integration |
 | Rich call schema, version aliases | Planned | Description alone does not tell an agent every input needed to call an API |
@@ -78,7 +78,7 @@ Target buyer flow: search a need, inspect ranked candidates with ENS identity an
 
 Target merchant flow: fill service details, register/configure its ENS name, return to a controlled-service dashboard, wait for confirmed indexing and see the listing become searchable. Use explicit registration/indexing states. Verify actual wallet/role control before offering management actions.
 
-Envio can dynamically add supported registries/resolvers discovered from configured roots. It cannot observe arbitrary HTTP requests or infer the purchased endpoint from a token transfer. Revenue analytics must join confirmed settlement with SDK/backend or authenticated merchant request records. Keep historical config identity, deduplicate receipts and show attribution coverage. Same payTo does not prove the same store, and name/endpoint changes must not rewrite historical revenue. Start with confirmed gross receipts, not profit claims.
+Envio can dynamically add supported registries/resolvers discovered from configured roots. It cannot observe arbitrary HTTP requests or infer the purchased endpoint from a token transfer. First-release analytics aggregate observed supported settlements by chain/token/payTo with explicit facilitator/verification coverage. Dedicated service addresses enable simpler separate accounting; shared addresses show shared totals and must not be double-counted. Transfer plus AuthorizationUsed is not uniquely x402, and a known facilitator transaction sender is a classification heuristic. Preserve historical address mappings and never treat all USDC deposits as x402 revenue. Exact endpoint attribution through request-to-settlement correlation is deferred.
 
 Prepare several named, callable test services with explicit fixture labels and published input/output examples before presenting. See TODO.md for the catalog, complete journey and acceptance cases. No public names have been registered by this planning update.
 

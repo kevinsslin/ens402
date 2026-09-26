@@ -24,15 +24,20 @@ Single actionable backlog. Current implementation and evidence: [README.md](READ
 - [ ] Merchant dashboard lists controlled services with their current ENS records and actual edit permissions. Authenticate wallet control and check current onchain roles; a Privy login or payout address alone is not merchant administration.
 - [ ] Keep store-to-service membership explicit and verifiable. For the first release, group names by their verified controlling account; do not infer company ownership or revenue attribution merely from a shared payTo. Provider registry hierarchy remains separate future work.
 
-## 3. Settlement attribution and merchant analytics
+## 3. Address-level merchant analytics
 
-- [ ] Attach service identity, authority/registration epoch, endpoint/config snapshot, request ID and payment authorization nonce to purchases handled through our SDK/backend.
-- [ ] Add an authenticated merchant receipt/reporting adapter for purchases from other compatible clients. Verify claimed settlements independently onchain; distinguish merchant-reported service association from cryptographic request binding.
-- [ ] Join Base Sepolia settlement observations with request records. Count unique confirmed payments, not challenges, signatures, retries or every USDC transfer. Correlate nonce plus transfer evidence; deduplicate by chain/transaction/log identity. Handle reorgs and pending states.
-- [ ] Preserve historical endpoint/payTo/config snapshots so authorized changes or name transfers do not reassign past receipts. Unmatched transfers stay unattributed.
-- [ ] Show per-service and per-store confirmed gross receipts, paid orders, unique payer addresses, paid-but-undelivered orders and recorded refunds. Keep assets separate; do not call gross receipts profit or global merchant revenue.
-- [ ] Label coverage: ENS402-observed, authenticated merchant-reported, or unattributed. Do not imply all ecosystem payments or HTTP requests are visible to the indexer.
-- [ ] Make supported registries/resolvers dynamically discoverable from configured root events. Bootstrap configuration is still required; replay/backfill deployment-block events so same-transaction record initialization is not missed. Validate parent pointers, deletion/expiry, transfers and resolver replacement.
+User-selected first release: aggregate observed supported x402 settlement volume by payment chain, token and payTo address. Exact endpoint-level attribution is optional future work.
+
+- [ ] Index successful supported-token Transfer events to tracked payTo addresses. Classify source: independently verified ENS402 payment, known-facilitator observed transfer, or other/unclassified token receipt. Do not label all USDC deposits x402 revenue.
+- [ ] Define a versioned facilitator-address list per chain. For the supported exact/EIP-3009 path inspect AuthorizationUsed and relevant call/receipt evidence where available. AuthorizationUsed alone proves authorization consumption, not an HTTP 402 purchase. Address-origin heuristics can miss other relayers and misclassify unrelated facilitator activity.
+- [ ] Group dashboard metrics by chain/token/payTo and declared observation window. Keep amounts as integer atomic units and separate assets. Show volume, payment count and unique payer addresses, not profit or guaranteed global revenue.
+- [ ] Recommend a dedicated payTo per service when separate accounting matters. If services share an address, display one shared address total and the sharing services; do not duplicate that amount in store aggregates or claim endpoint separation.
+- [ ] Persist historical ENS-to-payTo mappings and registration/owner epochs. PayTo changes or name transfers must not relabel past payments. Default to activity since the service was indexed/listed; make any historical backfill window explicit.
+- [ ] Deduplicate by chain/transaction/log identity, handle reorgs/pending states and avoid counting retries. Refunds or failed delivery require separate evidence and must not be inferred from incoming volume.
+- [ ] Require verified merchant control for management. A public ENS record can claim any payTo, so listing an address alone does not prove that merchant owns all of its revenue.
+- [ ] Dynamically discover supported registries/resolvers from configured roots; backfill deployment-block events, including same-transaction record initialization. Handle deletion/expiry, transfers and resolver replacement.
+
+Optional later: correlate SDK/merchant request IDs and authorization nonces to confirmed transfers for exact service/order attribution. Not a launch prerequisite for address-level totals.
 
 ## 4. Demo catalog preparation
 
@@ -48,7 +53,7 @@ Prepare actual callable test endpoints with clearly labeled fixture outputs, not
 - [ ] Implement the three fixture data endpoints with schemas, examples and real testnet x402 challenges. Clearly separate fixture data from real settlement and name issuance.
 - [ ] Provide a repeatable local seed and unsigned public registration/configuration plans for all services. Use at least two independently controlled demo merchant accounts to test isolation and per-store aggregation.
 - [ ] Rehearse semantic queries, no results, price filters, endpoint changes, wrong payTo/price, stale index and role revocation. Keep attack fixtures out of normal discovery listings.
-- [ ] Acceptance demo: onboarding -> confirmed ENS registration -> dynamically indexed listing -> semantic search -> documented API call -> Guard -> confirmed payment -> correctly attributed merchant totals. Retry must not double-count; endpoint rotation preserves historical totals.
+- [ ] Acceptance demo: onboarding -> confirmed ENS registration -> dynamically indexed listing -> semantic search -> documented API call -> Guard -> confirmed payment -> address-grouped merchant totals with explicit classification coverage. Retry or shared payTo must not double-count; address rotation preserves historical totals.
 
 ## 5. Public testnet demo setup
 
@@ -79,3 +84,5 @@ Checked September 26, 2026. These establish existing ecosystem capabilities, not
 - [x402scan](https://github.com/Merit-Systems/x402scan): ecosystem explorer, transaction volumes and resource registration.
 - [x402scan discovery](https://github.com/Merit-Systems/x402scan/blob/main/docs/DISCOVERY.md): OpenAPI-first call metadata and well-known discovery documents.
 - [Envio dynamic contracts](https://docs.envio.dev/docs/HyperIndex/dynamic-contracts): supports dynamic contract registration; ENS lifecycle/backfill rules still need our implementation.
+
+Address-level research: the x402scan Base CDP/Bitquery query implementations filter token Transfer events by known facilitator transaction sender. This is a provider-coverage heuristic, not a universal x402 event. Our current settlement verifier already checks Transfer and AuthorizationUsed against a known payment authorization.
