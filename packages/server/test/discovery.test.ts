@@ -77,13 +77,14 @@ it("does not treat tiny words or substrings as lexical evidence", async () => {
   expect((await searchDiscovery({ query: "the and I", mode: "keyword" }, options())).results).toEqual([]);
   expect((await searchDiscovery({ query: "cast", mode: "keyword" }, options())).results).toEqual([]);
 });
-it("ranks nearest semantic candidates without assuming a universal cosine cutoff", async () => {
+it("excludes weak similarities while preserving stronger semantic candidates", async () => {
   const fx = { ...service, name: "fx.dataco.ens402.eth", description: "Currency foreign exchange rate" };
   const row = (entry: typeof service, similarity: number) => ({ service: entry, embedding: { model: "test", contentHash: discoveryContentHash(entry), vector: [similarity, Math.sqrt(1 - similarity ** 2)] } });
   const source = options([row(fx, 0.06), row(service, 0.26)]);
   const embeddings = { model: "test", embed: async () => [1, 0] };
   const result = await searchDiscovery({ query: "Will I need an umbrella tomorrow?" }, { ...source, embeddings });
   expect(result.results[0]?.service.name).toBe(service.name);
+  expect(result.results).toHaveLength(1);
   expect(result.results.every(entry => !entry.match.includes("keyword"))).toBe(true);
   expect((await searchDiscovery({ query: "umbrella" }, { ...source, embeddings, minSemanticSimilarity: 0.3 })).results).toEqual([]);
 });

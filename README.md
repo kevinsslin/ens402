@@ -77,6 +77,8 @@ Implemented Search API fields (persistent catalog or explicit snapshot source):
 
 Keyword and semantic search are required. Exact-name matches should remain strong; typo similarity can be a fallback. Semantic relevance means suitability for the query, not safety, reliability or reputation. Monetary filters compare the same chain/token and integer units. `0.01 USDC = 10000` atomic units. A search filter never grants payment authority.
 
+Hosted semantic search uses embeddings to retrieve candidates, then an OpenAI relevance check to reject candidates that cannot answer the requested task. Positive cosine similarity alone is insufficient. Semantic-only candidates below 0.2 are excluded; up to 20 remaining candidates are checked. If the check fails or the shared AI request budget is exhausted, only keyword/name matches remain. Empty queries still browse the catalog. The relevance check uses the existing OpenAI embedding key and `DISCOVERY_RELEVANCE_MODEL` (default `gpt-4.1-mini`), with a five-minute per-instance cache tied to query and candidate metadata.
+
 ### Storage and embeddings
 
 - Account/payment data and discovery data use separate PostgreSQL databases. `DATABASE_URL` remains the account ledger; `DISCOVERY_DATABASE_URL` holds public service snapshots, keyword indexes, embeddings and query budgets. Provision a separate Neon database and role for hosted discovery.

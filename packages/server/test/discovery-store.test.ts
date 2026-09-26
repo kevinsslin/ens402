@@ -118,6 +118,7 @@ describe("real isolated PostgreSQL discovery store", () => {
     await other.cachedQueryProvider(provider, 1).embed("rain");
     expect(calls).toBe(1);
     await expect(other.cachedQueryProvider(provider, 1).embed("sun")).rejects.toThrow("budget");
+    await expect(other.reserveQueryBudget(1)).rejects.toThrow("budget");
     expect(calls).toBe(1);
   });
   it("serves a synchronized and embedded catalog through the actual API and SDK", async () => {

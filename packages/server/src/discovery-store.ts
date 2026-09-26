@@ -112,6 +112,14 @@ export class DiscoveryStore implements CatalogSource {
     return { completed, failed, superseded };
   }
   /** Durable global query budget bounds public embedding spend across server instances. */
+  async reserveQueryBudget(budgetPerMinute = 60): Promise<void> {
+    if (!Number.isInteger(budgetPerMinute) || budgetPerMinute < 1 || budgetPerMinute > 1000) throw new Error("Invalid query budget");
+    const minute = Math.floor(Date.now() / 60_000);
+    const count = (await this.pool.query("INSERT INTO discovery_query_budget(minute,attempts) VALUES($1,1) ON CONFLICT(minute) DO UPDATE SET attempts=discovery_query_budget.attempts+1 RETURNING attempts", [minute])).rows[0].attempts;
+    if (count > budgetPerMinute) throw new Error("Query AI budget exhausted");
+    await this.pool.query("DELETE FROM discovery_query_budget WHERE minute<$1", [minute - 60]);
+  }
+
   cachedQueryProvider(provider: EmbeddingProvider, budgetPerMinute = 60): EmbeddingProvider {
     if (!Number.isInteger(budgetPerMinute) || budgetPerMinute < 1 || budgetPerMinute > 1000) throw new Error("Invalid query embedding budget");
     return { model: provider.model, embed: async text => {
@@ -119,8 +127,7 @@ export class DiscoveryStore implements CatalogSource {
       const key = createHash("sha256").update(`${provider.model}\n${text}`).digest("hex");
       const cached = (await this.pool.query("SELECT vector FROM discovery_query_cache WHERE key=$1 AND expires_at>$2", [key, now])).rows[0];
       if (cached) return cached.vector as number[];
-      const count = (await this.pool.query("INSERT INTO discovery_query_budget(minute,attempts) VALUES($1,1) ON CONFLICT(minute) DO UPDATE SET attempts=discovery_query_budget.attempts+1 RETURNING attempts", [Math.floor(now / 60)])).rows[0].attempts;
-      if (count > budgetPerMinute) throw new Error("Query embedding budget exhausted");
+      await this.reserveQueryBudget(budgetPerMinute);
       const vector = await provider.embed(text);
       await this.pool.query("INSERT INTO discovery_query_cache(key,model,vector,expires_at) VALUES($1,$2,$3,$4) ON CONFLICT(key) DO UPDATE SET vector=EXCLUDED.vector,expires_at=EXCLUDED.expires_at", [key, provider.model, vector, now + 3600]);
       await this.pool.query("DELETE FROM discovery_query_cache WHERE expires_at<$1", [now]);

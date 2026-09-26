@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
+import type { DiscoveryRelevance } from "./discovery-relevance";
 import { parseDiscoveryQuery, validateDiscoveryService, validateDiscoverySource, validateDiscoveryCheckpoint, type DiscoveryQuery, type DiscoveryResponse, type DiscoveryService } from "@ens402/sdk/discovery";
 
 /** The store is reachable but has never received a verified catalog snapshot. */
@@ -41,13 +42,12 @@ export async function embedDiscoveryService(service: DiscoveryService, provider:
   if (!vectorValid(vector)) throw new Error("Invalid embedding response");
   return { model: provider.model, contentHash: discoveryContentHash(service), vector };
 }
-export async function searchDiscovery(input: DiscoveryQuery, options: { source: CatalogSource; embeddings?: EmbeddingProvider; now?: number; maxAgeSeconds?: number; minSemanticSimilarity?: number }): Promise<DiscoveryResponse> {
+export async function searchDiscovery(input: DiscoveryQuery, options: { source: CatalogSource; embeddings?: EmbeddingProvider; relevance?: DiscoveryRelevance; now?: number; maxAgeSeconds?: number; minSemanticSimilarity?: number }): Promise<DiscoveryResponse> {
   const query = parseDiscoveryQuery(input);
   const now = options.now ?? Math.floor(Date.now() / 1000);
   const maxAge = options.maxAgeSeconds ?? 3600;
-  // Cosine scores are model-dependent. Rank positive nearest candidates by default;
-  // operators may supply a threshold after evaluating their own model and corpus.
-  const minimumSimilarity = options.minSemanticSimilarity ?? 0;
+  // Retrieval similarity alone is not evidence that a service answers the query.
+  const minimumSimilarity = options.minSemanticSimilarity ?? 0.2;
   if (!Number.isFinite(minimumSimilarity) || minimumSimilarity < 0 || minimumSimilarity > 1) throw new Error("Invalid semantic similarity threshold");
   const catalog = await options.source.load(query);
   validateDiscoverySource(catalog?.source, now, maxAge);
@@ -84,7 +84,18 @@ export async function searchDiscovery(input: DiscoveryQuery, options: { source: 
     if (!query.query || score > 0) results.push({ service, score, match });
   }
   results.sort((a, b) => b.score - a.score || a.service.name.localeCompare(b.service.name));
-  return { results: results.slice(0, query.pageSize), source: catalog.source, ...(catalog.checkpoint ? { checkpoint: catalog.checkpoint } : {}), semantic, requiresFreshResolution: true };
+  let selected = results;
+  if (query.query && options.relevance) {
+    const candidates = results.filter(row => row.match.length === 1 && row.match[0] === "semantic").slice(0, 20);
+    let relevant: string[] = [];
+    if (candidates.length) {
+      try { relevant = await options.relevance.select(query.query, candidates.map(row => row.service)); }
+      catch { semantic = "unavailable"; }
+    }
+    const accepted = new Set(relevant);
+    selected = results.filter(row => row.match.includes("keyword") || row.match.includes("name") || accepted.has(row.service.name));
+  }
+  return { results: selected.slice(0, query.pageSize), source: catalog.source, ...(catalog.checkpoint ? { checkpoint: catalog.checkpoint } : {}), semantic, requiresFreshResolution: true };
 }
 /** Local snapshot adapter for development or operator exports; never reads account/payment tables. */
 export class JsonCatalogSource implements CatalogSource {

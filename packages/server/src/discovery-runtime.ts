@@ -1,4 +1,5 @@
 import { DiscoveryStore } from "./discovery-store";
+import { OpenAiDiscoveryRelevance, type DiscoveryRelevance } from "./discovery-relevance";
 import { HttpEmbeddingProvider, JsonCatalogSource, type CatalogSource, type EmbeddingProvider } from "./discovery";
 
 /** The search store must not share a database with private account/payment tables. */
@@ -20,12 +21,18 @@ export function configuredEmbeddingProvider(env: Record<string, string | undefin
   return new HttpEmbeddingProvider({ endpoint: fields[0]!, apiKey: fields[1]!, model: fields[2]! });
 }
 let store: DiscoveryStore | undefined;
+let relevance: DiscoveryRelevance | undefined;
 /** File snapshots remain a keyword-only local fallback; paid query embeddings require a DB budget. */
-export function configuredDiscovery(): { source: CatalogSource; embeddings?: EmbeddingProvider } {
+export function configuredDiscovery(): { source: CatalogSource; embeddings?: EmbeddingProvider; relevance?: DiscoveryRelevance } {
   if (process.env.DISCOVERY_DATABASE_URL) {
     store ??= new DiscoveryStore(discoveryDatabaseUrl());
     const provider = configuredEmbeddingProvider();
-    return { source: store, embeddings: provider ? store.cachedQueryProvider(provider, discoveryQueryBudget()) : undefined };
+    if (provider && !relevance) {
+      relevance = process.env.DISCOVERY_EMBEDDING_ENDPOINT?.trim() === "https://api.openai.com/v1/embeddings"
+        ? new OpenAiDiscoveryRelevance({ apiKey: process.env.DISCOVERY_EMBEDDING_API_KEY!.trim(), model: process.env.DISCOVERY_RELEVANCE_MODEL?.trim(), beforeRequest: () => store!.reserveQueryBudget(discoveryQueryBudget()) })
+        : { select: async () => { throw new Error("Relevance provider not configured"); } };
+    }
+    return { source: store, embeddings: provider ? store.cachedQueryProvider(provider, discoveryQueryBudget()) : undefined, relevance };
   }
   if (process.env.DISCOVERY_CATALOG_PATH) return { source: new JsonCatalogSource(process.env.DISCOVERY_CATALOG_PATH) };
   throw new Error("Discovery catalog is not configured");
@@ -40,5 +47,5 @@ export function discoveryQueryBudget(env: Record<string, string | undefined> = p
 
 /** Release runtime connections for short-lived operators and deterministic integration tests. */
 export async function closeConfiguredDiscovery(): Promise<void> {
-  const current = store; store = undefined; await current?.close();
+  const current = store; store = undefined; relevance = undefined; await current?.close();
 }

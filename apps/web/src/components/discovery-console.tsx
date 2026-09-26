@@ -309,8 +309,8 @@ export function DiscoveryConsole({
           </div>
           {result.results.length === 0 && (
             <p className="mt-8 rounded-xl border p-6">
-              No matching services. Try a broader query or remove the price
-              limit.
+              No matching services in this catalog. Try another task or remove
+              the price limit.
             </p>
           )}
           <details className="mt-8 text-sm text-muted-foreground">
