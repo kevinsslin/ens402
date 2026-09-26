@@ -6,6 +6,8 @@ import { Progress } from "./ui/progress";
 import {
   setupChecklist,
   setupChecklistIndex,
+  setupChecklistState,
+  type ChecklistTransaction,
   type SetupParties,
 } from "./setup-checklist";
 export type SetupActivity = "idle" | "checking" | "wallet" | "confirming";
@@ -26,6 +28,7 @@ export function SetupProgressCard({
   onEdit,
   parties,
   actions,
+  transactions = [],
   stepDescription = "",
 }: {
   phase: number;
@@ -44,6 +47,7 @@ export function SetupProgressCard({
   parties?: SetupParties;
   stepDescription?: string;
   actions?: string[];
+  transactions?: ChecklistTransaction[];
 }) {
   const busy = activity !== "idle",
     complete = phase === 3;
@@ -52,7 +56,8 @@ export function SetupProgressCard({
     ? setupChecklistIndex(stepDescription, parties)
     : undefined;
   const current = index === undefined ? undefined : items[index];
-  const completed = complete ? items.length : index;
+  const states = setupChecklistState(phase, transactions, parties ?? { ops: "", treasury: "" });
+  const completed = states.filter(state => state === "complete").length;
   const status =
     activity === "wallet"
       ? "Confirm in your wallet"
@@ -171,7 +176,7 @@ export function SetupProgressCard({
                     ? "Submitted. Checking automatically before requesting the next signature."
                     : activity === "checking"
                       ? "Checking current on-chain permissions."
-                      : "A new provider requires up to 16 transactions, including deployments and separate field permissions."}
+                      : "Each transaction can configure several checklist items. Completed permissions are skipped automatically."}
               </p>
             )}
           </div>
@@ -196,14 +201,15 @@ export function SetupProgressCard({
         </div>
       )}
       <div className="divide-y px-6">
-        {phases.map((label, p) => (
-          <details key={label} open={p === phase} className="py-4">
+        {phases.map((label, p) => {
+          const phaseItems = items.map((item, i) => ({ ...item, state: states[i] })).filter(item => item.phase === p);
+          const phaseComplete = phaseItems.every(item => item.state === "complete");
+          return (
+          <details key={label} open={p === phase && !phaseComplete} className="py-4">
             <summary className="cursor-pointer text-sm font-medium">
-              <span className="ml-1">{label}</span>
+              <span className="ml-1 inline-flex items-center gap-2">{phaseComplete && <Check aria-label="Complete" className="size-4 text-primary" />}{label}</span>
               <span className="float-right text-xs font-normal text-muted-foreground">
-                {p < phase
-                  ? "Complete"
-                  : `${items.filter((i) => i.phase === p).length} items`}
+                {phaseComplete ? "Complete" : `${phaseItems.filter(item => item.state === "complete").length} / ${phaseItems.length} complete`}
               </span>
             </summary>
             <ol className="mt-3 space-y-2">
@@ -212,12 +218,13 @@ export function SetupProgressCard({
                   item.phase === p && (
                     <li
                       key={i}
+                      data-state={states[i]}
                       aria-current={i === index ? "step" : undefined}
                       className={`flex items-center gap-3 rounded-md px-2 py-2 text-sm ${i === index ? "bg-muted font-medium" : "text-muted-foreground"}`}
                     >
                       <span className="flex size-5 shrink-0 items-center justify-center text-xs">
-                        {complete || (index !== undefined && i < index) ? (
-                          <Check className="size-4 text-primary" />
+                        {states[i] === "complete" ? (
+                          <Check aria-label="Complete" className="size-4 text-primary" />
                         ) : (
                           i + 1
                         )}
@@ -228,7 +235,7 @@ export function SetupProgressCard({
               )}
             </ol>
           </details>
-        ))}
+        );})}
       </div>
       {complete && (
         <div role="status" className="border-t px-6 py-5">

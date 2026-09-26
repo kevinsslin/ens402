@@ -792,6 +792,7 @@ export function ProviderConsole({
               <SetupProgressCard
                 phase={pending?.phase ?? plan?.phase ?? 0}
                 activity={activity}
+                transactions={plan?.transactions ?? (pending ? [pending.step] : [])}
                 parties={{
                   ops: setup.ops,
                   treasury: setup.treasury,

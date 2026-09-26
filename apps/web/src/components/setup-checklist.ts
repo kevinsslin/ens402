@@ -21,7 +21,7 @@ export function setupChecklistIndex(description: string, parties: SetupParties):
   if(description.startsWith("Register provider")) return 1;
   if(description.startsWith("Deploy shared")) return 2;
   if(description.startsWith("Deploy restricted")) return 8;
-  if(description.includes("ROLE_REGISTRAR")) return 15;
+  if(description.startsWith("Grant ROLE_REGISTRAR")) return 15;
   const match=description.match(/^Grant (\S+) writer across this provider resolver to (0x[\da-fA-F]{40})$/);
   if(!match?.[1] || !match[2])return undefined;
   const field=fields.findIndex(([key])=>key===match[1]);
@@ -30,4 +30,17 @@ export function setupChecklistIndex(description: string, parties: SetupParties):
   if(account===parties.treasury.toLowerCase()&&field===4)return 7;
   if(account===parties.registrar?.toLowerCase()&&field>=0)return 9+field;
   return undefined;
+}
+
+export type ChecklistTransaction = { description: string; actions?: string[] };
+/** Only mark the inspected phase and earlier phases complete; later phases have not been checked yet. */
+export function setupChecklistState(phase: number, transactions: ChecklistTransaction[], parties: SetupParties) {
+  const remaining = new Set(transactions.flatMap(step => step.actions ?? [step.description])
+    .map(description => setupChecklistIndex(description, parties))
+    .filter((index): index is number => index !== undefined));
+  const deploymentPending = [0, 2, 8].some(index => remaining.has(index));
+  return setupChecklist(parties).map((item, index) =>
+    phase === 3 || item.phase < phase ? "complete" as const
+      : item.phase > phase || deploymentPending || remaining.has(index) ? "pending" as const
+      : "complete" as const);
 }
