@@ -4,8 +4,8 @@
 
 @custom-variant dark (&:is(.dark *));
 @theme inline {
-  --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
-  --font-heading: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-satoshi), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-satoshi), ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -31,16 +31,16 @@
   --radius-xl: .875rem;
 }
 :root {
-  color-scheme: dark;
-  --background: #0b1115;
-  --foreground: #eaf0ee;
-  --card: #101a20;
-  --primary: #a9efce;
-  --primary-foreground: #10291e;
-  --secondary: #1b292f;
-  --muted-foreground: #a0b2b7;
-  --destructive: #ffaaa6;
-  --border: #2b3b42;
+  color-scheme: light;
+  --background: #fafbff;
+  --foreground: #192333;
+  --card: #ffffff;
+  --primary: #0054cc;
+  --primary-foreground: #ffffff;
+  --secondary: #eef5ff;
+  --muted-foreground: #56657a;
+  --destructive: #b42318;
+  --border: #dce4ef;
 }
 @layer base {
   * { @apply border-border; }
@@ -58,3 +58,8 @@
 }
 @keyframes flow-enter { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 .flow-enter { animation: flow-enter 240ms ease-out; }
+
+/* ENS Thorin blue palette; darker text/action shade preserves contrast on white. */
+.hero-wash { background: radial-gradient(ellipse at 20% 0%, #eef5ff 0%, transparent 55%), radial-gradient(ellipse at 90% 10%, #f3edff 0%, transparent 45%); }
+.flow-panel { box-shadow: 0 12px 48px -24px #3889ff40; }
+.flow-connector { background: linear-gradient(90deg, #3889ff, #a099ff); }

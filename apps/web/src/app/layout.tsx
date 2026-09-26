@@ -1,11 +1,12 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Geist, Geist_Mono } from 'next/font/google';
+import localFont from 'next/font/local';
+import { Geist_Mono } from 'next/font/google';
 import { ArrowUpRight, Layers3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import './globals.css';
 
-const sans = Geist({ subsets: ['latin'], variable: '--font-geist-sans' });
+const sans = localFont({ src: [{ path: '../fonts/Satoshi-Regular.woff2', weight: '400' }, { path: '../fonts/Satoshi-Medium.woff2', weight: '500' }, { path: '../fonts/Satoshi-Bold.woff2', weight: '600 900' }], variable: '--font-satoshi', display: 'swap' });
 const mono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' });
 
 export const metadata: Metadata = {
@@ -14,7 +15,7 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en" className={`dark ${sans.variable} ${mono.variable}`}><body className="min-h-screen antialiased">
+  return <html lang="en" className={`${sans.variable} ${mono.variable}`}><body className="min-h-screen antialiased">
     <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-primary focus:p-3 focus:text-primary-foreground">Skip to content</a>
     <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur-sm">
       <div className="section-shell grid min-h-20 grid-cols-[auto_1fr] items-center gap-x-6 gap-y-3 py-4 sm:grid-cols-[1fr_auto_1fr]">
