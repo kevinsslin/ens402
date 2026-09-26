@@ -49,14 +49,20 @@ export async function prepareExternal(input: Record<string, unknown>) {
     Math.floor(Date.now() / 1000),
   );
   if (!reserved.created) return reserved.execution;
+  const progress: PaymentReceipt = { state: "held", reason: "Preparing payment", steps: [] };
+  let stage: "resolve" | "approval" | "challenge" | "metadata" | "screen" | "prepare" = "resolve";
   try {
     const service = await inspectService(row.approval.name);
+    progress.service = service;
+    progress.steps.push({ stage: "resolve", detail: `Read ${service.name} at block ${service.block}` });
+    stage = "approval";
     if (
       service.authority !== row.approval.authority ||
       service.status !== "active" ||
       !row.approval.endpoints.includes(service.endpoint)
     )
       throw new Error("Service requires approval");
+    stage = "challenge";
     const transport = createResourceTransport([
       new URL(service.endpoint).origin,
     ]);
@@ -80,7 +86,9 @@ export async function prepareExternal(input: Record<string, unknown>) {
     } finally {
       await response.body?.cancel();
     }
-    const now = Math.floor(Date.now() / 1000);
+    progress.offeredRequirements = challenge.accepts;
+    stage = "metadata";
+    let now = Math.floor(Date.now() / 1000);
     verifyChallengeMetadata(service, challenge, request?.method ?? "GET", row.approval.metadataHash);
     const requirement = challenge.accepts.find(
       (r) =>
@@ -105,11 +113,22 @@ export async function prepareExternal(input: Record<string, unknown>) {
           },
         ],
       });
+    progress.requirement = requirement;
+    progress.steps.push({ stage: "verify", detail: "HTTP 402 matches approved ENS settings" });
+    stage = "screen";
     const evidence = await screenRecipient(service.payment.payTo);
-    if (
-      evaluateRisk(evidence, service.payment.payTo, now).outcome !== "continue"
-    )
-      throw new Error("Screening did not pass");
+    progress.evidence = evidence;
+    // Screening performs network I/O. Its observation time can be later than the pre-scan clock.
+    now = Math.floor(Date.now() / 1000);
+    const risk = evaluateRisk(evidence, service.payment.payTo, now);
+    if (risk.outcome !== "continue")
+      return store.finish(id, { ...progress, state: risk.outcome === "reject" ? "rejected" : "held", reason: risk.reason });
+    progress.steps.push({ stage: "screen", detail: "Current Intercepta evidence passed" });
+    // Approval and ENS freshness may expire while waiting for the scanner.
+    const current = verifyRequest(service, service.endpoint, requirement, row.approval, now);
+    if (current.outcome !== "continue")
+      return store.finish(id, { ...progress, state: current.outcome === "reject" ? "rejected" : "held", reason: current.reason });
+    stage = "prepare";
     if (request && requirement.extra?.ens402RequestBinding !== "v1")
       throw new Error("Request binding unsupported");
     const authorization: PublicAuthorization = {
@@ -157,9 +176,16 @@ export async function prepareExternal(input: Record<string, unknown>) {
     return store.getExecution(id);
   } catch {
     return store.finish(id, {
+      ...progress,
       state: "held",
-      reason: "Preparation failed; no signature requested",
-      steps: [],
+      reason: {
+        resolve: "Could not resolve current ENS settings; no signature requested",
+        approval: "Service settings changed; review and create a new checkout",
+        challenge: "Could not read a valid HTTP 402 payment request; no signature requested",
+        metadata: "Service description or call schema does not match ENS and checkout; no signature requested",
+        screen: "Intercepta screening unavailable; no signature requested",
+        prepare: "Could not prepare wallet authorization; no signature requested",
+      }[stage],
     });
   }
 }

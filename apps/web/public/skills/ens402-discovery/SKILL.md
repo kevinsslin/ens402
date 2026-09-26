@@ -43,7 +43,7 @@ Quote query arguments safely. `maxPricePerRequestAtomic` optionally filters the 
 
 Match the user's language. For ordinary discovery, give one sentence and at most three short bullets, normally under 80 words. Each result needs only its ENS name, a short purpose, price and a `Demo data` label if `fixture` is true. Link the name to `https://ens402.vercel.app/console?service=NAME` when useful.
 
-For a successful skill test, a sufficient reply is: "搜尋正常：weather.demo.ens402.eth，東京天氣示範服務，0.01 USDC／次。這是預設示範資料，並非即時天氣。" Use the actual returned name and price; this example is not a fallback result.
+For a successful skill test, a sufficient reply is: "Search works: weather.demo.ens402.eth, a Tokyo weather demo, at 0.01 USDC per request. This is fixture data, not live weather." Use the actual returned name and price; this example is not a fallback result.
 
 Do not volunteer schemas, raw JSON, scores, wallet/token addresses, block numbers, expiry/index timestamps, architecture explanations or setup instructions. Show those only when they answer the user's question. Do not add a repeated safety checklist or follow-up sales pitch.
 

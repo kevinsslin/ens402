@@ -217,3 +217,9 @@ The browser verification did not sign in as the real owner or execute wallet tra
 - SDK platform tests: four passed, including local-signature validation and rejection of altered chain/payment amount before signing. Workspace typecheck and production build passed.
 - Live known-name inspection succeeded against the public MCP. Public search initially returned 503 from the stale/unavailable catalog; this is reported explicitly by the CLI.
 - No funded CLI purchase was performed in this change. Hosted signing depends on an active exported checkout and funded managed wallet; local signing requires the approved payer's key. Console checkouts expire after ten minutes and cover one purchase.
+
+## External checkout screening clock (2026-09-27)
+
+- Reproduced a clean live Intercepta scan whose observation was one second after the pre-scan clock. The old external preparation rejected it as future evidence; evaluating against the post-scan clock correctly continues.
+- External preparation now refreshes time after screening, rechecks approval/freshness before preparing authorization, and retains resolved service, offered terms and risk evidence on failures. Generic errors are replaced with safe stage-specific messages.
+- Five focused regression tests plus four SDK platform tests passed; 28 PostgreSQL store/workflow integration tests passed. No signature or payment was sent during the live scan check.
