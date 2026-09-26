@@ -6,6 +6,8 @@
     "scripts/current-ens-fork.ts",
     "scripts/ens-plan.ts",
     "scripts/namespace-plan.ts",
-    "scripts/ens/shared.ts"
+    "scripts/ens/shared.ts",
+    "scripts/ens-permissions-check.ts",
+    "scripts/audit-readiness.ts"
   ]
 }

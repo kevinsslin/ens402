@@ -95,12 +95,15 @@ export function validatePicture(raw: string): string {
   return validateEndpoint(raw);
 }
 export function validateEndpoint(raw: string): string {
-  if (raw.length > 2048) throw new Error("Endpoint is too long");
+  if (new TextEncoder().encode(raw).length > 2048)
+    throw new Error("URL must be at most 2048 UTF-8 bytes");
   const url = new URL(raw);
   if (url.protocol !== "https:" || url.username || url.password || url.hash)
     throw new Error(
       "Endpoint must be an HTTPS URL without credentials or fragment",
     );
+  if (new TextEncoder().encode(url.href).length > 2048)
+    throw new Error("Encoded URL must be at most 2048 UTF-8 bytes");
   return url.href;
 }
 /** No arbitrary CCIP gateways. Supports on-chain records on the pinned native resolver. */

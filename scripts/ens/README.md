@@ -43,3 +43,7 @@ The service Admin deploys a dedicated native resolver, writes records, grants Op
 - `../../packages/sdk/src/ens/current.ts`: pinned native deployment and current ABI.
 
 Native ENS contracts enforce access. The scripts and SDK only prepare calldata. Every plan records its source deployment, observed block and intended wallet/resource/role grants. Recheck chain state before signing. No private key is needed to generate a plan.
+
+## Verify after transactions confirm
+
+Run `pnpm ens:permissions:check` using `SERVICE_ENS_NAME`, `ENS_OWNER_ADDRESS`, `ENS_OPERATOR_ADDRESS`, `ENS_TREASURY_ADDRESS` and `SEPOLIA_RPC_URL`. It writes `docs/validation/live-text-permissions.json` with the actual resolver, block, wallet, expected and observed permissions. A missing grant, unexpected broad text authority or unavailable read cannot pass. This check covers those wallets' text roles; registry and ancestor powers require separate review. Repeat after grant or resolver changes.

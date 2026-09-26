@@ -32,6 +32,7 @@ import {
 import { verifySettlement } from "../packages/sdk/src/settlement";
 import {
   USDC,
+  USDC_DECIMALS,
   NETWORK,
   type Approval,
   type RiskEvidence,
@@ -40,6 +41,7 @@ import type { ResolvedService } from "../packages/sdk/src/ens";
 import { Store } from "../packages/server/src/store";
 const exec = promisify(execFile);
 const abi = parseAbi([
+  "function decimals() view returns (uint8)",
   "function masterMinter() view returns (address)",
   "function configureMinter(address,uint256) returns (bool)",
   "function mint(address,uint256) returns (bool)",
@@ -274,6 +276,17 @@ export async function testAnvilPayments(
       await new Promise((r) => setTimeout(r, 250));
     }
     assert.equal(await chain.getChainId(), 84532);
+    assert.equal(
+      await chain.readContract({
+        address: USDC,
+        abi,
+        functionName: "decimals",
+      }),
+      USDC_DECIMALS,
+    );
+    checks.push(
+      "Pinned Base Sepolia USDC contract returns 6 decimals; amounts remain atomic integers",
+    );
     await chain.request({
       method: "anvil_setBalance" as never,
       params: [payer.address, "0x3635c9adc5dea00000"] as never,

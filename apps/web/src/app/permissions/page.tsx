@@ -21,6 +21,22 @@ export default function PermissionsPage() {
         and parent administrators can add authority.
       </p>
       <PermissionMap />
+      <section className="mt-10 rounded-xl border bg-primary/5 p-6">
+        <h2 className="text-2xl font-medium">Verify the grants after setup.</h2>
+        <p className="mt-3 text-sm leading-7">
+          Run <code>pnpm ens:permissions:check</code> with the service name and
+          Admin, Ops and Treasury addresses. It resolves the actual native
+          resolver and reads effective permissions at one block, including root
+          overrides. Missing setup or an RPC error never counts as a pass.
+        </p>
+        <p className="mt-3 text-sm leading-7">
+          The report checks required grants, forbidden text edits and
+          text-administration privileges for those wallets. Fork tests also
+          exercise allowed writes, rejected writes and revocation. This is a
+          snapshot, not proof that grants cannot change later or that no other
+          administrators exist.
+        </p>
+      </section>
       <section className="mt-16">
         <h2 className="text-4xl">Two contracts. Two kinds of control.</h2>
         <div className="mt-7 grid gap-5 md:grid-cols-2">

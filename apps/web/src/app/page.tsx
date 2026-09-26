@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { NamespaceArchitecture } from "@/components/namespace-architecture";
+import { ServiceLayers, ServiceStructure } from "@/components/service-layers";
 import { ServicePreview } from "@/components/service-preview";
 
 export default function Home() {
@@ -71,51 +71,7 @@ export default function Home() {
             into an agent’s existing purchase flow.
           </p>
         </div>
-        <ol className="mt-9 grid gap-6 md:grid-cols-3">
-          {[
-            [
-              "01 / ENS",
-              "Discovery layer",
-              "Public service records let independent indexers reconstruct a catalog from supported namespaces. Agents can choose an index, then resolve the selected name directly.",
-              "Open indexing planned; description publishing implemented",
-            ],
-            [
-              "02 / NATIVE EAC",
-              "Governance layer",
-              "Ops maintains the API and description. Treasury manages payment terms. Admin grants and revokes access. ENS records and events make configuration changes traceable.",
-              "Native key-scoped permissions tested on forks",
-            ],
-            [
-              "03 / ENS402 SDK",
-              "Guard layer",
-              "Compare the offchain HTTP 402 with current onchain settings and buyer approval. Check the recipient, token, network and permitted amount before calling the signer.",
-              "Verification and fixed-price comparison implemented",
-            ],
-          ].map(([number, title, body, status]) => (
-            <li key={number} className="border-t pt-5">
-              <p className="font-mono text-sm text-primary">{number}</p>
-              <h3 className="mt-3 text-xl font-medium">{title}</h3>
-              <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                {body}
-              </p>
-              <p className="mt-4 text-xs leading-5 text-muted-foreground">
-                {status}
-              </p>
-            </li>
-          ))}
-        </ol>
-        <p className="mt-8 max-w-4xl text-sm leading-7 text-muted-foreground">
-          An indexer can filter its results; another can still reconstruct the
-          published catalog for the same supported namespaces and block. Public
-          records do not guarantee search completeness, service quality or
-          delivery.
-        </p>
-        <Link
-          href="/architecture#reputation"
-          className="mt-4 inline-block text-sm text-primary underline underline-offset-4"
-        >
-          Built on ENS discovery foundations. See what ENS402 adds →
-        </Link>
+        <ServiceLayers />
       </section>
       <section id="use-cases" className="section-shell pb-14 sm:pb-20">
         <p className="eyebrow">What this changes</p>
@@ -166,8 +122,8 @@ export default function Home() {
             </h2>
           </div>
           <p className="max-w-xs text-sm leading-6 text-muted-foreground">
-            Explore the current verification flow. Discovery and
-            advertised-price comparison are the next layer.
+            Resolve ENS → compare HTTP 402 → screen the recipient → check
+            consent → sign → confirm payment.
           </p>
         </div>
         <ServicePreview />
@@ -183,11 +139,11 @@ export default function Home() {
             </h2>
             <p className="mt-6 text-lg leading-7 text-muted-foreground">
               Ops maintains the description and API. Treasury owns pricing and
-              payment settings. Admin manages their grants. The proposed records
-              below show what an indexer and a paying agent need to read.
+              payment settings. Admin manages their grants. The diagram shows
+              the current service model. Public setup is still pending.
             </p>
           </div>
-          <NamespaceArchitecture />
+          <ServiceStructure />
           <Link
             href="/permissions"
             className="mt-6 inline-flex items-center gap-2 text-sm text-primary underline underline-offset-4"
@@ -255,10 +211,10 @@ export default function Home() {
           </Button>
         </div>
         <p className="mt-8 border-t pt-5 text-xs leading-6 text-muted-foreground">
-          Testnet prototype · Open indexing, description publishing and price
-          verification are planned · Native ENS and USDC tested on Anvil forks ·
-          Intercepta live scan verified · Live Privy signing verified · Funded
-          public-testnet demo pending.{" "}
+          Testnet prototype · Open indexing is planned; metadata and fixed-price
+          verification are implemented · Native ENS and USDC tested on Anvil
+          forks · Intercepta live scan verified · Live Privy signing verified ·
+          Funded public-testnet demo pending.{" "}
           <Link
             className="text-primary underline underline-offset-4"
             href="/architecture#status"

@@ -95,9 +95,10 @@ await savePlan("ens-transactions.json", {
     {
       wallet: ops,
       contract: resolver,
-      resource: "keccak256(agent-endpoint[x402])",
+      resource:
+        "Separate keccak256(key) grants: agent-endpoint[x402], description, avatar",
       roles: ["ROLE_SET_TEXT"],
-      effect: "Write endpoint only",
+      effect: "Write endpoint, description and avatar through separate grants",
     },
     {
       wallet: treasury,

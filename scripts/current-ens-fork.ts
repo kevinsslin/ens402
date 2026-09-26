@@ -23,6 +23,7 @@ import {
   currentResolverAbi as resolverAbi,
   currentRegistryAbi,
 } from "../packages/sdk/src/ens/index";
+import { auditTextPermissions } from "../packages/sdk/src/ens/permissions";
 import { registryAbi } from "../packages/sdk/src/ens/abi";
 import { USDC, NETWORK } from "../packages/sdk/src/index";
 config({ path: ".env", quiet: true });
@@ -257,6 +258,46 @@ try {
   );
   await assert.rejects(() => simulateEnsTransaction(client, ops, payment));
   checks.push("Operator payment edit rejected by the actual native resolver");
+  const treasury = "0x3333333333333333333333333333333333333333" as Address;
+  for (const key of ["description", "avatar"] as const) {
+    const tx = prepareTextPermission(after, key, ops, true);
+    await send(tx.to, tx.data);
+  }
+  const treasuryGrant = prepareTextPermission(
+    after,
+    "ens402.payment",
+    treasury,
+    true,
+  );
+  await send(treasuryGrant.to, treasuryGrant.data);
+  const audit = () =>
+    auditTextPermissions(client, { resolver, admin, ops, treasury });
+  assert.equal((await audit()).passed, true);
+  const rootAbi = parseAbi([
+    "function grantRootRoles(uint256,address) returns(bool)",
+    "function revokeRootRoles(uint256,address) returns(bool)",
+  ]);
+  await send(
+    resolver,
+    encodeFunctionData({
+      abi: rootAbi,
+      functionName: "grantRootRoles",
+      args: [16n, ops],
+    }),
+  );
+  assert.equal((await audit()).passed, false);
+  await send(
+    resolver,
+    encodeFunctionData({
+      abi: rootAbi,
+      functionName: "revokeRootRoles",
+      args: [16n, ops],
+    }),
+  );
+  assert.equal((await audit()).passed, true);
+  checks.push(
+    "Live role audit detects both intended grants and accidental root privileges",
+  );
   const revoke = prepareTextPermission(
     after,
     "agent-endpoint[x402]",
@@ -264,6 +305,7 @@ try {
     false,
   );
   await send(revoke.to, revoke.data);
+  assert.equal((await audit()).passed, false);
   await assert.rejects(() => simulateEnsTransaction(client, ops, moved));
   assert.equal((await read()).endpoint, after.endpoint);
   checks.push(

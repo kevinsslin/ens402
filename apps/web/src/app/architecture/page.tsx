@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ServiceLayers, ServiceStructure } from "@/components/service-layers";
 import { NamespaceArchitecture } from "@/components/namespace-architecture";
 
 const section = "mt-14 border-t pt-9";
@@ -32,7 +33,20 @@ export default function Architecture() {
           indexing is planned; fixed-price comparison is implemented.
         </p>
       </div>
-      <NamespaceArchitecture />
+      <ServiceLayers />
+      <ServiceStructure />
+      <details className="rounded-xl border p-5">
+        <summary className="cursor-pointer font-medium">
+          Future: provider → services directory tree (not implemented)
+        </summary>
+        <p className="mt-4 text-sm leading-7 text-muted-foreground">
+          The three product layers above are responsibilities. A three-level
+          namespace is a separate organizational option. Today our registrar
+          creates direct subnames; provider registries and a catalog indexer are
+          still planned.
+        </p>
+        <NamespaceArchitecture />
+      </details>
       <section className={section}>
         <p className="eyebrow">01 / A concrete example</p>
         <h2 className="mt-3 text-2xl font-medium">

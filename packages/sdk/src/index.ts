@@ -1,6 +1,8 @@
 /** Wallet-independent pre-signing checks. All times are Unix seconds. */
 export const NETWORK = "eip155:84532" as const;
 export const USDC = "0x036cbd53842c5426634e7929541ec2318f3dcf7e" as const;
+/** Precision of the sole supported asset, pinned by NETWORK and USDC address. */
+export const USDC_DECIMALS = 6 as const;
 export const addressPattern = /^0x[0-9a-fA-F]{40}$/;
 export const sameAddress = (a: string, b: string) =>
   addressPattern.test(a) &&

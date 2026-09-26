@@ -216,3 +216,29 @@ it("rejects unbounded requests and missing unique order IDs", () => {
     validateResourceRequest({ method: "POST", body: "x".repeat(9000) }),
   ).toThrow();
 });
+
+it("compares atomic units only after chain and contract identity match", () => {
+  for (const change of [
+    { amount: "0.01" },
+    { amount: "10000000000000000" },
+    { network: "eip155:1" },
+    { asset: payTo },
+  ]) {
+    expect(
+      verifyRequest(
+        service,
+        endpoint,
+        { ...requirement, ...change },
+        approval,
+        now,
+      ).outcome,
+    ).toBe("reject");
+  }
+});
+it("measures descriptions in UTF-8 bytes, not character count", () => {
+  expect(validateDescription("猫".repeat(341))).toHaveLength(341);
+  expect(() => validateDescription("猫".repeat(342))).toThrow("1024 bytes");
+  expect(() =>
+    validatePicture("https://example.com/" + "猫".repeat(230)),
+  ).toThrow("2048");
+});

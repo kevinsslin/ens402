@@ -11,6 +11,12 @@ export default function DocsPage() {
       >
         Merchant wallets, native roles and setup flow →
       </Link>
+      <Link
+        href="/register/example"
+        className="mt-3 block text-sm text-primary underline"
+      >
+        See every service field with example values →
+      </Link>
       <h1 className="mt-4 text-4xl font-medium">
         One verification stack.
         <br />

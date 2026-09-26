@@ -3,7 +3,6 @@ import { selectedWallet } from "./wallet-session";
 import { useState } from "react";
 import {
   bytesToHex,
-  parseUnits,
   createPublicClient,
   createWalletClient,
   custom,
@@ -13,6 +12,13 @@ import {
 import { sepolia } from "viem/chains";
 import { packetToBytes } from "viem/ens";
 import { serviceRegistrarAbi } from "@ens402/sdk/ens/registration";
+import { units } from "./console-format";
+import { validAmount } from "@ens402/sdk";
+import {
+  validateDescription,
+  validateEndpoint,
+  validatePicture,
+} from "@ens402/sdk/ens";
 import { Button } from "./ui/button";
 
 type Provider = {
@@ -39,25 +45,47 @@ export function RegistrationConsole({
   parent,
   getProvider,
   walletAddress,
+  example = false,
 }: {
   registrar: string;
   parent: string;
   getProvider: () => Promise<Provider>;
   walletAddress?: string;
+  example?: boolean;
 }) {
-  const [label, setLabel] = useState(""),
-    [endpoint, setEndpoint] = useState(""),
-    [payTo, setPayTo] = useState(""),
-    [operator, setOperator] = useState(""),
-    [treasury, setTreasury] = useState(""),
-    [description, setDescription] = useState(""),
+  const [label, setLabel] = useState(example ? "weather" : ""),
+    [endpoint, setEndpoint] = useState(
+      example ? "https://api.example.com/weather" : "",
+    ),
+    [payTo, setPayTo] = useState(
+      example ? "0x4444444444444444444444444444444444444444" : "",
+    ),
+    [operator, setOperator] = useState(
+      example ? "0x2222222222222222222222222222222222222222" : "",
+    ),
+    [treasury, setTreasury] = useState(
+      example ? "0x3333333333333333333333333333333333333333" : "",
+    ),
+    [description, setDescription] = useState(
+      example
+        ? "Returns current weather for one city as JSON. One request returns one forecast."
+        : "",
+    ),
     [picture, setPicture] = useState(""),
     [price, setPrice] = useState("0.01");
   const [pending, setPending] = useState<Pending | null>(null),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
   const configured = /^0x[0-9a-fA-F]{40}$/.test(registrar) && !!parent;
+  const descriptionBytes = new TextEncoder().encode(description).length;
+  let atomicPrice = "Invalid amount";
+  try {
+    atomicPrice = units(price);
+  } catch {
+    /* Keep the form editable. */
+  }
   async function run(reveal: boolean) {
+    if (example) return;
     setBusy(true);
     setMessage("");
     try {
@@ -99,14 +127,7 @@ export function RegistrationConsole({
       if (!reveal) {
         if (!/^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$/.test(label))
           throw new Error("Use 3-32 lowercase letters, numbers or hyphens.");
-        const url = new URL(endpoint);
-        if (
-          url.protocol !== "https:" ||
-          url.username ||
-          url.password ||
-          url.hash
-        )
-          throw new Error("Use a public HTTPS endpoint.");
+        const normalizedEndpoint = validateEndpoint(endpoint);
         for (const a of [payTo, operator, treasury])
           if (!/^0x[0-9a-fA-F]{40}$/.test(a) || /^0x0{40}$/.test(a))
             throw new Error("Use nonzero Ethereum addresses.");
@@ -117,35 +138,22 @@ export function RegistrationConsole({
           throw new Error(
             "Ops must differ from the service Admin and Treasury.",
           );
-        if (
-          !description.trim() ||
-          new TextEncoder().encode(description.trim()).length > 1024
-        )
-          throw new Error("Provide a description of at most 1024 bytes.");
-        if (
-          !/^(0|[1-9][0-9]*)(\.[0-9]{1,6})?$/.test(price) ||
-          parseUnits(price, 6) <= 0n
-        )
-          throw new Error(
-            "Use a positive USDC price with at most six decimals.",
-          );
-        if (
-          picture &&
-          (new URL(picture).protocol !== "https:" ||
-            new URL(picture).username ||
-            new URL(picture).password ||
-            new URL(picture).hash)
-        )
-          throw new Error("Use an HTTPS picture URL.");
+        const normalizedDescription = validateDescription(description);
+        if (!normalizedDescription)
+          throw new Error("A service description is required.");
+        const normalizedPicture = validatePicture(picture);
+        const priceUnits = units(price);
+        if (!validAmount(priceUnits) || BigInt(priceUnits) <= 0n)
+          throw new Error("Use a positive USDC amount within uint256 bounds.");
         const service = {
           label,
-          endpoint: url.href,
+          endpoint: normalizedEndpoint,
           payTo: payTo as Address,
           endpointOperator: operator as Address,
           treasury: treasury as Address,
-          description: description.trim(),
-          picture,
-          price: parseUnits(price, 6).toString(),
+          description: normalizedDescription,
+          picture: normalizedPicture,
+          price: priceUnits,
         };
         const secret = bytesToHex(crypto.getRandomValues(new Uint8Array(32)));
         const commitment = await client.readContract({
@@ -222,13 +230,22 @@ export function RegistrationConsole({
       <p className="eyebrow">Publish your service / Sepolia</p>
       <h1 className="mt-4 text-4xl font-medium">Give your API a name.</h1>
       <p className="mt-5 max-w-2xl leading-7 text-muted-foreground">
-        Register a subname with its own native ENS resolver. Delegate API URL
-        edits to an operator and payment settings to Treasury. The wallet that
-        registers is the service Admin and must differ from Ops. It keeps root
-        text administration; the registration contract gives up its resolver
-        permissions.
+        Publish an API and its fixed USDC price. Ops edits the service details;
+        Treasury edits payment terms. Your connected wallet is Service Admin.
       </p>
-      {!configured ? (
+      <div className="mt-5 rounded-xl border bg-card p-4 text-sm leading-6">
+        {example
+          ? "Editable example only. These are placeholder addresses; no wallet connection or transaction is possible here."
+          : "ENS records: Sepolia. Payments: Base Sepolia USDC, 6 decimals."}
+        <p className="mt-2">
+          Service Admin:{" "}
+          {example
+            ? "connected wallet (0x1111…1111 in this example)"
+            : walletAddress || "your connected wallet"}
+          . All fields are required except Picture URL.
+        </p>
+      </div>
+      {!configured && !example ? (
         <div className="mt-8 rounded-xl border p-6">
           <h2 className="text-xl">Namespace setup is pending</h2>
           <p className="mt-3 leading-7 text-muted-foreground">
@@ -258,16 +275,19 @@ export function RegistrationConsole({
             }}
           >
             <label className="text-sm">
-              Subname
+              Subname (required)
               <input
                 className={field}
                 value={label}
                 onChange={(e) => setLabel(e.target.value)}
-                placeholder="kevinweather"
+                placeholder="weather"
+                minLength={3}
+                maxLength={32}
+                pattern="[a-z0-9][a-z0-9-]{1,30}[a-z0-9]"
                 required
               />
               <span className="mt-1 block text-xs text-muted-foreground">
-                .{parent}
+                .{parent} · 3-32 lowercase letters, numbers or internal hyphens
               </span>
             </label>
             <label className="text-sm">
@@ -281,7 +301,7 @@ export function RegistrationConsole({
               />
             </label>
             <label className="text-sm sm:col-span-2">
-              Service description
+              Service description (required)
               <textarea
                 className={field}
                 value={description}
@@ -289,6 +309,12 @@ export function RegistrationConsole({
                 maxLength={1024}
                 required
               />
+              <span
+                className={`mt-1 block text-xs ${descriptionBytes > 1024 ? "text-destructive" : "text-muted-foreground"}`}
+              >
+                {descriptionBytes} / 1024 UTF-8 bytes. Chinese characters
+                usually use 3 bytes each.
+              </span>
             </label>
             <label className="text-sm">
               Picture URL (optional)
@@ -298,7 +324,11 @@ export function RegistrationConsole({
                 value={picture}
                 onChange={(e) => setPicture(e.target.value)}
                 maxLength={2048}
+                placeholder="https://example.com/icon.png"
               />
+              <span className="mt-1 block text-xs text-muted-foreground">
+                Leave blank or use HTTPS, up to 2048 encoded UTF-8 bytes.
+              </span>
             </label>
             <label className="text-sm">
               Fixed price per request (USDC)
@@ -310,10 +340,28 @@ export function RegistrationConsole({
                 required
               />
             </label>
+            <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm sm:col-span-2">
+              <p className="font-medium">
+                {price || "0"} USDC × 10⁶ = {atomicPrice} atomic units
+              </p>
+              <p className="mt-1 text-muted-foreground">
+                ENS pricing.amount and HTTP 402 amount must both equal this
+                integer, on the same chain and token contract. No floating-point
+                rounding.
+              </p>
+            </div>
             {[
               ["USDC recipient", payTo, setPayTo],
-              ["Endpoint operator", operator, setOperator],
-              ["Treasury operator", treasury, setTreasury],
+              [
+                "Ops wallet (endpoint, description, picture)",
+                operator,
+                setOperator,
+              ],
+              [
+                "Treasury wallet (price and payment settings)",
+                treasury,
+                setTreasury,
+              ],
             ].map(([title, value, setter]) => (
               <label key={title as string} className="text-sm">
                 {title as string}
@@ -330,18 +378,19 @@ export function RegistrationConsole({
             ))}
             <div className="sm:col-span-2">
               <p className="text-sm leading-7 text-muted-foreground">
-                Registration is free apart from Sepolia gas. The namespace has a
-                fixed expiry; parent administrators retain native override
+                Publishing a service through this form costs Sepolia gas. Its
+                API price is what future buyers pay per request. The namespace
+                has a fixed expiry; parent administrators retain native override
                 powers. This is not an independent mainnet .eth registration.
               </p>
-              <Button className="mt-5" disabled={busy}>
+              <Button className="mt-5" disabled={busy || example}>
                 1. Commit registration
               </Button>
               <Button
                 type="button"
                 variant="outline"
                 className="ml-3 mt-5"
-                disabled={busy}
+                disabled={busy || example}
                 onClick={() => run(true)}
               >
                 2. Complete / resume registration
