@@ -453,13 +453,6 @@ export function RegistrationConsole({
         for (const a of [owner, operator, treasury])
           if (!/^0x[0-9a-fA-F]{40}$/.test(a) || /^0x0{40}$/.test(a))
             throw new Error("Use nonzero Ethereum addresses.");
-        if (
-          operator.toLowerCase() === treasury.toLowerCase() ||
-          (!shared && operator.toLowerCase() === owner.toLowerCase())
-        )
-          throw new Error(
-            "Ops must differ from the service Admin and Treasury.",
-          );
         const normalizedDescription = validateDescription(description);
         if (!normalizedDescription)
           throw new Error("A service description is required.");

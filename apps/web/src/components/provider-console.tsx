@@ -62,7 +62,7 @@ const walletFields = [
     key: "ops",
     title: "Operations wallet",
     hint: "Updates descriptions, images, API endpoints and call schemas across your services. Cannot change payment terms.",
-    note: "A separate hot wallet or agent wallet.",
+    note: "A wallet or agent that can edit operational settings. Roles may share an address.",
   },
   {
     key: "treasury",

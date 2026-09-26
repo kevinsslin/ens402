@@ -168,13 +168,13 @@ contract ServiceRegistrarTest is NativeENSTest {
         registrar.register(service, secret);
     }
 
-    function testInvalidLabelAndOverlappingWritersRejected() public {
+    function testInvalidLabelAndZeroWritersRejected() public {
         _deploy();
         IServiceRegistrar.Service memory s = _service("Bad.Label");
         vm.expectPartialRevert(IServiceRegistrar.InvalidLabel.selector);
         registrar.register(s, bytes32(0));
         s = _service("weather");
-        s.treasury = s.endpointOperator;
+        s.treasury = address(0);
         vm.expectPartialRevert(IServiceRegistrar.InvalidRecord.selector);
         registrar.register(s, bytes32(0));
     }

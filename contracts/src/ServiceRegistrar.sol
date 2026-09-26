@@ -208,8 +208,8 @@ contract ServiceRegistrar is IServiceRegistrar {
         );
     }
 
-    /// @dev Validate byte bounds and delegate separation; URL reachability is a client concern.
-    function _validate(Service calldata service, address admin) internal view virtual {
+    /// @dev Validate byte bounds and nonzero delegate identities; URL reachability is a client concern.
+    function _validate(Service calldata service, address) internal view virtual {
         bytes memory label = bytes(service.label);
         if (label.length < 3 || label.length > 32 || label[0] == "-" || label[label.length - 1] == "-") {
             revert InvalidLabel();
@@ -223,8 +223,8 @@ contract ServiceRegistrar is IServiceRegistrar {
             endpoint.length < 9 || endpoint.length > 2048 || bytes8(endpoint) != bytes8("https://")
                 || bytes(service.callConfig).length == 0 || bytes(service.callConfig).length > 16384
                 || service.payTo == address(0) || service.endpointOperator == address(0)
-                || service.treasury == address(0) || service.endpointOperator == service.treasury
-                || service.endpointOperator == admin || service.price == 0 || bytes(service.description).length == 0
+                || service.treasury == address(0)
+                || service.price == 0 || bytes(service.description).length == 0
                 || bytes(service.description).length > 1024 || bytes(service.picture).length > 2048
                 || (bytes(service.picture).length > 0
                     && (bytes(service.picture).length < 9 || bytes8(bytes(service.picture)) != bytes8("https://")))

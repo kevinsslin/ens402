@@ -82,14 +82,14 @@ export function SetupProgressCard({
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
           {complete
             ? "Your directory, team permissions and publisher are configured."
-            : "Compatible permission changes are grouped into one transaction. Confirm in your wallet; we continue automatically. Already configured items are skipped."}
+            : "Permission updates on the same resolver are batched into one wallet confirmation. Deployments and other contracts use separate transactions. The checklist below counts configuration checks, not signatures."}
         </p>
         <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
           <span>Setup checklist</span>
           <span>
             {completed === undefined
               ? "Checking configuration"
-              : `${completed} of ${items.length} configured`}
+              : `${completed} of ${items.length} checks passed`}
           </span>
         </div>
         <Progress
@@ -111,7 +111,7 @@ export function SetupProgressCard({
             </span>
             {index !== undefined && (
               <span className="ml-auto text-muted-foreground">
-                Item {index + 1} / {items.length}
+                Check {index + 1} / {items.length}
               </span>
             )}
           </div>
@@ -146,6 +146,7 @@ export function SetupProgressCard({
               </dd>
             </dl>
           )}
+          {actions && actions.length > 1 && <p className="mt-4 rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm font-medium text-primary">{actions.length} permission updates · 1 wallet confirmation</p>}
           {actions && (
             <ul className="mt-4 space-y-2 rounded-lg bg-muted/40 p-4 text-sm">
               {actions.map((action, i) => (
@@ -209,7 +210,7 @@ export function SetupProgressCard({
             <summary className="cursor-pointer text-sm font-medium">
               <span className="ml-1 inline-flex items-center gap-2">{phaseComplete && <Check aria-label="Complete" className="size-4 text-primary" />}{label}</span>
               <span className="float-right text-xs font-normal text-muted-foreground">
-                {phaseComplete ? "Complete" : `${phaseItems.filter(item => item.state === "complete").length} / ${phaseItems.length} complete`}
+                {phaseComplete ? "Complete" : `${phaseItems.filter(item => item.state === "complete").length} / ${phaseItems.length} checks passed`}
               </span>
             </summary>
             <ol className="mt-3 space-y-2">

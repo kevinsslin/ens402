@@ -94,6 +94,26 @@ contract SharedProviderRegistrarTest {
         require(result == address(resolver), "not shared resolver");
     }
 
+    function testOneWalletCanHoldAdminOpsAndTreasury() public {
+        SharedProviderServiceRegistrar combined = new SharedProviderServiceRegistrar(
+            address(registry), address(factory), resolverImpl, parentDNS, expiry,
+            address(resolver), publisher, publisher
+        );
+        registry.grantRootRoles(1, address(combined));
+        string[6] memory keys = ["agent-endpoint[x402]", "description", "avatar", "ens402.call", "ens402.payment", "ens402.status"];
+        for (uint256 i; i < keys.length; ++i) {
+            resolver.grantSetterRoles(abi.encodeCall(ICurrentResolver.setText, (_dns("combined"), keys[i], "")), address(combined));
+        }
+        resolver.grantRootRoles(16 | (uint256(16) << 128), publisher);
+        IServiceRegistrar.Service memory service = _service("combined");
+        service.endpointOperator = publisher;
+        service.treasury = publisher;
+        service.payTo = publisher;
+        vm.prank(publisher);
+        combined.register(service, bytes32(0));
+        require(registry.findOwner("combined") == publisher, "combined role registration failed");
+    }
+
     function testDirectRegistrationWithoutCommitOrDelay() public {
         uint256 before = block.timestamp;
         vm.prank(publisher);

@@ -26,6 +26,7 @@ import {
 } from "../../../../scripts/ens/provider-registrar";
 import artifact from "./provider-artifact.json";
 import legacyArtifact from "./provider-artifact-legacy.json";
+import separatedArtifact from "./provider-artifact-separated.json";
 import { retireRegistrarPlan } from "../../../../scripts/ens/retire-registrar";
 export type ProviderSetup = {
   parent: string;
@@ -266,6 +267,7 @@ export async function planProvider(input: ProviderSetup) {
           legacyArtifact.deployedBytecode.object as Hex,
           legacyArtifact.deployedBytecode.immutableReferences,
         );
+      const separated = existingCode && matchesRuntime(existingCode, separatedArtifact.deployedBytecode.object as Hex, separatedArtifact.deployedBytecode.immutableReferences);
       registrationMode = legacy ? "commit-reveal" : "direct";
       const registrar = await providerRegistrarPlan(
         client,
@@ -278,7 +280,7 @@ export async function planProvider(input: ProviderSetup) {
         resolver,
         ops,
         treasury,
-        (legacy ? legacyArtifact : artifact) as unknown as Parameters<
+        (legacy ? legacyArtifact : separated ? separatedArtifact : artifact) as unknown as Parameters<
           typeof providerRegistrarPlan
         >[10],
       );

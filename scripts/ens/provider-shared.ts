@@ -32,7 +32,6 @@ export async function sharedSetterPlan(client: PublicClient, resolver: Address, 
   return txs;
 }
 export async function sharedResolverPlan(client: PublicClient, admin: Address, ops: Address, treasury: Address, name: string, salt: bigint, blockNumber: bigint, existing?: Address) {
-  if (new Set([admin, ops, treasury].map(a => a.toLowerCase())).size !== 3) throw Error("Provider Admin, Ops and Treasury Admin must be distinct");
   const d = currentDeployment;
   const code = existing && await client.getCode({ address: existing, blockNumber });
   if (!code || code === "0x") {
@@ -44,8 +43,16 @@ export async function sharedResolverPlan(client: PublicClient, admin: Address, o
   const implementation = await client.readContract({ address: d.factory, abi: factoryAbi, functionName: "verifyContract", args: [existing!], blockNumber });
   if (implementation.toLowerCase() !== d.resolverImplementation.toLowerCase()) throw Error("Shared resolver implementation differs");
   if (!await client.readContract({ address: existing!, abi: permissions, functionName: "hasRootRoles", args: [16n | (16n << 128n), admin], blockNumber })) throw Error("Provider Admin resolver governance missing");
-  return { resolver: existing!, salt: String(salt), transactions: [
-    ...await sharedSetterPlan(client, existing!, admin, ops, sharedKeys.slice(0, 4), name, blockNumber),
-    ...await sharedSetterPlan(client, existing!, admin, treasury, ["ens402.payment"], name, blockNumber),
-  ] };
+  const delegates = new Map<string, { account: Address; keys: string[] }>();
+  for (const [account, keys] of [[ops, sharedKeys.slice(0, 4)], [treasury, ["ens402.payment"]]] as const) {
+    // Admin already has root text authority. Other overlapping roles receive their key union.
+    if (account.toLowerCase() === admin.toLowerCase()) continue;
+    const entry = delegates.get(account.toLowerCase()) ?? { account, keys: [] };
+    entry.keys.push(...keys);
+    delegates.set(account.toLowerCase(), entry);
+  }
+  const transactions = (await Promise.all([...delegates.values()].map(({ account, keys }) =>
+    sharedSetterPlan(client, existing!, admin, account, keys, name, blockNumber),
+  ))).flat();
+  return { resolver: existing!, salt: String(salt), transactions };
 }

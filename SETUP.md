@@ -5,7 +5,7 @@ Start with [README.md](README.md) for current scope and status. This file contai
 ## Demo workflow
 
 1. Open `/provider` and connect the wallet that manages your provider. Existing workspaces appear automatically. An email-created Privy wallet does not automatically control an existing ENS name.
-2. Open the workspace to publish or manage services. New providers choose distinct Provider Admin, Ops and Treasury Admin wallets. Treasury Admin can be an EOA, multisig or MPC wallet; it controls payment records, not service-name ownership.
+2. Open the workspace to publish or manage services. Providers assign Admin, Ops and Treasury roles; the same wallet may hold multiple roles. Treasury Admin can be an EOA, multisig or MPC wallet; it controls payment records, not service-name ownership.
 3. Use **Publish service -> Start with a demo**, inspect endpoint metadata, then confirm registration. Older publishers must be upgraded once for single-transaction publication; see the publisher section below.
 4. Use **Refresh listings** after Sepolia finality. The default demo sync runs in Next.js on Vercel; no separate host or Cron is required.
 5. Search for the service, review Guard checks, and fund the displayed buyer with **Base Sepolia USDC** for a purchase. Sepolia gas and Base Sepolia USDC are different balances.
@@ -24,7 +24,7 @@ Put local values in the repository root `.env`. Never paste secrets into chat.
 | `PRIVY_APP_SECRET` | That application's server secret |
 | `SERVICE_ENS_NAME` | Optional comma-separated service suggestions; users may enter other supported ENS names |
 | `ENS_OWNER_ADDRESS` | The wallet or Safe that owns that name and can set its resolver |
-| `ENS_OPERATOR_ADDRESS` | A separate Ops wallet for endpoint, description and picture grants |
+| `ENS_OPERATOR_ADDRESS` | Ops wallet for endpoint, description and picture grants; may also hold other roles |
 | `MERCHANT_PAY_TO` | HTTP 402 recipient; for schema v3 it must equal the current service-name holder, not automatically the Treasury writer |
 | `DATABASE_URL` on Vercel | A durable, network-accessible PostgreSQL connection string. The local DB cannot be reached from Vercel. Use the provider's required TLS settings. |
 
@@ -189,7 +189,7 @@ Run `pnpm ens:permissions:check` after the service is published. Missing setup d
 
 ## Demo wallet assignments
 
-Use three distinct wallets:
+Assign these three roles; separate wallets are optional:
 
 | Responsibility | Public address | Funding |
 | --- | --- | --- |
@@ -212,7 +212,7 @@ ENS official contracts enforce permissions. Interfaces only declare their ABI. P
 | Ops | Separate hashes of endpoint, description, avatar and ens402.call keys | `ROLE_SET_TEXT` |
 | Treasury writer | Hash of `ens402.payment` key | `ROLE_SET_TEXT` |
 
-Shared-provider setup requires three distinct identities: Provider Admin, Ops and Treasury Admin. The older isolated flow permits Treasury to equal Admin, which retains broader authority. A payout recipient gains no ENS role by receiving USDC. These are intended grants, not a live audit.
+Provider Admin, Ops and Treasury Admin may share an address. Shared delegates receive the union of their keys; Admin already has root text rights and needs no redundant setter grants. Previously deployed publishers retain their original on-chain restrictions; deploy a replacement through setup to change those restrictions. A payout recipient gains no ENS role by receiving USDC. These are intended grants, not a live audit.
 
 Our optional `contracts/src/ServiceRegistrar.sol` uses commit/reveal to deploy a native resolver, publish records, grant delegates, hand root text administration to the service registrant and remove its own resolver privileges in one reverting transaction. Commitments wait 60 seconds and expire after one day. It has reentrancy protection, narrow ASCII labels and bounded inputs. Native role constants and deployment pins are in `contracts/src/libraries/`; external ABIs are in `contracts/src/interfaces/`.
 
@@ -256,7 +256,7 @@ The provider receives its own native UserRegistry. No service text rights are in
 
 After linking, run `pnpm ens:provider:plan --with-service-registrar` to prepare a shared provider resolver and the
 SharedProviderServiceRegistrar deployment. Shared mode also requires PROVIDER_OPS_ADDRESS
-and PROVIDER_TREASURY_ADMIN_ADDRESS (three distinct Admin/Ops/Treasury identities). Use
+and PROVIDER_TREASURY_ADMIN_ADDRESS (Admin/Ops/Treasury roles; addresses may overlap). Use
 --isolated-resolvers for separate per-service resolvers. Set `PROVIDER_SERVICE_REGISTRAR_ADDRESS`
 from its receipt, then rerun. The planner verifies runtime bytecode and constructor
 settings before preparing its ROLE_REGISTRAR grant and six specific initialization setter grants: endpoint, description, avatar, ens402.call, payment and status. Ops receives the first four; Treasury Admin receives payment. Neither delegate gets text-administration rights. Provider Admin retains root text writing and regrant authority. Never grant the permissionless

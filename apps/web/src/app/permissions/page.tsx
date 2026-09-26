@@ -71,14 +71,14 @@ export default function PermissionsPage() {
             <p className="mt-3 text-sm leading-7">
               The same Admin receives root text writing and text administration.
               Ops and Treasury receive only their key-scoped setter grants. Each
-              service has its own resolver.
+              provider shares one resolver across its services.
             </p>
           </div>
         </div>
         <p className="mt-5 text-sm leading-7 text-muted-foreground">
           Transferring the name does not transfer the separate resolver
           administrator. Parent or root administrators may retain native powers.
-          An Ops wallet must be different from Admin and Treasury.
+          One wallet can hold multiple roles. Its permissions are the union of those roles.
         </p>
       </section>
       <section className="mt-16">

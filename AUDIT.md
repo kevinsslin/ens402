@@ -225,3 +225,10 @@ The browser verification did not sign in as the real owner or execute wallet tra
 - Reproduced a clean live Intercepta scan whose observation was one second after the pre-scan clock. The old external preparation rejected it as future evidence; evaluating against the post-scan clock correctly continues.
 - External preparation now refreshes time after screening, rechecks approval/freshness before preparing authorization, and retains resolved service, offered terms and risk evidence on failures. Generic errors are replaced with safe stage-specific messages.
 - Five focused regression tests plus four SDK platform tests passed; 28 PostgreSQL store/workflow integration tests passed. No signature or payment was sent during the live scan check.
+
+## Optional wallet separation and batch clarity (2026-09-27)
+
+- Removed mandatory Admin/Ops/Treasury address separation from publication UI, setup planning and newly compiled registrars. Shared delegate identities receive the union of operational/payment keys; resolver Admin requires no redundant grants.
+- Preserved the previously deployed direct registrar artifact for runtime verification. Existing deployed contracts keep their original constraints; this source/artifact change does not upgrade them or submit transactions.
+- Existing native resolver multicall batches remain intact. Setup progress now distinguishes configuration checks from wallet confirmations and labels the current permission batch explicitly.
+- Validation: 58 Solidity tests passed on a pinned Sepolia fork, including successful combined-role publication and isolated-role denial tests. 11 role-planning/batch/checklist tests and workspace typecheck passed.

@@ -42,7 +42,7 @@ contract SharedProviderServiceRegistrar is ProviderServiceRegistrar {
     /// @param expiry_ Fixed Unix expiry for registered service names.
     /// @param sharedResolver_ Existing native resolver owned by provider governance.
     /// @param providerOps_ Nonzero provider Ops identity.
-    /// @param treasurySafe_ Nonzero Treasury Safe identity, different from Ops.
+    /// @param treasurySafe_ Nonzero Treasury identity; may also serve as Ops.
     constructor(
         address registry_,
         address factory_,
@@ -56,7 +56,7 @@ contract SharedProviderServiceRegistrar is ProviderServiceRegistrar {
         if (
             !currentResolver || sharedResolver_.code.length == 0
                 || factory.verifyContract(sharedResolver_) != implementation_ || providerOps_ == address(0)
-                || treasurySafe_ == address(0) || providerOps_ == treasurySafe_
+                || treasurySafe_ == address(0)
         ) revert InvalidConfiguration();
         sharedResolver = sharedResolver_;
         providerOps = providerOps_;

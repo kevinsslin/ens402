@@ -128,7 +128,7 @@ contract CurrentRegistrarTest {
         ICurrentResolver(resolver).setText(dns, "description", "Not treasury scope");
     }
 
-    function testOpsCannotAlsoBeServiceAdmin() public {
+    function testOpsCanAlsoBeServiceAdmin() public {
         IServiceRegistrar.Service memory service = IServiceRegistrar.Service(
             "weather",
             "https://weather.example/api",
@@ -142,9 +142,9 @@ contract CurrentRegistrarTest {
         );
         registrar.commit(registrar.makeCommitment(service, owner, bytes32(uint256(2))));
         vm.warp(block.timestamp + 60);
-        vm.expectPartialRevert(IServiceRegistrar.InvalidRecord.selector);
         vm.prank(owner);
         registrar.register(service, bytes32(uint256(2)));
+        require(registry.findOwner("weather") == owner, "overlapping role owner missing");
     }
 
     function testCurrentNativeRegistrationAndSetterRoles() public {
