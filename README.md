@@ -27,7 +27,7 @@ The human demo confirms the current fixed price and payment wallet. It does not 
 | Keyword and semantic search | Implemented; local live embeddings verified | PostgreSQL full-text search and hybrid ranking; OpenAI generated three persisted fixture vectors. Public indexed catalog remains pending |
 | SDK `discover()` | Implemented; catalog setup pending | Configurable candidate search API client; public API returns 503 until an operator catalog is configured |
 | MCP | Implemented and route-tested | Read-only discovery and resolution at `/api/mcp`; no signing or approval tools |
-| Curvegrid MultiBaas | Root contracts linked on Sepolia; event ingestion pending live activity | Read-only indexed Registry/Resolver history through Governance UI, API and MCP; initial free-plan backfill spans only 100 blocks and does not index every provider resolver |
+| Curvegrid MultiBaas | Root contracts linked on Sepolia; event ingestion pending live activity | Read-only indexed Registry/Resolver history through API and MCP; initial free-plan backfill spans only 100 blocks and does not index every provider resolver |
 | Agent Skill | Implemented | Discovery, source validation, fresh resolution and approved payment instructions in `integrations/agent-skill/SKILL.md` |
 | Merchant onboarding and service dashboard | Implemented; public wallet rehearsal pending | Resumable provider setup, single-transaction shared-provider publication (older registrars retain commit/reveal), listing states and live native permission checks |
 | Address-level merchant analytics | Implemented; hosted scanner setup pending | Finalized USDC receipts, separate evidence classifications, shared-address totals, historical control epochs and reorg replay |

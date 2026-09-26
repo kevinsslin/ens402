@@ -463,7 +463,7 @@ Treasury Admin is a payment-settings role, not a wallet type. `PROVIDER_TREASURY
 
 Set `MULTIBAAS_BASE_URL`, `MULTIBAAS_API_KEY`, `MULTIBAAS_ENS_REGISTRY_ADDRESS` and `MULTIBAAS_ENS_RESOLVER_ADDRESS` as server-only variables. For this demo, the addresses are the native `ens402.eth` child Registry and parent Resolver on Ethereum Sepolia. Run `pnpm exec tsx scripts/multibaas-setup.ts` once to register their event ABIs and link the contracts. The script checks chain ID 11155111. On the free plan, set `MULTIBAAS_START_BLOCK=-80` for an initial window within its 100-block backfill cap. Add the four runtime variables to Vercel Production and redeploy to enable the public feed. Never use a `NEXT_PUBLIC_` prefix for the API key.
 
-`GET /api/governance/activity?kind=Registry|Resolver` and MCP `observe_ens_changes` return bounded, read-only event observations; the landing page shows the same feed. This initial link does not cover every provider Registry or shared Resolver. An empty page means there were no events in the indexed window, not that no ENS changes ever happened. Guard and native EAC checks always use fresh ENS state rather than this index.
+`GET /api/governance/activity?kind=Registry|Resolver` and MCP `observe_ens_changes` return bounded, read-only event observations. This initial link does not cover every provider Registry or shared Resolver. An empty page means there were no events in the indexed window, not that no ENS changes ever happened. Guard and native EAC checks always use fresh ENS state rather than this index.
 
 ### Replace the older provider publisher
 
