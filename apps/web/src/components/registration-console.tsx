@@ -59,7 +59,13 @@ export function RegistrationConsole({
   direct = false,
   restricted = false,
   shared,
+  compact = false,
+  onComplete,
+  onBusyChange,
 }: {
+  compact?: boolean;
+  onComplete?: (name: string) => void;
+  onBusyChange?: (busy: boolean) => void;
   registrar: string;
   parent: string;
   getProvider: () => Promise<Provider>;
@@ -148,6 +154,9 @@ export function RegistrationConsole({
   const [pending, setPending] = useState<Pending | null>(null),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
+  useEffect(() => {
+    onBusyChange?.(busy);
+  }, [busy, onBusyChange]);
   const configured = /^0x[0-9a-fA-F]{40}$/.test(registrar) && !!parent;
   const descriptionBytes = new TextEncoder().encode(description).length;
   let atomicPrice = "Invalid amount";
@@ -340,9 +349,11 @@ export function RegistrationConsole({
         }
         sessionStorage.removeItem(storageKey);
         setPending(null);
-        window.location.assign(
-          `/merchant?provider=${encodeURIComponent(parent)}&service=${encodeURIComponent(`${draft.service.label}.${parent}`)}`,
-        );
+        if (onComplete) onComplete(`${draft.service.label}.${parent}`);
+        else
+          window.location.assign(
+            `/merchant?provider=${encodeURIComponent(parent)}&service=${encodeURIComponent(`${draft.service.label}.${parent}`)}`,
+          );
       }
       if (direct && pending?.registrationHash) {
         await finishRegistration(pending, pending.registrationHash);
@@ -568,9 +579,11 @@ export function RegistrationConsole({
           throw new Error("Registration reverted.");
         sessionStorage.removeItem(storageKey);
         setPhase("awaiting index");
-        window.location.assign(
-          `/merchant?provider=${encodeURIComponent(parent)}&service=${encodeURIComponent(`${draft.service.label}.${parent}`)}`,
-        );
+        if (onComplete) onComplete(`${draft.service.label}.${parent}`);
+        else
+          window.location.assign(
+            `/merchant?provider=${encodeURIComponent(parent)}&service=${encodeURIComponent(`${draft.service.label}.${parent}`)}`,
+          );
         setPending(null);
         setMessage(
           `Registered ${draft.service.label}.${parent}. ${shared ? "Your wallet owns the name; Provider Admin retains shared resolver governance." : "Your wallet owns the name and resolver administration."} Listing awaits finalized index synchronization. Transaction: ${hash}`,
@@ -584,9 +597,13 @@ export function RegistrationConsole({
     }
   }
   return (
-    <section className="py-8">
-      <p className="eyebrow">Publish your service / Sepolia</p>
-      <h2 className="mt-3 text-3xl font-medium">Publish a service</h2>
+    <section className={compact ? "min-w-0 break-words py-2" : "min-w-0 py-8"}>
+      {!compact && (
+        <>
+          <p className="eyebrow">Publish your service / Sepolia</p>
+          <h2 className="mt-3 text-3xl font-medium">Publish a service</h2>
+        </>
+      )}
       <p className="mt-5 max-w-2xl leading-7 text-muted-foreground">
         {shared
           ? "Add your API and price. Existing provider delegates manage its records."
@@ -596,7 +613,7 @@ export function RegistrationConsole({
         {example
           ? "Example only · Placeholder addresses · Transactions disabled."
           : "ENS records: Sepolia. Payments: Base Sepolia USDC, 6 decimals."}
-        <p className="mt-2">
+        <p className="mt-2 break-words">
           {shared ? "Service name owner: " : "Service Admin: "}
           {example
             ? "connected wallet (0x1111…1111 in this example)"
@@ -661,7 +678,7 @@ export function RegistrationConsole({
       ) : (
         <>
           <form
-            className="mt-8 grid gap-5 rounded-xl border p-6 sm:grid-cols-2"
+            className="mt-8 grid min-w-0 gap-5 rounded-xl border p-4 sm:grid-cols-2 sm:p-6 [&>*]:min-w-0 [&_label]:min-w-0"
             onChange={invalidateDraft}
             onSubmit={(e) => {
               e.preventDefault();
@@ -830,7 +847,7 @@ export function RegistrationConsole({
                   <summary className="cursor-pointer">
                     How price matching works
                   </summary>
-                  <p className="mt-2">
+                  <p className="mt-2 break-words">
                     Both ENS and HTTP 402 use this integer amount, on the same
                     chain and token contract.
                   </p>

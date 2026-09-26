@@ -15,7 +15,14 @@ import {
 import { SetupProgressCard, type SetupActivity } from "./setup-progress-card";
 import { selectedWallet } from "./wallet-session";
 import { PlatformBootstrap } from "./platform-bootstrap";
-import { RegistrationConsole } from "./registration-console";
+import { PublishServiceDialog } from "./publish-service-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "./ui/dialog";
 import type { ProviderSetup } from "@/server/provider-plan";
 type Provider = {
   request(args: { method: string; params?: unknown[] }): Promise<unknown>;
@@ -168,7 +175,12 @@ export function ProviderConsole({
     }
     fetch(
       `/api/provider/directory?wallet=${encodeURIComponent(walletAddress)}`,
-      { signal: AbortSignal.any([controller.signal, AbortSignal.timeout(25_000)]) },
+      {
+        signal: AbortSignal.any([
+          controller.signal,
+          AbortSignal.timeout(25_000),
+        ]),
+      },
     )
       .then(async (response) => {
         const data = await response.json();
@@ -193,8 +205,8 @@ export function ProviderConsole({
             error instanceof Error && error.name === "TimeoutError"
               ? "Sepolia is taking too long to return your workspaces. Retry the lookup or open a known provider. No transaction was sent."
               : error instanceof Error
-              ? error.message
-              : "Provider lookup unavailable",
+                ? error.message
+                : "Provider lookup unavailable",
           );
       })
       .finally(() => {
@@ -265,35 +277,30 @@ export function ProviderConsole({
       }));
     setPlan(null);
   }, [storageKey, walletAddress]);
-  const openedPublication = useRef("");
+  const [publishing, setPublishing] = useState<string | null>(null);
   useEffect(() => {
-    const requested = new URLSearchParams(window.location.search).get(
-      "provider",
-    );
+    const query = new URLSearchParams(window.location.search);
+    if (window.location.hash === "#publish-first-service")
+      setPublishing(query.get("provider"));
+    if (query.get("setup") === "1") setCreating(true);
+  }, []);
+  const completedSetup = useRef("");
+  useEffect(() => {
     if (
-      window.location.hash !== "#publish-first-service" ||
-      !setup.registrar ||
-      pending ||
+      !creating ||
       busy ||
-      running.current ||
-      !walletAddress
+      !plan?.ready ||
+      completedSetup.current === plan.name
     )
       return;
-    const name = `${setup.label}.${setup.parent}`;
-    if (requested && requested !== name) return;
-    if (openedPublication.current === name) return;
-    openedPublication.current = name;
-    setCreating(true);
-    void run();
-  }, [setup.registrar, setup.label, pending, busy, walletAddress]);
-  useEffect(() => {
-    if (plan?.ready && window.location.hash === "#publish-first-service")
-      document
-        .getElementById("publish-first-service")
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [plan?.ready]);
+    completedSetup.current = plan.name;
+    setCreating(false);
+    setDirectoryVersion((v) => v + 1);
+  }, [creating, busy, plan]);
   function startNew() {
     setCreating(true);
+    completedSetup.current = "";
+    setPublicationMode(false);
     localStorage.removeItem(storageKey);
     setSetup({
       parent,
@@ -305,9 +312,7 @@ export function ProviderConsole({
       salt: BigInt(`0x${crypto.randomUUID().replaceAll("-", "")}`).toString(),
     });
     setPlan(null);
-    setMessage(
-      "Previous provider setup remains saved by name. Start a new namespace below.",
-    );
+    setMessage("Choose a workspace name and its management wallets.");
   }
   async function refresh(current = setup, prepare = false) {
     const response = await fetch("/api/provider/plan", {
@@ -467,9 +472,7 @@ export function ProviderConsole({
       <p className="eyebrow">Onboard your service</p>
       <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-4xl sm:text-5xl">
-            {publicationMode ? "Publish your API" : "Your services"}
-          </h1>
+          <h1 className="text-4xl sm:text-5xl">Your services</h1>
           <p className="mt-3 max-w-xl text-muted-foreground">
             {publicationMode
               ? "Choose a demo or connect your own x402 endpoint."
@@ -505,7 +508,8 @@ export function ProviderConsole({
           className="mt-8 flex items-center gap-2 text-sm text-muted-foreground"
         >
           <RefreshCw className="size-4 animate-spin" />
-          Reading your workspaces and services from Sepolia. No signature needed…
+          Reading your workspaces and services from Sepolia. No signature
+          needed…
         </p>
       )}
       {directoryError && (
@@ -530,7 +534,7 @@ export function ProviderConsole({
           </div>
         </div>
       )}
-      {!publicationMode && directory && directory.providers.length > 0 && (
+      {directory && directory.providers.length > 0 && (
         <div className="mt-10 space-y-10">
           <section aria-labelledby="workspaces-heading">
             <h2 id="workspaces-heading" className="text-2xl">
@@ -645,16 +649,14 @@ export function ProviderConsole({
             </div>
             <div className="mt-4 flex flex-wrap gap-3">
               {directory.providers.map((provider) => (
-                <Button asChild key={provider.name} variant="ghost">
-                  <a
-                    href={`/provider?provider=${encodeURIComponent(provider.name)}#publish-first-service`}
-                  >
-                    <Plus className="mr-2 size-4" />
-                    Publish service
-                    {directory.providers.length > 1
-                      ? ` · ${provider.name}`
-                      : ""}
-                  </a>
+                <Button
+                  key={provider.name}
+                  variant="ghost"
+                  onClick={() => setPublishing(provider.name)}
+                >
+                  <Plus className="mr-2 size-4" />
+                  Publish service
+                  {directory.providers.length > 1 ? ` · ${provider.name}` : ""}
                 </Button>
               ))}
             </div>
@@ -671,11 +673,44 @@ export function ProviderConsole({
             getProvider={getProvider}
           />
         )}
-      {(creating ||
-        hasSetupProgress ||
-        busy ||
-        (directory && directory.providers.length === 0)) && (
-        <>
+      {directory && directory.providers.length === 0 && !directoryLoading && (
+        <div className="mt-8 rounded-2xl border border-dashed p-8">
+          <h2 className="text-xl">Create your first workspace</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Group your services under one ENS name and choose who manages them.
+          </p>
+          <Button className="mt-5" onClick={startNew}>
+            Create workspace
+          </Button>
+        </div>
+      )}
+      {(pending || (plan && !plan.ready)) && !creating && (
+        <Button className="mt-6" onClick={() => setCreating(true)}>
+          Continue workspace setup
+        </Button>
+      )}
+      <Dialog
+        open={creating}
+        onOpenChange={(open) => {
+          if (!busy) setCreating(open);
+        }}
+      >
+        <DialogContent
+          className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl"
+          showCloseButton={!busy}
+          onInteractOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => {
+            if (busy) e.preventDefault();
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>
+              {plan || pending ? "Set up workspace" : "Create workspace"}
+            </DialogTitle>
+            <DialogDescription>
+              Choose an ENS name and assign your team's management wallets.
+            </DialogDescription>
+          </DialogHeader>
           <div hidden={publicationMode && !!plan?.ready}>
             <ol
               aria-label="Onboarding progress"
@@ -714,7 +749,7 @@ export function ProviderConsole({
                 className="overflow-hidden rounded-b-2xl bg-white"
               >
                 <div className="border-b bg-slate-50/70 px-6 py-5 sm:px-8">
-                  <h2 className="text-2xl">Create a provider</h2>
+                  <h2 className="text-2xl">Workspace details</h2>
                   <p className="mt-2 text-sm text-muted-foreground">
                     A provider groups your services under one ENS name and one
                     set of management wallets.
@@ -1026,27 +1061,36 @@ export function ProviderConsole({
                   </Button>
                 </div>
               )}
-              <div id="publish-first-service" className="scroll-mt-28">
-                <RegistrationConsole
-                  key={setup.registrar}
-                  direct={plan.registrationMode === "direct"}
-                  getToken={getToken}
-                  registrar={setup.registrar}
-                  parent={plan.name}
-                  restricted
-                  shared={{
-                    resolver: setup.resolver,
-                    ops: setup.ops,
-                    treasury: setup.treasury,
-                  }}
-                  walletAddress={walletAddress}
-                  getProvider={getProvider}
-                />
-              </div>
+              <Button
+                className="mt-5"
+                onClick={() => {
+                  setCreating(false);
+                  setPublishing(plan.name);
+                }}
+              >
+                Publish service
+              </Button>
             </>
           )}
-        </>
-      )}
+        </DialogContent>
+      </Dialog>
+      <PublishServiceDialog
+        provider={publishing}
+        walletAddress={walletAddress}
+        getToken={getToken}
+        getProvider={getProvider}
+        onClose={() => {
+          setPublishing(null);
+          setPublicationMode(false);
+          window.history.replaceState(null, "", "/provider");
+        }}
+        onComplete={() => {
+          setPublishing(null);
+          setPublicationMode(false);
+          window.history.replaceState(null, "", "/provider");
+          setDirectoryVersion((v) => v + 1);
+        }}
+      />
     </section>
   );
 }

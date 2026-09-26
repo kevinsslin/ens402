@@ -1,4 +1,5 @@
 "use client";
+import { PublishServiceDialog } from "./publish-service-dialog";
 import { useEffect, useRef, useState } from "react";
 import { formatUnits } from "viem";
 import { MerchantAnalytics } from "./merchant-analytics";
@@ -119,7 +120,7 @@ export function MerchantConsole({
       if (version === requestVersion.current) setBusy(false);
     }
   }
-  const publishUrl = `/provider?provider=${encodeURIComponent(result?.provider || provider)}#publish-first-service`;
+  const [publishing, setPublishing] = useState(false);
   return (
     <section className="mx-auto max-w-6xl px-5 py-10 sm:px-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -133,11 +134,9 @@ export function MerchantConsole({
           </p>
         </div>
         {provider && (
-          <Button asChild>
-            <a href={publishUrl}>
-              <Plus className="mr-2 size-4" />
-              Publish service
-            </a>
+          <Button onClick={() => setPublishing(true)}>
+            <Plus className="mr-2 size-4" />
+            Publish service
           </Button>
         )}
       </div>
@@ -211,10 +210,7 @@ export function MerchantConsole({
                 role="status"
                 className="rounded-lg border bg-muted/40 px-4 py-3 text-sm"
               >
-                <p>
-                  {refreshNotice ||
-                    result.indexError}
-                </p>
+                <p>{refreshNotice || result.indexError}</p>
                 <details className="mt-2 text-xs text-muted-foreground">
                   <summary className="cursor-pointer">
                     About search visibility
@@ -242,7 +238,9 @@ export function MerchantConsole({
                   name.
                 </p>
                 <Button asChild className="mt-5">
-                  <a href={publishUrl}>Publish a service</a>
+                  <button type="button" onClick={() => setPublishing(true)}>
+                    Publish a service
+                  </button>
                 </Button>
                 <p className="mt-4 text-xs text-muted-foreground">
                   Already registered? Refresh search listings, or open the
@@ -284,7 +282,11 @@ export function MerchantConsole({
                         )}
                         <a
                           className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary"
-                          href={row.controlled ? `/service?name=${encodeURIComponent(row.name)}` : `/console?service=${encodeURIComponent(row.name)}`}
+                          href={
+                            row.controlled
+                              ? `/service?name=${encodeURIComponent(row.name)}`
+                              : `/console?service=${encodeURIComponent(row.name)}`
+                          }
                         >
                           {row.controlled ? "Manage service" : "Open service"}
                           <ArrowUpRight className="size-3" />
@@ -443,6 +445,17 @@ export function MerchantConsole({
           </TabsContent>
         </Tabs>
       )}
+      <PublishServiceDialog
+        provider={publishing ? result?.provider || provider : null}
+        walletAddress={walletAddress}
+        getToken={getToken}
+        getProvider={getProvider}
+        onClose={() => setPublishing(false)}
+        onComplete={() => {
+          setPublishing(false);
+          void load();
+        }}
+      />
     </section>
   );
 }
