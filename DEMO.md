@@ -8,7 +8,7 @@ The paid API registers `<label>.ens402.eth` directly to a recipient on ENSv2 Sep
 
 1. Complete the native namespace setup in `AUDIT.md`. Run `pnpm ens:namespace:plan --native-only` for the unsigned parent-owner transactions. Fund and grant the dedicated worker only `ROLE_REGISTRAR`.
 2. Publish a service such as `buy.ens402.eth` with its own native resolver, description, active status, registration endpoint and schema-v2 fixed USDC price. Use `pnpm ens:plan` for existing-service records and grants. The paid-name flow does not require the optional custom ServiceRegistrar.
-3. Configure the production variables listed in `USER-TODO.md`. Keep the worker private key server-only. Check expiry and gas before presenting.
+3. Configure the production variables listed in `SETUP.md`. Keep the worker private key server-only. Check expiry and gas before presenting.
 4. Sign in to Console, resolve the service, review the fixed price and approve the exact endpoint and buyer limits. Fund the displayed payer with Base Sepolia USDC.
 5. Choose a fresh 3-32 character lowercase label and a recipient. Contract recipients must accept native ERC1155 transfers.
 

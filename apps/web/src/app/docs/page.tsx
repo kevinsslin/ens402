@@ -273,7 +273,7 @@ Content-Type: application/json
       </section>
       <p className="mt-10 text-sm text-muted-foreground">
         Testnet prototype. A running login screen does not prove a funded
-        end-to-end payment. See SETUP.md, IMPLEMENTATION.md and USER-TODO.md in
+        end-to-end payment. See README.md and SETUP.md in
         the repository for deployment gates and validation evidence.
       </p>
     </article>

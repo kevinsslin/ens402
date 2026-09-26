@@ -5,7 +5,7 @@ description: Purchase approved x402 resources through ENS402 with a scoped agent
 
 # ENS402 agent payments
 
-The human first approves a service, recipient, exact GET endpoints, amount limit, daily budget and expiry in the Console. A server runtime stores the resulting agent API key as `ENS402_AGENT_KEY`. Never ask for or expose the platform's Privy App Secret. Never place secrets in prompts or source code.
+The human first approves a service, recipient, exact endpoints, amount limit, daily budget and expiry in the Console. A server runtime stores the resulting agent API key as `ENS402_AGENT_KEY`. Never ask for or expose the platform's Privy App Secret. Never place secrets in prompts or source code.
 
 Use `ENS402Client` from `@ens402/sdk/platform` in this repository. The package is not published to npm yet. This Skill provides instructions, not an authenticated tool or a sandbox boundary; the host must expose SDK calls as tools.
 
@@ -18,4 +18,6 @@ Use `ENS402Client` from `@ens402/sdk/platform` in this repository. The package i
 7. If the service, recipient, authority or request scope changes, request human approval. The API key cannot create wallets, modify policy or approve another service.
 8. Cancel only an unsent reserved attempt. Revocation cannot invalidate a payment authorization already signed and disclosed.
 
-The supported hosted resource request is GET to the exact ENS-published URL. Arbitrary POST bodies, forwarded credentials, cross-origin redirects and smart-contract wallet signatures are not currently supported. Screening is Intercepta Ethereum-mainnet address evidence, not a service-quality guarantee. All payments use Base Sepolia test USDC.
+The hosted resource supports GET or bounded JSON POST to the exact ENS-published URL. POST requires a UUID v4 orderId and merchant support for ENS402 request binding; pass the same request bytes through preparation and signing. Forwarded credentials, cross-origin redirects and smart-contract wallet signatures are not supported. Screening is Intercepta Ethereum-mainnet address evidence, not a service-quality guarantee. All payments use Base Sepolia test USDC.
+
+Discovery is not implemented yet. This Skill provides payment instructions only; it does not expose a search tool or an MCP server. See the repository README for current scope.

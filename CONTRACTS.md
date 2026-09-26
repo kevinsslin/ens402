@@ -22,7 +22,7 @@ Role and scope are separate. `ROLE_SET_TEXT = 16` is the same action for Ops and
 
 | Wallet | Contract / resource | Native roles | Effect |
 | --- | --- | --- | --- |
-| Ops | Dedicated resolver / `keccak256("agent-endpoint[x402]")` | `ROLE_SET_TEXT` | Update the separately granted endpoint, description or picture key |
+| Ops | Dedicated resolver / separate `keccak256(key)` grants for endpoint, description and avatar | `ROLE_SET_TEXT` | Update the separately granted endpoint, description or picture key |
 | Treasury writer | Dedicated resolver / `keccak256("ens402.payment")` | `ROLE_SET_TEXT` | Update payment record only |
 | Service Admin | Dedicated resolver / root `0` | `ROLE_SET_TEXT`, `ROLE_SET_TEXT_ADMIN` | Write every text key, grant/revoke writers |
 | Service Admin | UserRegistry / service name | `ROLE_SET_RESOLVER`, `ROLE_SET_RESOLVER_ADMIN`, `ROLE_CAN_TRANSFER_ADMIN` | Manage resolver pointer and native name transfer |

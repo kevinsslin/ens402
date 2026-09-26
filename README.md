@@ -1,89 +1,101 @@
-# ENS402
+# ENS402: start here
 
-**Discover. Govern. Guard.**
+**Discover. Govern. Guard.** ENS402 puts x402 service configuration on ENS, governs updates with native EAC, and verifies payment requests before agents sign.
 
-ENS402 puts x402 service configuration on ENS, governs updates with native EAC, and verifies payment requests before agents sign.
+This is the single current scope and status overview. Updated September 26, 2026 against implementation `d0bc5c4`. A feature being implemented or tested on Anvil does not mean it is configured on the public testnet.
 
-An agent resolves a merchant's current API through ENS, compares the HTTP 402 bill with public payment settings, screens the recipient, and asks its wallet to sign. Native ENSv2 EAC lets an operator update the API URL without permission to change the payment recipient.
+## What works, and what does not yet
 
-## Three connected layers
+| Area | Status | What that means |
+| --- | --- | --- |
+| ENS service records | Implemented and fork-tested | Resolve a known name; read description, optional picture, endpoint, status and fixed-price payment terms |
+| Native EAC | Implemented and fork-tested | Scoped Ops/Treasury writes, Admin grants, rejected unauthorized edits, revocation and root-override detection |
+| Guard SDK | Implemented and tested | Compare actual HTTP 402 with fresh ENS, check consent and risk, sign and verify settlement |
+| Privy and self signing | Implemented | Hosted approvals, agent keys, dedicated managed wallets and independent EOA signing; live Privy signature/policy tests passed |
+| Intercepta | Implemented; live clean scan/cache tested | Ethereum-mainnet address evidence; risky/failure cases use test fixtures, not verified API-quality ratings |
+| Console and provider forms | Implemented | Landing, architecture, service inspection, approvals, native edits, receipts and editable example form |
+| Neon | Connected and migration tested | Existing accounts, approvals, budgets and payment/order ledger; no search or vector tables yet |
+| Paid subname endpoint | Implemented; dual-Anvil tested | Register `<label>.ens402.eth` directly to a recipient; public namespace and worker setup still required |
+| Public funded purchase | Pending setup and verification | Parent registry, service resolver, actual grants, worker gas, buyer funding and human login remain |
+| Envio indexer | Not implemented | No chain-event ingestion, catalog reconstruction or indexer deployment yet |
+| Keyword and semantic search | Required next; not implemented | No search index, embeddings, query ranking or Search API yet |
+| SDK `discover()` | Not implemented | Existing SDK resolves known names; it does not search for unknown services |
+| MCP | Not implemented | Intended thin interface over the same discovery/resolve capabilities |
+| Agent Skill | Payment instructions exist | `integrations/agent-skill/SKILL.md`; discovery instructions/tools are not implemented |
+| Provider registry tree | Planned | Direct subnames are implemented; platform/provider/service onboarding is not |
+| Buy an arbitrary `.eth` | Not implemented | Requires official ETHRegistrar availability, rent, funding and commit/reveal integration |
+| Rich call schema, version aliases | Planned | Description alone does not tell an agent every input needed to call an API |
+| World, ERC-8004, session keys | Deferred | Not mandatory runtime dependencies |
 
-| Layer | Responsibility |
+## The three layers
+
+- **Discover / ENS:** publish and read what a service does, where it runs and how it gets paid. Known-name resolution exists; searchable discovery is the next implementation.
+- **Govern / native EAC:** ENS contracts check permission when a wallet changes a record. Chain transactions and events make changes traceable. This does not validate an HTTP bill.
+- **Guard / SDK:** before requesting a signature, compare HTTP 402 with current ENS terms and buyer approval, then apply screening. Unrestricted keys can bypass this flow.
+
+These are functional layers, not three levels of domain names. The optional platform/provider/service tree is a separate future organization model. Services need not use our parent namespace.
+
+## Agreed discovery direction
+
+Envio indexes supported public ENS registries and their lifecycle. Our Search API serves candidates from that indexed data. SDK and MCP share that API, with a configurable base URL so another operator can provide it.
+
+```text
+ENS public records/events
+  -> Envio indexing and current-state synchronization
+  -> searchable service records + description embeddings
+  -> Search API
+  -> SDK discover() / MCP / Console
+  -> choose a candidate -> fresh ENS read -> Guard -> signer
+```
+
+**User-confirmed search asset default:** Base Sepolia USDC, network `eip155:84532`, contract `0x036cbd53842c5426634e7929541ec2318f3dcf7e`, 6 decimals. This is a default for the future search interface; the current payment implementation only supports this asset.
+
+Proposed API fields, not an implemented endpoint:
+
+| Field | Meaning |
 | --- | --- |
-| ENS / Discovery | Public service configuration that independent indexers can use to reconstruct catalogs. |
-| Native EAC / Governance | Scoped configuration updates: Ops maintains descriptions and endpoints, Treasury maintains payment terms, and Admin manages grants. |
-| ENS402 SDK / Guard | Compare actual HTTP 402 requests with current ENS configuration and buyer approval before requesting a signature. |
+| `query` | Natural-language service request |
+| `paymentNetwork` | Payment chain, distinct from the ENS indexing chain |
+| `assetAddress` | Token contract on that payment chain; defaults to the supported USDC |
+| `maxPricePerRequestAtomic` | Optional per-request ceiling in atomic units; omitted means no price filter, zero means free only |
+| `pageSize` | Result count, suggested default 10; never a payment budget |
 
-Registration and management are the provider entry point. The Console is a reference application using the SDK through its backend; other applications can integrate the same core with their own signer.
+Keyword and semantic search are required. Exact-name matches should remain strong; typo similarity can be a fallback. Semantic relevance means suitability for the query, not safety, reliability or reputation. Monetary filters compare the same chain/token and integer units. `0.01 USDC = 10000` atomic units. A search filter never grants payment authority.
 
-Description, optional picture and fixed-price publication/comparison are implemented. Open indexing remains planned. Existing payment checks do not imply these features are implemented. EAC controls ENS writes, while integrated clients detect conflicting HTTP responses. ENS resolution does not proxy traffic, and endpoint changes remain subject to buyer approval.
+### Storage and embeddings: proposed, not provisioned
 
-## Components
+- Existing Neon PostgreSQL holds application data. Envio has its own indexing/storage deployment requirements, still to be validated.
+- Prefer a separate search schema in the existing Neon database, with PostgreSQL full-text search and `pgvector` if supported by the selected deployment. A dedicated vector database is not inherently necessary. Do not give a public indexer access to buyer/payment tables.
+- Embeddings are vectors computed from public service metadata by a selected model. Recompute when the indexed content changes; store the content hash, model/version and source block. Compute a query vector at search time. Price and roles are structured data, not facts inferred from embeddings.
+- Model/provider, dimensions, Envio-to-search synchronization, retry/backfill/reorg handling and database permissions remain implementation decisions. No embedding provider credentials or vector migration are configured by this proposal.
+- Search is an offchain view. Other operators can reproduce the supported raw catalog once the indexer is built; their model and ranking may differ. Re-resolve ENS before payment. Do not claim globally complete search, fair ranking or automatic quality verification.
 
-- `apps/web`: shadcn/ui landing, architecture/pitch, fixture examples, authenticated operating console and server APIs.
-- `packages/sdk`: pinned ENSv2 resolution and native transaction preparation, request checks, Intercepta adapter, provider-independent signing, real x402 v2 HTTP exchange and on-chain settlement verification.
-- `packages/server`: Privy reference wallet provisioning, explicit approvals, PostgreSQL daily reservations and idempotent receipts, merchant/facilitator integration and reconciliation.
-- `contracts`: commit/reveal service registrar with dedicated native ENS resolvers and EAC delegation, plus reproducible Sepolia fork tests. See [CONTRACTS.md](CONTRACTS.md).
+## Next work, in order
 
-```mermaid
-flowchart LR
-  O[API operator] -->|Endpoint permission| E[ENSv2 native resolver]
-  T[Treasury] -->|Payment record permission| E
-  A[Agent selects service] --> R[Resolve ENS configuration]
-  E --> R
-  R --> V[Compare actual HTTP 402]
-  V --> I[Intercepta screening]
-  I --> P[Approval and budget check]
-  P --> W[Privy reference signer or integrator wallet]
-  W --> F[Merchant and facilitator]
-  F --> C[Verify Base Sepolia transfer and nonce]
-  C --> D[Decision receipt and resource]
-```
+1. Implement Envio ingestion and deterministic catalog reconstruction for explicitly supported roots, including changes, expiry and reorg handling.
+2. Add search records, keyword indexes, an embedding job and semantic retrieval. Verify updates/deletions invalidate stale results.
+3. Expose Search API, SDK `discover()` and the Console search flow. Demonstrate fresh ENS verification after candidate selection.
+4. Add MCP tools and update the existing agent Skill to use discovery. Define minimum call metadata for autonomous API use.
+5. Complete public namespace/service setup and the funded two-chain demo. Detailed actions are in SETUP.md.
 
-## Run
+Buying an independent `.eth` remains a separate merchant adapter, not a requirement for discovery.
 
-Use Node 22+, pnpm, PostgreSQL CLI tools, and Foundry for fork tests. See [SETUP.md](SETUP.md) for exact environment, ENS and funding steps. Preserve existing `.env` and `.env.local`; never commit credentials.
+## Verified evidence
 
-```sh
-pnpm install
-pnpm db:local
-pnpm db:migrate
-pnpm setup:check
-pnpm dev
-```
+Latest implementation validation: **98 unit tests, 28 PostgreSQL integration tests, 32 Solidity fork tests**, complete dual-Anvil flow, typecheck and production build passed. Actual USDC contract decimals were read as 6. Live Intercepta clean scan/cache and live Privy signing/policy-denial checks passed. Browser checks covered public forms and diagrams, including 390px layout.
 
-`/permissions` explains each wallet, resource and native role. [scripts/ens/README.md](scripts/ens/README.md) separates platform setup from service setup. `/architecture` is the sponsor walkthrough. `/console` supports Privy user login and scoped agent keys; `/operator` retains the admin-token workflow. `/docs` explains managed and self-signing integrations. `/register` enables native subdomain registration once the parent namespace is configured. Landing-page examples are labeled fixtures.
+Public funded end-to-end purchase and deployed service roles remain unverified. Latest recorded parent read: Sepolia block 11786000, `ens402.eth` owned but child registry unset. See AUDIT.md for evidence scope; this table does not imply a fresh chain read on every documentation edit.
 
-## Verify
+## Only open another document for a specific task
 
-```sh
-pnpm test
-pnpm test:integration
-pnpm test:contracts
-pnpm test:ens:fork
-pnpm test:anvil
-pnpm typecheck
-pnpm build
-pnpm test:intercepta:live
-pnpm test:privy:live
-```
+| Need | Document |
+| --- | --- |
+| What exists, what is missing, next priorities | **This README** |
+| Environment values, owner actions, funding and setup commands | [SETUP.md](SETUP.md) |
+| Exact native roles, custom contracts and deployment boundaries | [CONTRACTS.md](CONTRACTS.md) |
+| Test evidence, audit findings and recovery limitations | [AUDIT.md](AUDIT.md) |
+| Presentation sequence | [DEMO.md](DEMO.md) |
 
-Integration tests use real temporary PostgreSQL databases and simulated external providers. Fork tests execute native ENS contracts and actual SDK resolution, with fork-local registrations. Genuine Intercepta scanning has passed. Live Privy signing and seven policy-denial checks passed. Public registered-name writes, human login and funded public payment settlement still require [USER-TODO.md](USER-TODO.md). See [IMPLEMENTATION.md](IMPLEMENTATION.md) for evidence and remaining gates.
+The filled-in form is at `/register/example`; the SDK integration guide is at `/docs`. Source lives in `apps/web`, `packages/sdk`, `packages/server` and `contracts`. SDK packages are workspace packages, not npm releases.
 
-## Integration and trust
-
-`@ens402/sdk/ens` resolves supported registered names and prepares native record/grant transactions. `@ens402/sdk/http` obtains and checks the challenge, signs only after screening and a fresh ENS read, submits once, and verifies settlement through the caller's chain adapter. Lower-level `preparePayment` remains available for existing payment clients.
-
-ENS enforces record writes. The SDK validates values and payment consistency. Ownership/resolver/version observations do not enumerate every admin grant or ancestor control path. Custom records `ens402.payment` and `ens402.status`, and the x402 value in `agent-endpoint[x402]`, are application conventions, not official ENS standards.
-
-Privy is the default demo signer. Its policy is designed to restrict each authorization's chain, token, recipient, amount and expiry. Live signing and policy-denial tests passed with the configured credentials. Daily totals are enforced by the reference backend database. The Privy app secret can change policies, so that backend remains trusted. Other integrators can supply their own wallet and policy infrastructure.
-
-Intercepta returns address-risk evidence, not service quality. Its bounded one-hour cache never substitutes expired evidence after failure. Ethereum mainnet evidence is supplementary to Base Sepolia payments. World identity and ERC-8004 reputation remain future inputs and pitch context.
-
-Vercel project `ens402` uses root `apps/web`. ENS uses Sepolia; payments use Base Sepolia only. Local research, decisions and validation receipts are under Git-ignored `docs/`.
-
-For the presentation sequence and prerequisites, see [DEMO.md](DEMO.md).
-
-## Current audit and first paid service
-
-See [AUDIT.md](AUDIT.md) for implementation findings, validation boundaries and the exact deployment inventory. The first paid service is a fixed-price native subname purchase for a specified recipient. It requires namespace setup and worker funding before public use. The audit distinguishes this from full-service registration through our optional ServiceRegistrar.
+Old discussion/proposal/status snapshots are archived under Git-ignored `docs/archive/`; provider sources and raw receipts remain under `docs/reference/` and `docs/validation/`. They do not override this current overview.
