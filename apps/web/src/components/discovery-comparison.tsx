@@ -33,11 +33,11 @@ const capabilities = [
 export function DiscoveryComparison() {
   return (
     <section aria-labelledby="comparison-title">
-      <div className="mb-5">
-        <h2 id="comparison-title" className="text-xl font-medium">
+      <div className="mb-8 text-center sm:mb-10">
+        <h2 id="comparison-title" className="text-3xl font-medium leading-tight tracking-tight sm:text-4xl">
           ENS402 Discovery Comparison
         </h2>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="mt-4 text-base leading-7 text-muted-foreground sm:text-lg">
           Compare service discovery and configuration.
         </p>
       </div>
