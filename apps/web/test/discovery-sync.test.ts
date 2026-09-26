@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { beforeEach, expect, it, vi } from "vitest";
 const { authenticate, rateLimit, refresh } = vi.hoisted(() => ({
   authenticate: vi.fn(),
   rateLimit: vi.fn(),
@@ -9,9 +9,8 @@ vi.mock("@ens402/server", () => ({ getStore: () => ({ rateLimit }) }));
 vi.mock("../../../indexer/src/refresh", () => ({
   refreshConfiguredCatalog: refresh,
 }));
-import { GET, POST } from "../src/app/api/discovery/sync/route";
-const url = "https://ens402.example/api/discovery/sync",
-  secret = "a".repeat(40);
+import { POST } from "../src/app/api/discovery/sync/route";
+const url = "https://ens402.example/api/discovery/sync";
 function post(headers: Record<string, string> = {}, body?: string) {
   return new Request(url, {
     method: "POST",
@@ -25,43 +24,9 @@ function post(headers: Record<string, string> = {}, body?: string) {
 }
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.stubEnv("CRON_SECRET", secret);
   authenticate.mockResolvedValue({ kind: "user", ownerId: "human" });
   rateLimit.mockResolvedValue(undefined);
   refresh.mockResolvedValue({ status: "refreshed", services: 3 });
-});
-afterEach(() => vi.unstubAllEnvs());
-it("fails closed for missing and weak cron secrets", async () => {
-  for (const value of ["", "short"]) {
-    vi.stubEnv("CRON_SECRET", value);
-    expect(
-      (
-        await GET(
-          new Request(url, { headers: { authorization: `Bearer ${value}` } }),
-        )
-      ).status,
-    ).toBe(503);
-  }
-  expect(refresh).not.toHaveBeenCalled();
-});
-it("requires the exact scheduler bearer secret", async () => {
-  expect(
-    (
-      await GET(
-        new Request(url, {
-          headers: { authorization: `Bearer ${"b".repeat(40)}` },
-        }),
-      )
-    ).status,
-  ).toBe(401);
-  expect(refresh).not.toHaveBeenCalled();
-  expect(
-    (
-      await GET(
-        new Request(url, { headers: { authorization: `Bearer ${secret}` } }),
-      )
-    ).status,
-  ).toBe(200);
 });
 it("requires same origin and a human account", async () => {
   expect(await POST(post({ origin: "https://evil.example" }))).toHaveProperty(
@@ -83,15 +48,9 @@ it("does not accept client-selected targets", async () => {
   expect(
     (await POST(post({}, JSON.stringify({ root: "evil.eth" })))).status,
   ).toBe(400);
-  expect(
-    (
-      await GET(
-        new Request(`${url}?root=evil.eth`, {
-          headers: { authorization: `Bearer ${secret}` },
-        }),
-      )
-    ).status,
-  ).toBe(400);
+  expect((await POST(new Request(`${url}?root=evil.eth`, {
+    method: "POST", headers: { origin: "https://ens402.example", authorization: "Bearer user" },
+  }))).status).toBe(400);
   expect(refresh).not.toHaveBeenCalled();
 });
 it("awaits refresh and reports duplicate or cooldown status without claiming completion", async () => {

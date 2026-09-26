@@ -32,7 +32,7 @@ Current scope: **Discover, Govern, Guard**. Namespace: **Platform Registry -> Pr
 - [x] Separate hosted Neon discovery/analytics database created and migrated with a dedicated catalog role. Verified it can read zero private account tables. No local fixtures imported.
 - [x] Vercel production discovery/analytics DB, embedding provider and ENS parent configuration added.
 - [x] Persistent worker Docker image and Railway configuration prepared. Image builds and modules run as non-root; live one-cycle check correctly refuses the unlinked ENS root.
-- [x] Default Next.js sync route, authenticated merchant refresh, PostgreSQL lease/cooldown, and five-minute Vercel Cron configuration implemented. Railway is optional.
+- [x] Default Next.js sync route, authenticated merchant refresh, PostgreSQL lease/cooldown, implemented; demo refresh is manual with no Cron schedule. Railway is optional.
 - [ ] Verify successful finalized catalog synchronization after owner platform setup.
 
 ## Public launch: operator inputs and signatures required
@@ -43,7 +43,7 @@ Local tests do not complete these steps. No mainnet transactions.
 2. [ ] **Treasury:** supply the real Sepolia Safe, verify owners/threshold and rehearse its signing. Local contract fixtures are not a Safe audit. For a contract service-name holder, deploy/control its Base Sepolia wallet and publish the destination signature proof.
 3. [ ] **Provider:** complete `/provider` using the real Admin/Platform/Ops/Treasury signers. Publish fixture services and a second independent provider; verify allowed/denied writes publicly with receipts. Add confirmed provider bindings to hosted Guard configuration (`PROVIDER_*` or `PROVIDER_GROUPS_JSON`).
 4. [ ] **Discovery:** database and Vercel configuration are ready. Use the Next.js sync route with the same live source/roots and verify the first finalized service listing. Never import the local fixture catalog.
-5. [ ] **Indexer:** verify the in-app bounded refresh and Vercel Cron schedule. RPC reconstruction runs first; hosted Envio and the Railway worker are optional scaling paths. Verify finalized checkpoints, listing updates and live catalog embeddings.
+5. [ ] **Indexer:** verify the manual in-app bounded refresh. RPC reconstruction runs first; hosted Envio and the Railway worker are optional scaling paths. Verify finalized checkpoints, listing updates and live catalog embeddings.
 6. [ ] **Analytics:** hosted schema and web DB configuration are ready. Set the worker DB and `ANALYTICS_FROM_BLOCK`, then run the scanner and verify real receipts. Optional reviewed facilitator file and read-only `ANALYTICS_LEDGER_DATABASE_URL` enable additional coverage.
 7. [ ] **Paid name endpoint:** configure restricted issuance worker, fund Sepolia gas, publish its service records and align HTTP recipient/price with schema v3. Merchant namespace and service identity are separate.
 8. [ ] **Buyer:** complete Privy browser login, approve scope, fund displayed payer with Base Sepolia USDC, execute a public purchase and verify payment plus delivery receipts.

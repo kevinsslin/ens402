@@ -1,4 +1,3 @@
-import { timingSafeEqual } from "node:crypto";
 import { authenticate } from "@ens402/server/platform";
 import { getStore } from "@ens402/server";
 import { refreshConfiguredCatalog } from "../../../../../../../indexer/src/refresh";
@@ -26,29 +25,6 @@ async function refresh() {
       { status: 503, headers },
     );
   }
-}
-
-/** Scheduler-only entry point. A missing or weak secret never enables public refresh. */
-export async function GET(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret || secret.length < 32)
-    return Response.json(
-      { error: "Scheduled refresh is not configured" },
-      { status: 503, headers },
-    );
-  const expected = Buffer.from(`Bearer ${secret}`);
-  const provided = Buffer.from(request.headers.get("authorization") ?? "");
-  if (
-    expected.length !== provided.length ||
-    !timingSafeEqual(expected, provided)
-  )
-    return Response.json({ error: "Unauthorized" }, { status: 401, headers });
-  if (new URL(request.url).search)
-    return Response.json(
-      { error: "Refresh uses configured roots only" },
-      { status: 400, headers },
-    );
-  return refresh();
 }
 
 /** Human-triggered bounded refresh. Clients cannot choose RPCs, roots or target names. */

@@ -109,7 +109,7 @@ try {
 report.remainingActions = [
   "Wallet owner: connect the existing owner wallet and confirm native ENS transactions in /provider",
   "Treasury: provide a real Sepolia Safe and verify its owners/threshold; this is distinct from each service recipient",
-  "Operator: verify the Vercel Cron route and merchant listing refresh with the configured public catalog",
+  "Operator: verify manual merchant listing refresh with the configured public catalog",
   "Operator: configure confirmed provider registry/resolver bindings after setup receipts",
   "Buyer: fund the payer shown in Console with Base Sepolia USDC and rehearse one purchase",
 ];
