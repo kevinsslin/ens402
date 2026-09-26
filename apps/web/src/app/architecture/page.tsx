@@ -18,14 +18,15 @@ export default function Architecture() {
       <div className="max-w-3xl">
         <p className="eyebrow mt-9">Architecture / sponsor walkthrough</p>
         <h1 className="mt-4 text-4xl font-medium tracking-tight sm:text-5xl">
-          Who can change the service?
+          Who publishes the service?
           <br />
-          <span className="text-primary">Who can authorize the payment?</span>
+          <span className="text-primary">Who can independently discover it?</span>
         </h1>
         <p className="mt-6 text-base leading-8 text-muted-foreground">
-          A merchant publishes where its API lives and where it gets paid. An
-          agent reads those settings, checks the bill, screens the recipient,
-          and asks its wallet to sign. Each component has a specific job.
+          ENS402 is building an open discovery layer for x402 on ENS: providers
+          publish service information, independent indexers build directories,
+          and agents verify payment requests before signing. The verification
+          core exists; open indexing and advertised-price checks are planned.
         </p>
       </div>
       <NamespaceArchitecture />
@@ -90,13 +91,18 @@ export default function Architecture() {
             <tbody className="divide-y">
               {[
                 [
+                  "description / ens402.service",
+                  "Service description and call format (publishing and schema planned)",
+                  "Ops, with separate key grants",
+                ],
+                [
                   "agent-endpoint[x402]",
                   "Current HTTPS API URL",
                   "API operator",
                 ],
                 [
                   "ens402.payment",
-                  "Scheme, network, token, recipient, schema version",
+                  "Scheme, network, token, recipient and version; fixed price per request planned",
                   "Treasury",
                 ],
                 [
@@ -121,8 +127,8 @@ export default function Architecture() {
         </div>
         <p className={prose}>
           These actor labels describe their jobs, not invented native role
-          names. The pinned resolver exposes authorizeTextRoles(...) for a
-          specific name and text key. Its broader ROLE_SET_TEXT permission can
+          names. The pinned resolver exposes grantSetterRoles(...) for a
+          setter-key resource within that resolver contract. Its broader ROLE_SET_TEXT permission can
           override narrow grants. Production setup must inspect administrators,
           root permissions, upgrades and resolver-pointer control.
         </p>
@@ -323,6 +329,22 @@ export default function Architecture() {
         <div className="mt-6 space-y-3">
           {[
             [
+              "Has ENS already explored discovery?",
+              "Yes. Draft ENSIP-26 defines agent context and endpoint records; draft ENSIP-27 describes node classification and metadata schemas. ENSv2 also documents indexing. ENS402 builds on these foundations for x402 service publication, independent catalog reconstruction, scoped updates and payment checks. We do not claim to invent ENS discovery.",
+            ],
+            [
+              "How is this different from Bazaar?",
+              "Coinbase operates a hosted Bazaar catalog, while the Bazaar extension is an open specification that other facilitators can implement. ENS402 proposes publicly observable ENS publication so another indexer can reconstruct a catalog without access to that operator’s private database. The indexer still runs offchain; the source records and edit authority are onchain.",
+            ],
+            [
+              "Does every provider need an ens402.eth subname?",
+              "No. Multi-namespace indexing is part of the proposed design. Our parent would offer an onboarding path; providers could use their own supported ENS registries. Supported roots, bootstrap rules and lifecycle handling must be defined before claiming complete discovery.",
+            ],
+            [
+              "Who should change prices?",
+              "Treasury controls price together with the payment tuple. Ops edits descriptions, call formats and endpoints with separately scoped text-key grants. Service Admin retains root authority and manages grants. Price publication and its client comparison are planned; a published price does not force an API to honor it.",
+            ],
+            [
               "Why not just implement HTTP 402?",
               "That lets a server request payment. ENS402 adds a separately controlled public configuration source so the client can check whether that request matches the merchant identity and payment settings it accepted.",
             ],
@@ -360,6 +382,10 @@ export default function Architecture() {
         <div className="mt-6 space-y-4">
           {[
             [
+              "Planned discovery layer",
+              "Provider registry hierarchy, provider-owned namespace indexing, description and call-format publishing, and fixed-price publication/comparison are design scope. Independent catalog reconstruction has not yet been implemented or demonstrated.",
+            ],
+            [
               "Tested on an isolated fork",
               "Native proxy deployment, fork-local name registration and Universal Resolver lookup, endpoint grants, forbidden payment/status writes, sibling isolation, self-grant rejection, Treasury rotation, revocation, root override and ancestor expiry. No live ENS deployment is claimed.",
             ],
@@ -392,9 +418,12 @@ export default function Architecture() {
               "https://github.com/ensdomains/contracts-v2/tree/71a3b7339dbc55ab47667abdfe8303bac4f4c24e",
             ],
             [
-              "ENSIP-26 service discovery proposal",
+              "ENSIP-26 agent text records (draft)",
               "https://docs.ens.domains/ensip/26",
             ],
+            ["ENSIP-27 node classification and metadata (draft)", "https://docs.ens.domains/ensip/27"],
+            ["ENSv2 indexing guide", "https://docs.ens.domains/ensv2/indexing"],
+            ["Bazaar open extension specification", "https://github.com/coinbase/x402/blob/main/specs/extensions/bazaar.md"],
             [
               "Intercepta Quick Scan Address schema",
               "https://docs.web3antivirus.io/reference/quick-scan-address",

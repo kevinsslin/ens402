@@ -13,16 +13,17 @@ export default function Home() {
           ENS<span className="italic">402</span>
         </div>
         <p className="eyebrow mt-8 px-5 leading-5">
-          Public configuration. Safer agent payments.
+          Open discovery for x402 services.
         </p>
         <h1 className="display-title mx-auto mt-6 max-w-5xl px-5">
-          Let agents find services.
+          Publish once on ENS.
           <br />
-          <span>Verify where they pay.</span>
+          <span>Be found by any indexer.</span>
         </h1>
         <p className="hero-copy mx-auto mt-8 max-w-2xl px-5 text-muted-foreground">
-          An API can ask for payment. ENS402 checks its bill against the
-          merchant’s public ENS records before your agent signs.
+          We’re building a service directory anyone can reconstruct from ENS.
+          Publish what your service does, what it costs, and where to pay.
+          Agents check the payment request before signing.
         </p>
         <div className="mt-7 flex flex-wrap justify-center gap-3">
           <Button asChild size="lg">
@@ -31,7 +32,7 @@ export default function Home() {
             </Link>
           </Button>
           <Button asChild size="lg" variant="outline">
-            <a href="#stack">See the payment flow</a>
+            <a href="#discovery">See how it works</a>
           </Button>
         </div>
         <div className="mx-auto mt-10 flex max-w-xl flex-wrap items-center justify-center gap-x-8 gap-y-4 rounded-2xl border bg-card/70 px-6 py-4">
@@ -55,17 +56,32 @@ export default function Home() {
           </span>
         </div>
       </section>
+      <section id="discovery" className="section-shell py-12 sm:py-16">
+        <div className="grid gap-6 md:grid-cols-[1fr_1.1fr] md:gap-14">
+          <div><p className="eyebrow">Public publication. Independent discovery.</p><h2 className="mt-4 font-heading text-4xl tracking-tight sm:text-5xl">A service listing should outlive a directory.</h2></div>
+          <p className="text-base leading-8 text-muted-foreground">A hosted catalog decides what appears in its results. With public ENS records, other indexers can independently find and verify a published service. Our design lets providers use their own ENS namespace and lets agents choose which search provider to trust.</p>
+        </div>
+        <ol className="mt-9 grid gap-6 md:grid-cols-3">
+          {[
+            ["01", "Publish on ENS", "A provider publishes its description, API URL and payment terms. Native ENSv2 roles control who can edit each record.", "Description and price publishing planned"],
+            ["02", "Build any directory", "Independent indexers read the same public registry history and current records. Each can offer its own search, filters and ranking.", "Multi-namespace indexer planned"],
+            ["03", "Check before paying", "The agent resolves the chosen name again, compares the actual HTTP 402 with ENS, screens the recipient and asks its signer to pay.", "Verification core implemented; price comparison planned"],
+          ].map(([number, title, body, status]) => <li key={number} className="border-t pt-5"><p className="font-mono text-sm text-primary">{number}</p><h3 className="mt-3 text-xl font-medium">{title}</h3><p className="mt-3 text-sm leading-7 text-muted-foreground">{body}</p><p className="mt-4 text-xs leading-5 text-muted-foreground">{status}</p></li>)}
+        </ol>
+        <p className="mt-8 max-w-4xl text-sm leading-7 text-muted-foreground">An indexer can filter its results; another can still reconstruct the published catalog for the same supported namespaces and block. Public records do not guarantee search completeness, service quality or delivery.</p>
+        <Link href="/architecture#reputation" className="mt-4 inline-block text-sm text-primary underline underline-offset-4">Built on ENS discovery foundations. See what ENS402 adds →</Link>
+      </section>
       <section id="stack" className="section-shell pb-16 sm:pb-24">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="eyebrow">From discovery to delivery</p>
+            <p className="eyebrow">After an agent chooses a service</p>
             <h2 className="mt-3 font-heading text-3xl sm:text-4xl">
               One payment. Six clear steps.
             </h2>
           </div>
           <p className="max-w-xs text-sm leading-6 text-muted-foreground">
-            Read the flow from start to finish. ENS and risk checks happen before
-            your wallet signs.
+            Explore the current verification flow. Discovery and advertised-price
+            comparison are the next layer.
           </p>
         </div>
         <ServicePreview />
@@ -75,14 +91,14 @@ export default function Home() {
           <div className="max-w-2xl">
             <p className="eyebrow">Architecture / ENSv2 native permissions</p>
             <h2 className="section-title mt-5">
-              Give an agent the URL key.
+              Make the service public.
               <br />
-              <span>Keep the money key.</span>
+              <span>Keep each edit accountable.</span>
             </h2>
             <p className="mt-6 text-lg leading-7 text-muted-foreground">
-              The API can move without handing its operator control of the
-              payment record. Native ENS permissions enforce who can change each
-              field.
+              Ops maintains the description and API. Treasury owns pricing and
+              payment settings. Admin manages their grants. The proposed records
+              below show what an indexer and a paying agent need to read.
             </p>
           </div>
           <NamespaceArchitecture />
@@ -99,11 +115,11 @@ export default function Home() {
         <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
           <div>
             <h2 className="font-heading text-4xl tracking-tight sm:text-5xl">
-              Your agent. Your wallet. One extra check.
+              Public records. Your search. Your signer.
             </h2>
             <p className="mt-5 max-w-xl text-lg leading-7 text-muted-foreground">
-              Keep your discovery logic and connect your signer. Privy is our
-              demo default; ENS402’s core works with other wallet adapters.
+              Bring your own selection logic and wallet. The verification core works
+              independently of our proposed directory. Privy is the demo signer.
             </p>
           </div>
           <Button asChild variant="outline">
@@ -113,7 +129,8 @@ export default function Home() {
           </Button>
         </div>
         <p className="mt-8 border-t pt-5 text-xs leading-6 text-muted-foreground">
-          Testnet prototype · Native ENS and USDC tested on Anvil forks ·
+          Testnet prototype · Open indexing, description publishing and price
+          verification are planned · Native ENS and USDC tested on Anvil forks ·
           Intercepta live scan verified · Live Privy signing verified · Funded
           public-testnet demo pending.{" "}
           <Link

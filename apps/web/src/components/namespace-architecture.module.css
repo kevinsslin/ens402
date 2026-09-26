@@ -99,3 +99,13 @@
  .miniResolver { flex-direction: column; }
  .recordTitle > span { display: none; }
 }
+
+.namespaceNote { margin-bottom: 24px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 10px; font-size: 13px; line-height: 1.8; color: var(--muted-foreground); }
+.namespaceNote strong { font-weight: 500; color: var(--foreground); }
+.recordFields { display: grid; gap: 8px; margin-top: 14px; font-size: 13px; line-height: 1.6; }
+.recordFields > div { display: grid; grid-template-columns: 80px minmax(0,1fr); gap: 10px; }
+.recordFields dt { color: var(--muted-foreground); }
+.recordFields dd { overflow-wrap: anywhere; }
+.record > .price { font-size: 23px; font-weight: 500; color: var(--foreground); margin-top: 14px; }
+.price span { font-size: 13px; font-weight: 400; color: var(--muted-foreground); }
+.record > .plannedNote { font-size: 12px; line-height: 1.7; margin-top: 14px; }

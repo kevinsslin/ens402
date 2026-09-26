@@ -10,8 +10,8 @@ const heading = EB_Garamond({ subsets: ['latin'], variable: '--font-editorial', 
 const mono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' });
 
 export const metadata: Metadata = {
-  title: 'ENS402 | Resolve. Verify. Screen.',
-  description: 'An ENS-based service configuration and payment verification stack for x402. Resolve endpoints, verify payment requirements, screen risk, and use your own wallet.',
+  title: 'ENS402 | Publish on ENS. Discover independently.',
+  description: 'Building an open discovery layer for x402 on ENS: publicly published services, independent indexing, native permissions and payment verification. Testnet prototype.',
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -21,7 +21,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <div className="section-shell grid min-h-20 grid-cols-[auto_1fr] items-center gap-x-6 gap-y-3 py-4 sm:grid-cols-[1fr_auto_1fr]">
         <Link href="/" aria-label="ENS402 home" className="flex items-center justify-self-start gap-2.5 text-xl font-semibold tracking-tight"><Layers3 className="size-6 text-primary" aria-hidden="true"/>ENS<span className="-ml-2 text-primary">402</span></Link>
         <nav aria-label="Main navigation" className="col-span-2 flex items-center justify-self-center gap-6 font-mono text-xs text-muted-foreground sm:col-span-1 sm:gap-7">
-          <Link href="/#stack" className="hover:text-foreground">The stack</Link>
+          <Link href="/#discovery" className="hover:text-foreground">How it works</Link>
           <Link href="/console" className="hover:text-foreground">Console</Link>
           <Link href="/docs" className="hover:text-foreground">Docs</Link><Link href="/register" className="hover:text-foreground">Register</Link>
         </nav>

@@ -1,4 +1,4 @@
-import { ArrowDown, Database, Globe, KeyRound, Layers3, Wallet } from "lucide-react";
+import { ArrowDown, Database, FileText, Globe, KeyRound, Layers3, Wallet } from "lucide-react";
 import type { ReactNode } from "react";
 import styles from "./namespace-architecture.module.css";
 
@@ -28,6 +28,7 @@ export function NamespaceArchitecture() {
         <span className={styles.status}>Planned provider layer</span>
       </header>
       <div className={styles.canvas}>
+        <p className={styles.namespaceNote}><strong>Choose your namespace.</strong> This example uses provider.ens402.eth. The discovery design also supports provider-owned names such as service1.provider.eth, without requiring our parent domain. Multi-namespace indexing is planned.</p>
         <div className={styles.laneLabels}><span>Names, contracts & records</span><span>Wallets & native EAC roles</span></div>
         <div className={styles.row}>
           <div className={styles.contract}>
@@ -69,6 +70,16 @@ export function NamespaceArchitecture() {
           </div>
           <div className={`${styles.row} ${styles.recordRow}`}>
             <div className={styles.record}>
+              <div className={styles.recordTitle}><FileText size={16} aria-hidden="true" /><h5>Description & call format</h5><span>Planned</span></div>
+              <code>description</code><p>Returns structured search results for a supplied query.</p>
+              <code>ens402.service</code>
+              <dl className={styles.recordFields}><div><dt>Method</dt><dd>GET</dd></div><div><dt>Input</dt><dd>query: string</dd></div><div><dt>Output</dt><dd>application/json</dd></div></dl>
+              <p className={styles.plannedNote}>Proposed publishing flow and metadata schema.</p>
+            </div>
+            <WalletGrant name="Ops wallet"><Roles scope="C1 · Separate grants for description and ens402.service" roles={["ROLE_SET_TEXT"]} /><p className={styles.job}>Maintain the service listing and call format. These additional key grants are planned.</p></WalletGrant>
+          </div>
+          <div className={`${styles.row} ${styles.recordRow}`}>
+            <div className={styles.record}>
               <div className={styles.recordTitle}><Globe size={16} aria-hidden="true" /><h5>API endpoint</h5><span>Text record</span></div>
               <code>agent-endpoint[x402]</code><p>https://api.example.com/v1/service</p>
             </div>
@@ -76,10 +87,13 @@ export function NamespaceArchitecture() {
           </div>
           <div className={`${styles.row} ${styles.recordRow}`}>
             <div className={styles.record}>
-              <div className={styles.recordTitle}><Wallet size={16} aria-hidden="true" /><h5>Payment settings</h5><span>Text record</span></div>
-              <code>ens402.payment</code><p>Recipient · token · network · scheme</p>
+              <div className={styles.recordTitle}><Wallet size={16} aria-hidden="true" /><h5>Price & payment</h5><span>Price planned</span></div>
+              <code>ens402.payment</code>
+              <p className={styles.price}>0.01 USDC <span>/ request</span></p>
+              <dl className={styles.recordFields}><div><dt>Network</dt><dd>Base Sepolia · 84532</dd></div><div><dt>Asset</dt><dd>USDC token contract</dd></div><div><dt>Recipient</dt><dd>Provider payout address</dd></div><div><dt>Scheme</dt><dd>exact</dd></div></dl>
+              <p className={styles.plannedNote}>Illustrative fixed price. Publishing and comparing this price are planned; the current record holds scheme, network, asset and payTo.</p>
             </div>
-            <WalletGrant name="Treasury wallet"><Roles scope="C1 · Payment key only" roles={["ROLE_SET_TEXT"]} /><p className={styles.job}>Update where and how the service gets paid.</p></WalletGrant>
+            <WalletGrant name="Treasury wallet"><Roles scope="C1 · Payment key only" roles={["ROLE_SET_TEXT"]} /><p className={styles.job}>Set the price and payment terms. The Treasury writer can differ from the payout recipient.</p></WalletGrant>
           </div>
           <p className={styles.statusRecord}><code>ens402.status</code><span>Active / suspended · maintained by Service Admin in this example.</span></p>
         </section>
@@ -87,7 +101,7 @@ export function NamespaceArchitecture() {
       </div>
       <figcaption className={styles.caption}>
         <p>Platform and Provider Registry represent ENSv2 UserRegistry contracts. Roles apply to a contract and resource, not automatically to its children. Ops and Treasury grants use the hash of their text key. Resolver 2 and 3 need their own grants. Provider Admin and Service Admin may share a wallet; Ops and Treasury are separate.</p>
-        <p>Intended grants, not live permissions. The provider layer is planned. Buyer payment signing is separate from these configuration wallets.</p>
+        <p>Intended grants, not live permissions. Provider registries, description/call-format publishing and fixed-price checks are planned. Admin retains the ability to write these records and change grants. Buyer payment signing is separate from these configuration wallets.</p>
         <a href="/diagrams/ens402-contracts.mmd" download>Download the Mermaid structure reference ↓</a>
       </figcaption>
     </figure>
