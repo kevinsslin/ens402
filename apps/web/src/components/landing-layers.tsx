@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DiscoveryComparison } from "./discovery-comparison";
 import { PaymentVerificationFlow } from "./payment-verification-flow";
 import { ArrowDown, ArrowRight, Check, LockKeyhole, Search, ShieldCheck, X } from "lucide-react";
 
@@ -32,6 +33,7 @@ export function LandingLayers() {
         <p className="mt-4 border-t pt-4 text-xs leading-5 text-muted-foreground">Verifiable publication does not guarantee service quality. Search ranking helps agents find candidates; Guard checks the chosen service before payment.</p>
       </div>
     </section>
+    <DiscoveryComparison />
     <section id="govern" className="grid items-center gap-10 py-16 lg:grid-cols-2 lg:gap-20 sm:py-24">
       <div>
         <p className="eyebrow flex items-center gap-3"><LockKeyhole size={18} /> 02 / Govern</p>
