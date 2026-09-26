@@ -34,8 +34,8 @@ export default function Home() {
             <a href="#architecture">See how it works</a>
           </Button>
         </div>
-        <div className="mx-auto mt-10 flex max-w-xl flex-wrap items-center justify-center gap-x-8 gap-y-4 rounded-2xl border bg-card/70 px-6 py-4">
-          <span className="text-xs text-muted-foreground">Built with</span>
+        <div className="mx-auto mt-10 flex max-w-3xl flex-wrap items-center justify-center gap-x-7 gap-y-5 rounded-2xl border bg-card/70 px-6 py-5">
+          <span className="w-full text-xs text-muted-foreground sm:w-auto">Built with</span>
           <a
             href="https://ens.domains"
             aria-label="ENS: public service configuration"
@@ -49,6 +49,13 @@ export default function Home() {
           >
             <Image src="/brands/intercepta.svg" alt="" width={19} height={26} />
             Intercepta
+          </a>
+          <a
+            href="https://www.curvegrid.com/multibaas"
+            aria-label="Curvegrid MultiBaas: ENS governance event indexing"
+            className="flex items-center"
+          >
+            <Image src="/brands/curvegrid.svg" alt="Curvegrid" width={185} height={28} className="h-auto w-[148px]" />
           </a>
           <span className="text-sm font-medium text-muted-foreground">
             x402 payments
