@@ -43,3 +43,22 @@ flowchart TB
   classDef resolver fill:#f0f5ff,stroke:#7298df,stroke-width:1.5px
   class platform,registry registry
   class r1,r2,r3 resolver
+  platformOwner["Platform Owner<br/>A root: ROLE_REGISTRAR + ROLE_REGISTRAR_ADMIN"]
+  providerAdmin["Provider Admin<br/>A provider entry: ROLE_SET_SUBREGISTRY<br/>B root: ROLE_REGISTRAR + ROLE_REGISTRAR_ADMIN"]
+  serviceAdmin["Service Admin<br/>B service entry: ROLE_SET_RESOLVER + ROLE_SET_RESOLVER_ADMIN + ROLE_CAN_TRANSFER_ADMIN<br/>C1 root: ROLE_SET_TEXT + ROLE_SET_TEXT_ADMIN"]
+  ops["Ops<br/>C1 endpoint / description / avatar keys<br/>ROLE_SET_TEXT"]
+  treasury["Treasury delegate<br/>C1 payment key<br/>ROLE_SET_TEXT<br/>Separate from payTo recipient"]
+  registrar["ServiceRegistrar<br/>Selected registry: ROLE_REGISTRAR<br/>Register + configure + grant delegates"]
+  platformOwner -.->|root grants| platform
+  providerAdmin -.->|name control| provider
+  providerAdmin -.->|root grants| registry
+  serviceAdmin -.->|name control| s1
+  serviceAdmin -.->|text administration| r1
+  ops -.->|key-scoped writes| r1
+  treasury -.->|payment writes| r1
+  registrar -.->|registration authority| registry
+  status["Target architecture, not live grants<br/>Direct-service registration fork-tested<br/>Provider onboarding and full role handovers pending<br/>Name transfer does not automatically transfer resolver administration"]
+  classDef wallet fill:#f5edff,stroke:#d8c2ef,color:#6b369e
+  classDef delegate fill:#edf5ff,stroke:#b8d4f8,color:#1756a9
+  class platformOwner,providerAdmin,serviceAdmin wallet
+  class ops,treasury,registrar delegate

@@ -33,7 +33,9 @@ function Roles({ scope, roles }: { scope: string; roles: string[] }) {
     <div className={styles.grant}>
       <p className={styles.scope}>{scope}</p>
       {roles.map((role) => (
-        <code key={role}>{role}</code>
+        <code key={role} className={role.endsWith("_ADMIN") ? styles.adminRole : styles.actionRole}>
+          {role}
+        </code>
       ))}
     </div>
   );
@@ -67,11 +69,16 @@ export function NamespaceArchitecture() {
       <div className={styles.canvas}>
         <p className={styles.namespaceNote}>
           <strong>Native ENS registries. Dedicated service resolvers.</strong>{" "}
-          Each wallet’s grants apply only to the scope shown.
+          Read top to bottom for ownership; left to right for permissions.
         </p>
         <div className={styles.laneLabels}>
           <span>Names, contracts & records</span>
-          <span>Wallets & native EAC roles</span>
+          <span>Who controls it · Native EAC</span>
+        </div>
+        <div className={styles.roleLegend}>
+          <span className={styles.actionRole}>Action permission</span>
+          <span className={styles.adminRole}>Grant / revoke permission</span>
+          <span>Scope identifies the contract and resource.</span>
         </div>
         <div className={styles.row}>
           <div className={styles.contract}>
@@ -97,7 +104,7 @@ export function NamespaceArchitecture() {
               roles={["ROLE_REGISTRAR", "ROLE_REGISTRAR_ADMIN"]}
             />
             <p className={styles.job}>
-              Register providers and manage registrar grants.
+              Create provider entries. Manage registration authority.
             </p>
           </WalletGrant>
         </div>
@@ -115,7 +122,7 @@ export function NamespaceArchitecture() {
               <span className={styles.nodeId}>B</span>
             </div>
             <p className={styles.nodeDescription}>
-              Three service names. Three independent resolvers.
+              This provider’s service directory. A dedicated resolver per service.
             </p>
             <div className={styles.services}>
               {[1, 2, 3].map((number) => (
@@ -145,9 +152,18 @@ export function NamespaceArchitecture() {
               roles={["ROLE_REGISTRAR", "ROLE_REGISTRAR_ADMIN"]}
             />
             <p className={styles.job}>
-              Choose the provider registry and create services.
+              Manage this provider’s directory. Service Admin rights are separate.
             </p>
+            <p className={styles.pendingNote}>Provider onboarding and handover grants pending implementation.</p>
           </WalletGrant>
+        </div>
+        <div className={styles.registrationFlow}>
+          <div>
+            <strong>Service registration</strong>
+            <p>ServiceRegistrar receives <code className={styles.actionRole}>ROLE_REGISTRAR</code> on the selected registry.</p>
+          </div>
+          <p>Register name → Create resolver → Set records & delegates → Remove bootstrap rights</p>
+          <span>Direct-service flow built · Provider integration pending</span>
         </div>
         <div className={styles.focusLink}>
           <span />
@@ -167,7 +183,7 @@ export function NamespaceArchitecture() {
                 </span>
                 <div>
                   <p className={styles.kind}>3 · Service / PermissionedResolver</p>
-                  <h4>Resolver 1</h4>
+                  <h4>Service 1 · Resolver 1</h4>
                 </div>
                 <span className={styles.nodeId}>C1</span>
               </div>
@@ -175,7 +191,7 @@ export function NamespaceArchitecture() {
                 service1.provider.ens402.eth
               </code>
               <p className={styles.nodeDescription}>
-                Public settings. Scoped writers.
+                Registrant becomes Service Admin. Supplied Ops and Treasury addresses receive scoped writes.
               </p>
               <span className={styles.rootNote}>
                 <KeyRound size={13} aria-hidden="true" /> Admin retains full
@@ -183,6 +199,7 @@ export function NamespaceArchitecture() {
               </span>
             </div>
             <WalletGrant name="Service Admin">
+              <p className={styles.job}>Control this name, its settings and its delegates.</p>
               <Roles
                 scope="B · service1 name"
                 roles={[
@@ -259,7 +276,7 @@ export function NamespaceArchitecture() {
                 </div>
                 <div>
                   <dt>Recipient</dt>
-                  <dd>Provider payout address</dd>
+                  <dd>payTo · Payment recipient</dd>
                 </div>
                 <div>
                   <dt>Scheme</dt>
@@ -273,8 +290,7 @@ export function NamespaceArchitecture() {
             <WalletGrant name="Treasury wallet">
               <Roles scope="C1 · Payment key only" roles={["ROLE_SET_TEXT"]} />
               <p className={styles.job}>
-                Set the price and payment terms. The Treasury writer can differ
-                from the payout recipient.
+                Edit price and payTo. This wallet need not receive the payment.
               </p>
             </WalletGrant>
           </div>
@@ -284,6 +300,31 @@ export function NamespaceArchitecture() {
               Active / suspended · maintained by Service Admin in this example.
             </span>
           </p>
+        </section>
+        <section className={styles.lifecycle} aria-label="Role lifecycle">
+          <div className={styles.lifecycleHeading}>
+            <h4>Set up once. Keep control as your team changes.</h4>
+          </div>
+          <div className={styles.lifecycleGrid}>
+            <div>
+              <span className={styles.step}>01 · Register</span>
+              <h5>Assign the first roles</h5>
+              <p>Admin is the registrant. Ops and Treasury are supplied during registration.</p>
+              <span className={styles.built}>Service flow fork-tested</span>
+            </div>
+            <div>
+              <span className={styles.step}>02 · Replace a delegate</span>
+              <h5>Grant new. Revoke old.</h5>
+              <p>Verify effective rights after each change. Replacing Treasury does not change payTo.</p>
+              <span className={styles.pendingNote}>Complete replacement flow pending</span>
+            </div>
+            <div>
+              <span className={styles.step}>03 · Transfer administration</span>
+              <h5>Hand over every control</h5>
+              <p>Name ownership and registry/resolver rights need explicit handover. They do not transfer together automatically.</p>
+              <span className={styles.pendingNote}>Acceptance and handover flow pending</span>
+            </div>
+          </div>
         </section>
         <div className={styles.legend}>
           <span>

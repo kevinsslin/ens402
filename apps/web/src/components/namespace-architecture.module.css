@@ -26,7 +26,7 @@
 .walletName strong { font-weight: 600; }
 .grant { margin-top: 9px; }
 .scope { font-size: 13px; color: #5675a7; line-height: 1.5; margin-bottom: 3px; }
-.grant code { display: block; font-size: 14px; line-height: 1.75; color: #596471; overflow-wrap: anywhere; }
+.grant code { display: table; max-width: 100%; margin-top: 5px; padding: 4px 8px; border: 1px solid; border-radius: 6px; font-size: 13px; font-weight: 600; line-height: 1.6; overflow-wrap: anywhere; }
 .job { margin-top: 7px; font-size: 13px; line-height: 1.6; color: var(--muted-foreground); }
 .pointer { position: relative; width: calc((100% - 40px) * .52381); height: 58px; display: flex; align-items: center; justify-content: center; color: #8692a4; }
 .pointer > span { position: absolute; height: 100%; top: 0; left: 50%; border-left: 1px solid #cbd3df; }
@@ -109,3 +109,24 @@
 .record > .price { font-size: 23px; font-weight: 500; color: var(--foreground); margin-top: 14px; }
 .price span { font-size: 13px; font-weight: 400; color: var(--muted-foreground); }
 .record > .plannedNote { font-size: 12px; line-height: 1.7; margin-top: 14px; }
+
+/* Permission colors distinguish actions from authority to delegate them. */
+.actionRole { color: #1756a9; background: #edf5ff; border-color: #b8d4f8 !important; }
+.adminRole { color: #6b369e; background: #f5edff; border-color: #d8c2ef !important; }
+.roleLegend { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; margin-bottom: 24px; font-size: 12px; line-height: 1.6; color: #526171; }
+.roleLegend > span:first-child,.roleLegend > span:nth-child(2) { padding: 4px 8px; border: 1px solid; border-radius: 6px; font-weight: 600; }
+.pendingNote { display: block; margin-top: 10px; font-size: 12px; line-height: 1.6; color: #866019; }
+.registrationFlow { margin-top: 24px; padding: 18px 20px; border: 1px solid #dce1e8; border-radius: 12px; background: #f7f9fc; font-size: 13px; line-height: 1.8; }
+.registrationFlow strong { font-size: 15px; font-weight: 600; }
+.registrationFlow code { display: inline-block; border: 1px solid; border-radius: 5px; padding: 0 5px; font-weight: 600; overflow-wrap: anywhere; max-width: 100%; }
+.registrationFlow > p { margin-top: 8px; color: #334b68; }
+.registrationFlow > span { display: block; margin-top: 6px; font-size: 12px; color: #866019; }
+.lifecycle { margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--border); }
+.lifecycleHeading h4 { font-size: 19px; font-weight: 500; }
+.lifecycleGrid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 14px; margin-top: 16px; }
+.lifecycleGrid > div { padding: 16px; border: 1px solid var(--border); border-radius: 12px; }
+.step { font-size: 12px; color: #526171; }
+.lifecycleGrid h5 { margin-top: 8px; font-size: 16px; font-weight: 600; }
+.lifecycleGrid p { margin-top: 8px; font-size: 13px; line-height: 1.7; color: #526171; }
+.built { display: block; margin-top: 10px; color: #24654c; font-size: 12px; line-height: 1.6; }
+@media(max-width: 800px) { .lifecycleGrid { grid-template-columns: minmax(0,1fr); } }
