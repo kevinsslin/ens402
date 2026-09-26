@@ -42,6 +42,8 @@ export type ProviderSetup = {
   resolver?: string;
   registrar?: string;
   previousRegistrar?: string;
+  confirmedSetup?: boolean;
+  confirmedResolver?: boolean;
 };
 const address = (value: string) => {
   if (!/^0x[0-9a-fA-F]{40}$/.test(value) || value.toLowerCase() === zeroAddress)
@@ -238,8 +240,9 @@ export async function planProvider(input: ProviderSetup) {
   let phase = 0;
   let registrationMode: "direct" | "commit-reveal" = "direct";
   let resolver = input.resolver ? address(input.resolver) : undefined;
-  if (!txs.length) {
-    phase = 1;
+  // Check the resolver even while registry work is outstanding. Invalid delegates
+  // and deployment collisions must fail review before the first signature.
+  {
     const shared = await sharedResolverPlan(
       client,
       admin,
@@ -250,10 +253,14 @@ export async function planProvider(input: ProviderSetup) {
       block.number,
       resolver,
     );
-    resolver = shared.resolver;
-    txs.push(...shared.transactions);
     if (!txs.length) {
-      phase = 2;
+      phase = 1;
+      resolver = shared.resolver;
+      txs.push(...shared.transactions);
+    }
+    if ((!shared.transactions.length || input.registrar) && code && code !== "0x") {
+      const hasEarlierSteps = txs.length > 0;
+      if (!hasEarlierSteps) phase = 2;
       const existingCode = input.registrar
         ? await client.getCode({
             address: address(input.registrar),
@@ -284,7 +291,7 @@ export async function planProvider(input: ProviderSetup) {
           typeof providerRegistrarPlan
         >[10],
       );
-      txs.push(...registrar.transactions);
+      if (!hasEarlierSteps) txs.push(...registrar.transactions);
       if (input.previousRegistrar && input.registrar) {
         if (
           registrationMode !== "direct" ||
@@ -322,9 +329,12 @@ export async function planProvider(input: ProviderSetup) {
       }
     }
   }
+  const resolverCode = resolver && await client.getCode({ address: resolver, blockNumber: block.number });
   return {
     setup: {
       ...input,
+      confirmedSetup: Boolean(code && code !== "0x"),
+      confirmedResolver: Boolean(resolverCode && resolverCode !== "0x"),
       parent,
       label,
       registry,

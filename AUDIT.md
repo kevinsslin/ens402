@@ -232,3 +232,10 @@ The browser verification did not sign in as the real owner or execute wallet tra
 - Preserved the previously deployed direct registrar artifact for runtime verification. Existing deployed contracts keep their original constraints; this source/artifact change does not upgrade them or submit transactions.
 - Existing native resolver multicall batches remain intact. Setup progress now distinguishes configuration checks from wallet confirmations and labels the current permission batch explicitly.
 - Validation: 58 Solidity tests passed on a pinned Sepolia fork, including successful combined-role publication and isolated-role denial tests. 11 role-planning/batch/checklist tests and workspace typecheck passed.
+
+## Provider setup preflight and recovery (2026-09-27)
+
+- Review now simulates the next transaction and checks pending Sepolia ETH against padded gas and current max fee before requesting a signature. The same check runs again before each transaction.
+- Resolver deployment and delegate validation run during the initial registry plan, rather than waiting until registry transactions finish. Existing registrar checks run before outstanding resolver grants when possible.
+- Edit details preserves confirmed contracts, clears unsigned predictions and keeps platform signer corrections available. Confirmed name/Admin and configured resolver delegates are explicitly fixed in this setup form; later role changes require native wallet management. Confirmed progress survives a subsequent failed plan refresh.
+- Focused tests cover preparation failure before wallet submission, exact gas funding, future resolver conflict detection, recovery, pending receipts and shared role addresses. No live wallet transaction was submitted for this change. Chain state and fee changes can still invalidate later transactions; dependent calls are re-simulated before each signature.

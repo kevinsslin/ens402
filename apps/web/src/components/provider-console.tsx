@@ -24,6 +24,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "./ui/dialog";
+import { editableProviderSetup } from "./provider-recovery";
 import type { ProviderSetup } from "@/server/provider-plan";
 type Provider = {
   request(args: { method: string; params?: unknown[] }): Promise<unknown>;
@@ -68,7 +69,7 @@ const walletFields = [
     key: "treasury",
     title: "Treasury Admin",
     hint: "Updates payment terms across your services. Each service's name holder is its payment recipient.",
-    note: "An EOA, multisig or MPC wallet, separate from Provider Admin and Operations.",
+    note: "An EOA, multisig or MPC wallet. You can reuse your Admin or Operations address.",
   },
 ] as const;
 export function ProviderConsole({
@@ -255,7 +256,7 @@ export function ProviderConsole({
           associated &&
           (!requested || `${saved.label}.${saved.parent}` === requested)
         ) {
-          setSetup(saved);
+          setSetup(editableProviderSetup(saved, saved.confirmedSetup !== false));
           setCreating(!saved.registrar);
         } else
           setSetup({
@@ -348,6 +349,10 @@ export function ProviderConsole({
     }
     const next = {
       ...transaction.setup,
+      confirmedSetup: true,
+      ...(transaction.step.description.startsWith("Deploy shared native provider resolver")
+        ? { confirmedResolver: true }
+        : {}),
       ...(!transaction.step.to && receipt.contractAddress
         ? { registrar: receipt.contractAddress }
         : {}),
@@ -756,7 +761,14 @@ export function ProviderConsole({
                   </p>
                 </div>
                 <div className="space-y-8 p-6 sm:p-8">
-                  <fieldset disabled={busy || !!plan || !!pending}>
+                  {setup.registry && !plan && (
+                    <p className="rounded-xl bg-blue-50 p-4 text-sm text-slate-700">
+                      Your deployed contracts and completed steps are saved. The workspace name and Admin are fixed for this setup.
+                      {setup.resolver && " Resolver permissions are already being configured, so Ops and Treasury changes use wallet management after setup."}
+                      {" "}You can correct the platform signing wallet below and review again.
+                    </p>
+                  )}
+                  <fieldset disabled={busy || !!plan || !!pending || !!setup.registry}>
                     <legend className="flex items-center gap-2 font-medium">
                       <Building2 className="size-4 text-primary" />
                       1. Choose your name
@@ -809,7 +821,7 @@ export function ProviderConsole({
                       2. Assign management wallets
                     </legend>
                     <p className="mt-2 text-sm text-muted-foreground">
-                      Use three different addresses. These permissions apply
+                      Roles can share the same address. These permissions apply
                       across the provider's shared resolver.
                     </p>
                     <div className="mt-5 space-y-6">
@@ -825,7 +837,7 @@ export function ProviderConsole({
                             {key === "admin" && (
                               <button
                                 type="button"
-                                disabled={busy || !!plan || !!pending}
+                                disabled={busy || !!plan || !!pending || !!setup.registry}
                                 className="text-xs font-medium text-primary disabled:opacity-50"
                                 onClick={() =>
                                   setSetup((old) => ({
@@ -843,6 +855,7 @@ export function ProviderConsole({
                           </p>
                           <input
                             id={`provider-${key}`}
+                            disabled={key === "admin" ? !!setup.registry : !!setup.resolver || !!setup.registrar}
                             required
                             pattern="0x[0-9a-fA-F]{40}"
                             aria-describedby={`provider-${key}-hint`}
@@ -973,14 +986,12 @@ export function ProviderConsole({
                 }
                 onContinue={() => run(true)}
                 onEdit={
-                  !pending && !plan?.hasConfirmedSetup
+                  !pending && !busy
                     ? () => {
+                        setSetup((previous) => editableProviderSetup(previous, Boolean(plan?.hasConfirmedSetup)));
                         setPlan(null);
-                        setSetup((previous) => ({
-                          ...previous,
-                          registry: undefined,
-                          expiry: undefined,
-                        }));
+                        setMessage("");
+                        setFailed(false);
                       }
                     : undefined
                 }

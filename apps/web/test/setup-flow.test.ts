@@ -11,7 +11,7 @@ const step={signer:owner, to:ops,data:"0x1234",description:"Create provider regi
 afterEach(()=>vi.unstubAllGlobals());
 it("prepares gas on the server without using a wallet transport",async()=>{
  const estimateGas=vi.fn().mockResolvedValue(100n);
- expect((await prepareSetupStep(step,{estimateGas} as never)).gas).toBe("120");
+ expect((await prepareSetupStep(step,{estimateGas, getBalance: vi.fn().mockResolvedValue(10000n), estimateFeesPerGas: vi.fn().mockResolvedValue({ maxFeePerGas: 2n })} as never)).gas).toBe("120");
  expect(estimateGas).toHaveBeenCalledWith(expect.objectContaining({account:owner,to:ops,data:"0x1234"}));
 });
 it("tracks a submitted hash through pending to confirmation without resubmitting",async()=>{

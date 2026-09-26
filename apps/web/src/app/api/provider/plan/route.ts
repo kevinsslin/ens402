@@ -25,7 +25,7 @@ export async function POST(request: Request) {
         ),
       ),
     };
-    if (prepare && result.transactions[0]) {
+    if (result.transactions[0]) {
       result.transactions[0] = await prepareSetupStep(result.transactions[0]);
     }
     return Response.json(result, { headers: { "Cache-Control": "no-store" } });

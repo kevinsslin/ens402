@@ -1,11 +1,19 @@
 import { ensClient } from "@ens402/server";
-import { type Address, type Hex } from "viem";
+import { type Address, type Hex, formatEther } from "viem";
 export type SetupStep = { signer: string; to?: string; data: string; value?: string; description: string };
 /** Simulate and estimate on our RPC before asking the wallet to sign. No submission here. */
 export async function prepareSetupStep<T extends SetupStep>(step: T, client = ensClient()) {
   const request = { account: step.signer as Address, ...(step.to ? { to: step.to as Address } : {}), data: step.data as Hex, value: BigInt(step.value ?? "0") };
   const gas = await client.estimateGas(request);
-  return { ...step, gas: (gas * 120n / 100n).toString() };
+  const paddedGas = gas * 120n / 100n;
+  const [balance, fees] = await Promise.all([
+    client.getBalance({ address: step.signer as Address, blockTag: "pending" }),
+    client.estimateFeesPerGas(),
+  ]);
+  const required = paddedGas * fees.maxFeePerGas + request.value;
+  if (balance < required)
+    throw Error(`Insufficient Sepolia ETH for ${step.description}. Fund ${step.signer} with at least ${formatEther(required - balance)} more ETH, then retry. No signature requested.`);
+  return { ...step, gas: paddedGas.toString() };
 }
 /** The browser can resume a known transaction without asking the wallet RPC. */
 export async function setupReceipt(hash: string, client = ensClient()) {
