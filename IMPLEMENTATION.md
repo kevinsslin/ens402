@@ -7,7 +7,7 @@ Updated September 26, 2026. The application is implemented; a funded live demons
 | ENS | Registered-name resolution, pinned deployment hashes, owner/resolver/version observation; actual SDK fork test | Controlled registered ENSv2 Sepolia name |
 | Native EAC | Prepare/simulate writes and narrow grants; 11 native fork contract tests | Owner/operator transactions on Sepolia |
 | x402 | Real v2 HTTP exchange, cryptographic authorization, single submission and chain receipt/nonce checks | Funded Base Sepolia settlement |
-| Privy | Approval-specific wallet/policy, current-policy validation, revocation and bounded provisioning retry | App ID/Secret and provider rejection test |
+| Privy | Approval-specific wallet/policy, current-policy validation, revocation and bounded provisioning retry | Local provider signing and rejection checks passed; production configuration and funded settlement remain |
 | Intercepta | Genuine clean scan observed; one-hour cache and fail-closed risk rules | Risky classifications tested as fixtures only |
 | Backend | Authenticated APIs; PostgreSQL budget locking, idempotency, durable nonce, cancellation and reconciliation | Cloud PostgreSQL for Vercel |
 | Merchant | Two protected routes, signature validation, facilitator verify/settle and nonce deduplication | Configured Treasury and funded purchase |
@@ -49,3 +49,9 @@ The historical Vercel project `hufu402-merchant` still points to removed `apps/m
 The native Sepolia ENS fork was joined to a Base Sepolia USDC fork (block `47301025`) and a temporary PostgreSQL ledger. Actual token transfers, balances, AuthorizationUsed nonces and replay reverts passed. Recipient mismatch, native Treasury rotation and screening holds prevented signing. A lost HTTP response after payment retained the budget and reconciled only against the original nonce; delivery failure remained spent; daily limits and revocation prevented further payments.
 
 Run `pnpm test:anvil`. The local signer, screening response and merchant/relayer are test adapters. This proves actual local contract execution and SDK/ledger integration, not live Privy, Intercepta or public facilitator behavior. Production server orchestration is covered separately by the existing integration suite. No transaction was sent to a public network.
+
+## Live Privy verification, September 26
+
+`pnpm test:privy:live` passed using the local application credentials. An unfunded disposable wallet signed an x402 authorization that was cryptographically verified. Direct provider calls rejected the wrong recipient, chain, token, excessive amount, excessive expiry, changed type map, and personal signing with `policy_violation`. The policy was restored to deny-all. No payment was submitted. This verifies provider enforcement, not production configuration or funded settlement.
+
+The test now sends only supported policy update fields and recognizes the observed HTTP 400 policy violation by its structured error code. Local evidence is in `docs/validation/privy-live.json`.

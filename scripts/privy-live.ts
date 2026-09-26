@@ -22,7 +22,8 @@ try {
   const wallet = await client.wallets().create({ chain_type: 'ethereum', policy_ids: [policy.id] });
   walletId = wallet.id;
   const scope = { payTo: wallet.address, maxAmount: '1', expiresAt: Math.floor(Date.now() / 1000) + 300 };
-  await client.policies().update(policy.id, buildPrivyPolicy(scope));
+  const paymentPolicy = buildPrivyPolicy(scope);
+  await client.policies().update(policy.id, { name: paymentPolicy.name, rules: paymentPolicy.rules });
   const signer = createPrivySigner({ client, walletId: wallet.id, address: wallet.address as Address, scope });
   await new ExactEvmScheme(signer).createPaymentPayload(2, { scheme: 'exact', network: NETWORK, asset: USDC, payTo: wallet.address, amount: '1', maxTimeoutSeconds: 30, extra: { name: 'USDC', version: '2' } });
   checks.push({ name: 'x402 authorization signed and cryptographically verified', status: 'pass' });
@@ -41,16 +42,16 @@ try {
       await client.wallets().ethereum().signTypedData(wallet.id, { params: { typed_data } });
       checks.push({ name, status: 'FAIL: provider signed' });
     } catch (error) {
-      const e = error as { status?: number; message?: string };
-      checks.push({ name, status: e.status === 403 && /policy/i.test(e.message ?? '') ? 'pass: provider policy denial' : `inconclusive: HTTP ${e.status ?? 'unavailable'}` });
+      const e = error as { status?: number; error?: { code?: string } };
+      checks.push({ name, status: (e.status === 400 || e.status === 403) && e.error?.code === 'policy_violation' ? 'pass: provider policy denial' : `inconclusive: HTTP ${e.status ?? 'unavailable'}` });
     }
   }
   try {
     await client.wallets().ethereum().signMessage(wallet.id, { message: 'ENS402 prohibited message test' });
     checks.push({ name: 'personal_sign', status: 'FAIL: provider signed' });
   } catch (error) {
-    const e = error as { status?: number; message?: string };
-    checks.push({ name: 'personal_sign', status: e.status === 403 && /policy/i.test(e.message ?? '') ? 'pass: provider policy denial' : `inconclusive: HTTP ${e.status ?? 'unavailable'}` });
+    const e = error as { status?: number; error?: { code?: string } };
+    checks.push({ name: 'personal_sign', status: (e.status === 400 || e.status === 403) && e.error?.code === 'policy_violation' ? 'pass: provider policy denial' : `inconclusive: HTTP ${e.status ?? 'unavailable'}` });
   }
 } catch (error) {
   const e = error as { status?: number };
@@ -58,7 +59,7 @@ try {
 } finally {
   // Lock the unfunded, disposable test wallet even if any check fails.
   if (policyId) {
-    try { await client.policies().update(policyId, denyAll); checks.push({ name: 'restore deny-all', status: 'pass' }); }
+    try { await client.policies().update(policyId, { name: denyAll.name, rules: denyAll.rules }); checks.push({ name: 'restore deny-all', status: 'pass' }); }
     catch { checks.push({ name: 'restore deny-all', status: 'FAILED: lock policy in Privy dashboard' }); }
   }
   const report = { checkedAt: new Date().toISOString(), walletId, policyId, checks, settlement: 'not submitted; wallet never funded; signatures never persisted' };
