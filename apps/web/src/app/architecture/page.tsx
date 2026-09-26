@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArchitectureDiagram } from "@/components/architecture-diagram";
+import { NamespaceArchitecture } from "@/components/namespace-architecture";
 
 const section = "mt-14 border-t pt-9";
 const prose = "mt-4 text-sm leading-7 text-muted-foreground";
@@ -28,7 +28,7 @@ export default function Architecture() {
           and asks its wallet to sign. Each component has a specific job.
         </p>
       </div>
-      <ArchitectureDiagram />
+      <NamespaceArchitecture />
       <section className={section}>
         <p className="eyebrow">01 / A concrete example</p>
         <h2 className="mt-3 text-2xl font-medium">

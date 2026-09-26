@@ -2,13 +2,13 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { PermissionMap } from "@/components/permission-map";
+import { NamespaceArchitecture } from "@/components/namespace-architecture";
 import { ServicePreview } from "@/components/service-preview";
 
 export default function Home() {
   return (
     <div className="hero-wash">
-      <section className="editorial-hero pb-14 pt-16 text-center sm:pb-20 sm:pt-24">
+      <section className="editorial-hero pb-12 pt-12 text-center sm:pb-14 sm:pt-16">
         <div className="hero-emblem" aria-label="ENS402">
           ENS<span className="italic">402</span>
         </div>
@@ -31,7 +31,7 @@ export default function Home() {
             </Link>
           </Button>
           <Button asChild size="lg" variant="outline">
-            <a href="#stack">Watch the flow</a>
+            <a href="#stack">Explore the story</a>
           </Button>
         </div>
         <div className="mx-auto mt-10 flex max-w-xl flex-wrap items-center justify-center gap-x-8 gap-y-4 rounded-2xl border bg-card/70 px-6 py-4">
@@ -56,12 +56,24 @@ export default function Home() {
         </div>
       </section>
       <section id="stack" className="section-shell pb-16 sm:pb-24">
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="eyebrow">From discovery to delivery</p>
+            <h2 className="mt-3 font-heading text-3xl sm:text-4xl">
+              Follow one agent. See every decision.
+            </h2>
+          </div>
+          <p className="max-w-xs text-sm leading-6 text-muted-foreground">
+            Scroll down to move through the story. Choose a service or try a
+            different outcome.
+          </p>
+        </div>
         <ServicePreview />
       </section>
-      <section className="border-y bg-card/40">
+      <section id="architecture" className="border-y bg-card/40">
         <div className="section-shell py-14 sm:py-20">
           <div className="max-w-2xl">
-            <p className="eyebrow">Why ENSv2?</p>
+            <p className="eyebrow">Architecture / ENSv2 native permissions</p>
             <h2 className="section-title mt-5">
               Give an agent the URL key.
               <br />
@@ -73,7 +85,7 @@ export default function Home() {
               field.
             </p>
           </div>
-          <PermissionMap />
+          <NamespaceArchitecture />
           <Link
             href="/permissions"
             className="mt-6 inline-flex items-center gap-2 text-sm text-primary underline underline-offset-4"
