@@ -1,4 +1,5 @@
 "use client";
+import { EnsNameLink, RegistrationTransactionLink } from "./explorer-links";
 import { PublishServiceDialog } from "./publish-service-dialog";
 import { useEffect, useRef, useState } from "react";
 import { formatUnits } from "viem";
@@ -127,7 +128,11 @@ export function MerchantConsole({
         <div>
           <p className="text-sm text-muted-foreground">Service workspace</p>
           <h1 className="mt-2 break-all text-3xl sm:text-4xl">
-            {result?.provider || provider || "Your services"}
+            {result?.provider || provider ? (
+              <EnsNameLink name={result?.provider || provider} />
+            ) : (
+              "Your services"
+            )}
           </h1>
           <p className="mt-3 text-sm text-muted-foreground">
             Publish APIs, manage their settings and track payments.
@@ -255,7 +260,9 @@ export function MerchantConsole({
                     className="min-w-0 rounded-xl border bg-card p-5"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <h3 className="break-all font-semibold">{row.name}</h3>
+                      <h3 className="break-all font-semibold">
+                        <EnsNameLink name={row.name} />
+                      </h3>
                       <span className="rounded-full bg-muted px-2 py-1 text-xs">
                         {row.state === "listed"
                           ? "Searchable"
@@ -266,6 +273,7 @@ export function MerchantConsole({
                               : row.state.replaceAll("-", " ")}
                       </span>
                     </div>
+                    <RegistrationTransactionLink name={row.name} />
                     {"service" in row && row.service && (
                       <>
                         <p className="mt-3 text-sm leading-6 text-muted-foreground">

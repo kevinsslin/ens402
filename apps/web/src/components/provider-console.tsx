@@ -1,4 +1,5 @@
 "use client";
+import { EnsNameLink, RegistrationTransactionLink } from "./explorer-links";
 import Link from "next/link";
 import { ArrowRight, Building2, Plus, RefreshCw, Wallet } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -559,9 +560,13 @@ export function ProviderConsole({
                     <div className="flex items-center gap-3">
                       <Building2 className="size-5 text-primary" />
                       <h3 className="break-all font-semibold">
-                        {provider.name}
+                        <EnsNameLink name={provider.name} />
                       </h3>
                     </div>
+                    <RegistrationTransactionLink
+                      name={provider.name}
+                      hash={provider.registrationTransaction}
+                    />
                     <p className="mt-3 text-sm text-muted-foreground">
                       {provider.role}
                       {incomplete
@@ -615,10 +620,16 @@ export function ProviderConsole({
                     className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border bg-card p-5"
                   >
                     <div>
-                      <h3 className="break-all font-semibold">{name}</h3>
+                      <h3 className="break-all font-semibold">
+                        <EnsNameLink name={name} />
+                      </h3>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {provider.name}
+                        <EnsNameLink name={provider.name} />
                       </p>
+                      <RegistrationTransactionLink
+                        name={name}
+                        hash={provider.serviceTransactions?.[name]}
+                      />
                     </div>
                     <Button asChild variant="outline">
                       <Link href={`/service?name=${encodeURIComponent(name)}`}>
@@ -696,9 +707,12 @@ export function ProviderConsole({
         }}
       >
         <DialogContent
-          className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl"
-          showCloseButton={!busy}
-          onInteractOutside={(e) => e.preventDefault()}
+          scrollable
+          className="sm:max-w-3xl"
+          closeDisabled={busy}
+          onInteractOutside={(e) => {
+            if (busy) e.preventDefault();
+          }}
           onEscapeKeyDown={(e) => {
             if (busy) e.preventDefault();
           }}

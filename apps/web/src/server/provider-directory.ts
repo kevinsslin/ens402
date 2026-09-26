@@ -110,6 +110,7 @@ export async function providerDirectory(wallet: string, client = ensClient()) {
       "Provider history exceeds the demo scan window. Open a known provider from the merchant dashboard.",
     );
   const labels = new Set<string>();
+  const providerTransactions = new Map<string, string>();
   for (let start = from; start <= block.number; start += 5000n) {
     const logs = await client.getLogs({
       address: registry,
@@ -118,7 +119,12 @@ export async function providerDirectory(wallet: string, client = ensClient()) {
       toBlock: start + 4999n < block.number ? start + 4999n : block.number,
       strict: true,
     });
-    for (const log of logs) if (log.args.label) labels.add(log.args.label);
+    for (const log of logs)
+      if (log.args.label) {
+        labels.add(log.args.label);
+        if (log.transactionHash)
+          providerTransactions.set(log.args.label, log.transactionHash);
+      }
     if (labels.size > 100)
       throw Error(
         "Provider directory exceeds the demo scan limit. Open a known provider from the merchant dashboard.",
@@ -179,6 +185,7 @@ export async function providerDirectory(wallet: string, client = ensClient()) {
     const isOwner = owner.toLowerCase() === wallet.toLowerCase();
     if (isOwner || canPublish) {
       const serviceNames: string[] = [];
+      const serviceTransactions: Record<string, string> = {};
       let servicesUnavailable = false;
       try {
         const serviceLabels = new Set<string>();
@@ -192,7 +199,12 @@ export async function providerDirectory(wallet: string, client = ensClient()) {
             strict: true,
           });
           for (const log of logs)
-            if (log.args.label) serviceLabels.add(log.args.label);
+            if (log.args.label) {
+              serviceLabels.add(log.args.label);
+              if (log.transactionHash)
+                serviceTransactions[`${log.args.label}.${label}.${parent}`] =
+                  log.transactionHash;
+            }
           if (serviceLabels.size > 100)
             throw Error("Service directory exceeds demo limit");
         }
@@ -228,6 +240,12 @@ export async function providerDirectory(wallet: string, client = ensClient()) {
         role: isOwner ? "Provider owner" : "Service registrar",
         serviceNames: serviceNames.sort(),
         servicesUnavailable,
+        ...(providerTransactions.has(label)
+          ? { registrationTransaction: providerTransactions.get(label) }
+          : {}),
+        ...(Object.keys(serviceTransactions).length && !servicesUnavailable
+          ? { serviceTransactions }
+          : {}),
       });
     }
   }

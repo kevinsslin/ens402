@@ -83,9 +83,12 @@ export function PublishServiceDialog({
       }}
     >
       <DialogContent
-        className="max-h-[90dvh] overflow-y-auto sm:max-w-4xl [&>*]:min-w-0"
-        showCloseButton={!busy}
-        onInteractOutside={(e) => e.preventDefault()}
+        scrollable
+        className="sm:max-w-4xl"
+        closeDisabled={busy}
+        onInteractOutside={(e) => {
+          if (busy) e.preventDefault();
+        }}
         onEscapeKeyDown={(e) => {
           if (busy) e.preventDefault();
         }}

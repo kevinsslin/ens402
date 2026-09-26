@@ -57,8 +57,9 @@
   html { scroll-behavior: auto; }
   *, *::before, *::after { transition-duration: 0s !important; animation: none !important; }
   /* Keep transaction activity visible with a slower, small progress indicator. */
-  .setup-progress-spinner { animation: spin 2.4s linear infinite !important; }
+  .setup-progress-spinner, [data-slot="spinner"], .animate-spin { animation: loading-spin 2.4s linear infinite !important; }
 }
+@keyframes loading-spin { to { transform: rotate(360deg); } }
 @keyframes flow-enter { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 .flow-enter { animation: flow-enter 240ms ease-out; }
 

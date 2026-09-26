@@ -1,4 +1,8 @@
 "use client";
+import {
+  rememberRegistration,
+  RegistrationTransactionLink,
+} from "./explorer-links";
 import { serviceLabelError } from "./registration-validation";
 import { selectedWallet } from "./wallet-session";
 import { useEffect, useRef, useState } from "react";
@@ -368,6 +372,7 @@ export function RegistrationConsole({
         }
         sessionStorage.removeItem(storageKey);
         setPending(null);
+        rememberRegistration(`${draft.service.label}.${parent}`, hash);
         if (onComplete) onComplete(`${draft.service.label}.${parent}`);
         else
           window.location.assign(
@@ -598,6 +603,7 @@ export function RegistrationConsole({
           throw new Error("Registration reverted.");
         sessionStorage.removeItem(storageKey);
         setPhase("awaiting index");
+        rememberRegistration(`${draft.service.label}.${parent}`, hash);
         if (onComplete) onComplete(`${draft.service.label}.${parent}`);
         else
           window.location.assign(
@@ -1062,6 +1068,12 @@ export function RegistrationConsole({
             </p>
           )}
         </>
+      )}
+      {label && (
+        <RegistrationTransactionLink
+          name={`${label}.${parent}`}
+          hash={pending?.registrationHash}
+        />
       )}
       {phase !== "draft" &&
         phase !== "Registration could not continue" &&

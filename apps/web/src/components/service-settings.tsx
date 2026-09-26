@@ -1,4 +1,5 @@
 "use client";
+import { EnsNameLink, RegistrationTransactionLink } from "./explorer-links";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -317,8 +318,13 @@ export function ServiceSettings({
       </Link>
       <h1 className="mt-5 break-all text-3xl">Service settings</h1>
       <p className="mt-2 break-all text-muted-foreground">
-        {name || "Select a service from your workspace."}
+        {name ? (
+          <EnsNameLink name={name} />
+        ) : (
+          "Select a service from your workspace."
+        )}
       </p>
+      {name && <RegistrationTransactionLink name={name} />}
       <p className="mt-4 text-sm leading-6 text-muted-foreground">
         Editing permissions below are for the wallet selected in the navigation
         bar. Operations edits public details; Treasury Admin edits payment

@@ -85,3 +85,12 @@ it("omits expired services while keeping the provider", async () => {
   client.readContract.mockImplementation(async input => input.functionName === "findExpiry" && input.args[0] === "expired-service" ? 900n : original(input));
   expect((await providerDirectory(owner)).providers[0]?.serviceNames).toEqual([]);
 });
+it("exposes actual registration hashes from chain events for explorer links", async () => {
+  const hash = `0x${"ab".repeat(32)}`;
+  client.getLogs.mockImplementation(async ({ event }) => event.name === "ProxyDeployed"
+    ? [{ blockNumber: 90n, args: { implementation: currentDeployment.registryImplementation } }]
+    : [{ transactionHash: hash, args: { label: "demo" } }]);
+  const result = await providerDirectory(owner);
+  expect(result.providers[0]?.registrationTransaction).toBe(hash);
+  expect(result.providers[0]?.serviceTransactions?.["demo.demo.ens402.eth"]).toBe(hash);
+});

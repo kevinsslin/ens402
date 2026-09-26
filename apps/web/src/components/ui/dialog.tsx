@@ -39,7 +39,7 @@ function DialogOverlay({
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        "fixed inset-0 isolate z-50 bg-black/10 duration-100 supports-backdrop-filter:backdrop-blur-xs data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0",
+        "fixed inset-0 z-50 bg-black/50 duration-200 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0",
         className,
       )}
       {...props}
@@ -51,9 +51,13 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  scrollable = false,
+  closeDisabled = false,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean;
+  scrollable?: boolean;
+  closeDisabled?: boolean;
 }) {
   return (
     <DialogPortal>
@@ -62,16 +66,37 @@ function DialogContent({
         data-slot="dialog-content"
         className={cn(
           "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
+          scrollable && "flex max-h-[90dvh] flex-col gap-0 overflow-hidden p-0",
           className,
         )}
         {...props}
       >
-        {children}
+        {scrollable ? (
+          <>
+            <div className="shrink-0 border-b bg-popover p-5 pr-14">
+              {React.Children.toArray(children)[0]}
+            </div>
+            <div
+              data-slot="dialog-scroll-body"
+              className="min-h-0 min-w-0 overflow-y-auto overscroll-contain p-5 [&>*]:min-w-0"
+            >
+              {React.Children.toArray(children).slice(1)}
+            </div>
+          </>
+        ) : (
+          children
+        )}
         {showCloseButton && (
           <DialogPrimitive.Close data-slot="dialog-close" asChild>
             <Button
               variant="ghost"
-              className="absolute top-2 right-2"
+              className="absolute top-3 right-3 z-10 bg-popover"
+              disabled={closeDisabled}
+              title={
+                closeDisabled
+                  ? "Waiting for the current wallet operation"
+                  : "Close"
+              }
               size="icon-sm"
             >
               <XIcon />
@@ -129,7 +154,7 @@ function DialogTitle({
     <DialogPrimitive.Title
       data-slot="dialog-title"
       className={cn(
-        "font-heading text-base leading-none font-medium",
+        "font-sans text-lg leading-none font-semibold tracking-tight",
         className,
       )}
       {...props}
