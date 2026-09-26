@@ -86,7 +86,7 @@ Prepare actual callable test endpoints with clearly labeled fixture outputs, not
 These require the real owner/configuration/funding. Local fork tests do not complete them.
 
 - [ ] Provision a separate Neon discovery database/role, migrate it, and configure the worker/API with the same live source roots. Keep account and fixture databases separate.
-- [ ] Host Envio with HyperSync token or configured RPC, verify its GraphQL journal/checkpoint, and run the finalized export/sync worker. Local Envio dev also requires Docker; its daemon was unavailable at the last check.
+- [ ] Host Envio with HyperSync token or configured RPC, verify its GraphQL journal/checkpoint, and run the finalized export/sync worker. Local Envio dev requires Docker; a bounded RPC ingestion and Hasura checkpoint query passed locally.
 
 - [ ] Owner enables the native child registry beneath `ens402.eth` and verifies its pointer.
 - [ ] Configure a dedicated name-issuance worker, grant only `ROLE_REGISTRAR`, and fund Sepolia gas.
@@ -130,3 +130,7 @@ Checked September 26, 2026. These establish existing ecosystem capabilities, not
 - [Envio dynamic contracts](https://docs.envio.dev/docs/HyperIndex/dynamic-contracts): supports dynamic contract registration; dynamic ingestion and bounded lifecycle reconstruction are implemented; hosted ingestion remains unverified.
 
 Address-level research: the x402scan Base CDP/Bitquery query implementations filter token Transfer events by known facilitator transaction sender. This is a provider-coverage heuristic, not a universal x402 event. Our current settlement verifier already checks Transfer and AuthorizationUsed against a known payment authorization.
+
+## Recipient model decision
+
+- [ ] Proposed simplification: derive the x402 recipient from the current service-name holder and remove payTo from ens402.payment. This is not implemented; current code still uses explicit payment-record payTo. Keep name ownership distinct from an ENS address record. User prefers the holder-derived recipient model; destination-chain smart-wallet support must be handled explicitly. Cover ownership transfer, expiry, fresh reads and approval invalidation. ENS ownership is on Sepolia while USDC settlement is on Base Sepolia; same-address smart accounts need independently verified destination-chain control. Define the supported wallet types and transfer authority before migration. Treasury payment-key writes alone would no longer rotate the recipient.
