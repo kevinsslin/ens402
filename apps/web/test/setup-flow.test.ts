@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { confirmSetup, setupError } from "../src/components/setup-flow";
+import { confirmSetup, runSetupSequence, setupError } from "../src/components/setup-flow";
 import { prepareSetupStep, setupReceipt } from "../src/server/setup-transaction";
 import { createEnsClient } from "../../../packages/server/src/ens-rpc";
 import { sharedResolverPlan } from "../../../scripts/ens/provider-shared";
@@ -107,4 +107,32 @@ it("handles a real RPC null receipt through the workspace client", async () => {
  }));
  const client=createEnsClient("http://127.0.0.1:18549");
  await expect(setupReceipt(hash,client)).resolves.toEqual({status:"pending"});
+});
+
+it("continues from confirmation to the next signature without another click", async () => {
+ const calls:string[]=[];
+ const plan=vi.fn(async (setup:number)=>{calls.push(`plan:${setup}`);return {setup,transactions:setup<2?[{...step,data:`0x0${setup}`}]:[]};});
+ const submit=vi.fn(async (_step:typeof step,setup:number)=>{calls.push(`sign:${setup}`);return setup;});
+ const confirm=vi.fn(async (setup:number)=>{calls.push(`confirm:${setup}`);return setup+1;});
+ await expect(runSetupSequence({setup:0,plan,submit,confirm,active:()=>true})).resolves.toBe(true);
+ expect(calls).toEqual(["plan:0","sign:0","confirm:0","plan:1","sign:1","confirm:1","plan:2"]);
+});
+it("stops automatic sequencing on rejection or failed confirmation",async()=>{
+ for(const failure of ["sign","confirm"]){
+ const submit=vi.fn(async()=>{if(failure==="sign")throw Error("rejected");return 0;});
+ const confirm=vi.fn(async()=>{throw Error("confirmation unavailable");});
+ await expect(runSetupSequence({setup:0,plan:async()=>({setup:0,transactions:[step]}),submit,confirm,active:()=>true})).rejects.toThrow();
+ expect(submit).toHaveBeenCalledTimes(1);
+ expect(confirm).toHaveBeenCalledTimes(failure==="sign"?0:1);
+ }
+});
+it("never resubmits a confirmed step when the planner returns stale state",async()=>{
+ const submit=vi.fn(async()=>0);
+ await expect(runSetupSequence({setup:0,plan:async()=>({setup:0,transactions:[step]}),submit,confirm:async()=>0,active:()=>true})).rejects.toThrow("no duplicate transaction");
+ expect(submit).toHaveBeenCalledTimes(1);
+});
+it("does not open another wallet request after leaving the page",async()=>{
+ let active=true;const submit=vi.fn(async()=>0);
+ await expect(runSetupSequence({setup:0,plan:async()=>{active=false;return {setup:0,transactions:[step]};},submit,confirm:async()=>0,active:()=>active})).resolves.toBe(false);
+ expect(submit).not.toHaveBeenCalled();
 });

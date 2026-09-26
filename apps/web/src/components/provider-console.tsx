@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { ArrowRight, Building2, Plus, RefreshCw, Wallet } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   createWalletClient,
   custom,
@@ -10,7 +10,7 @@ import {
 } from "viem";
 import { sepolia } from "viem/chains";
 import { Button } from "./ui/button";
-import { confirmSetup, setupError, setupStepCopy, type PendingSetup } from "./setup-flow";
+import { confirmSetup, runSetupSequence, setupError, setupStepCopy, type PendingSetup } from "./setup-flow";
 import { SetupProgressCard, type SetupActivity } from "./setup-progress-card";
 import { selectedWallet } from "./wallet-session";
 import { PlatformBootstrap } from "./platform-bootstrap";
@@ -68,6 +68,12 @@ export function ProviderConsole({
   const [pending, setPending] = useState<PendingProvider | null>(null);
   const [activity, setActivity] = useState<SetupActivity>("idle");
   const [failed, setFailed] = useState(false);
+  const running = useRef(false);
+  const mounted = useRef(true);
+  const resumedHash = useRef<string | null>(null);
+  const activeWallet = useRef(walletAddress);
+  activeWallet.current = walletAddress;
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const hasSetupProgress = Boolean(plan || pending);
   useEffect(() => {
     if (hasSetupProgress) document.getElementById("provider-setup-progress")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -163,33 +169,57 @@ export function ProviderConsole({
     setSetup(next);
     localStorage.removeItem(pendingKey); setPending(null);
     setActivity("checking");
-    await refresh(next);
-    setMessage("Confirmed. Your next setup step is ready below.");
+    return next;
   }
   async function run(sign = false) {
-    if (busy) return;
+    if (running.current) return;
+    running.current = true;
+    const startingWallet = walletAddress;
+    const active = () => mounted.current && activeWallet.current === startingWallet;
     setBusy(true); setMessage(""); setFailed(false); setActivity("checking");
     try {
-      if (pending) { await finishTransaction(pending); return; }
-      if (!sign) { await refresh(); return; }
-      const current = await refresh(setup, true);
-      const step = current.transactions[0];
-      if (!step) { setMessage("Setup is complete. You can publish your first service."); return; }
-      if (!step.gas) throw Error("Transaction preparation is incomplete. Review the setup again.");
-      const provider = await getProvider();
-      const signer = (await selectedWallet(provider, step.signer, "0xaa36a7")) as Address;
-      setActivity("wallet");
-      setMessage("Confirm the transaction in your wallet. We will save its hash as soon as the wallet returns it.");
-      // Wallet submission is intentionally never retried automatically.
-      const hash = await createWalletClient({ chain: sepolia, transport: custom(provider) }).sendTransaction({
-        account: signer, ...(step.to ? { to: step.to as Address } : {}), data: step.data as Hex, value: 0n, gas: BigInt(step.gas),
+      let currentSetup = setup;
+      if (pending) {
+        resumedHash.current = pending.hash;
+        currentSetup = await finishTransaction(pending);
+      }
+      if (!active()) return;
+      if (!sign) { await refresh(currentSetup); return; }
+      let currentPhase = 0;
+      const complete = await runSetupSequence({
+        setup: currentSetup,
+        confirmedStep: pending ? { ...pending.step, gas: undefined as string | undefined } : undefined,
+        active,
+        plan: async current => { setActivity("checking"); const next = await refresh(current, true); currentPhase = next.phase; return next; },
+        submit: async (step, current) => {
+          if (!step.gas) throw Error("Transaction preparation is incomplete. Review the setup again.");
+          const provider = await getProvider();
+          if (!active()) throw Error("Setup paused because the connected wallet changed or the page closed.");
+          const signer = (await selectedWallet(provider, step.signer, "0xaa36a7")) as Address;
+          if (!active()) throw Error("Setup paused because the connected wallet changed or the page closed.");
+          setActivity("wallet");
+          setMessage("Confirm this step in your wallet. After confirmation, the next wallet request opens automatically.");
+          const hash = await createWalletClient({ chain: sepolia, transport: custom(provider) }).sendTransaction({
+            account: signer, ...(step.to ? { to: step.to as Address } : {}), data: step.data as Hex, value: 0n, gas: BigInt(step.gas),
+          });
+          const transaction = { hash, step, setup: current, phase: currentPhase };
+          localStorage.setItem(pendingKey, JSON.stringify(transaction));
+          resumedHash.current = hash;
+          setPending(transaction);
+          return transaction;
+        },
+        confirm: finishTransaction,
       });
-      const submitted = { hash, step, setup: current.setup, phase: current.phase };
-      localStorage.setItem(pendingKey, JSON.stringify(submitted)); setPending(submitted);
-      await finishTransaction(submitted);
-    } catch (error) { setFailed(true); setMessage(setupError(error)); }
-    finally { setBusy(false); setActivity("idle"); }
+      if (complete) setMessage("Setup is complete. You can publish your first service.");
+    } catch (error) { if (mounted.current) { setFailed(true); setMessage(setupError(error)); } }
+    finally { running.current = false; if (mounted.current) { setBusy(false); setActivity("idle"); } }
   }
+  useEffect(() => {
+    if (!pending || busy || running.current || !walletAddress || resumedHash.current === pending.hash) return;
+    if (pending.step.signer.toLowerCase() !== walletAddress.toLowerCase()) return;
+    resumedHash.current = pending.hash;
+    void run(true);
+  }, [pending, busy, walletAddress]);
   const nextStep = setupStepCopy(plan?.transactions[0]?.description);
   return (
     <section className="mx-auto w-full max-w-4xl px-5 py-12 sm:px-8">

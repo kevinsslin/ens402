@@ -55,3 +55,29 @@ export async function confirmSetup(pending: PendingSetup, options: { fetch?: typ
   if (unavailable) throw Error("Confirmation is temporarily unavailable. Your transaction is saved. Use Check transaction to continue; do not send it again.");
   throw Error("Still waiting for confirmation. Your transaction is saved. Use Check transaction to continue without signing again.");
 }
+
+/** Advance only after confirmation and a fresh plan. Never retry a submission. */
+export async function runSetupSequence<S, T extends PendingSetup["step"], P>(options: {
+  setup: S;
+  confirmedStep?: T;
+  plan: (setup: S) => Promise<{ setup: S; transactions: T[] }>;
+  submit: (step: T, setup: S) => Promise<P>;
+  confirm: (pending: P) => Promise<S>;
+  active: () => boolean;
+}) {
+  let setup = options.setup;
+  const identityOf = (step: T) => JSON.stringify([step.signer.toLowerCase(), step.to?.toLowerCase(), step.data.toLowerCase(), BigInt(step.value ?? "0").toString()]);
+  const submitted = new Set<string>(options.confirmedStep ? [identityOf(options.confirmedStep)] : []);
+  while (options.active()) {
+    const plan = await options.plan(setup);
+    if (!options.active()) return false;
+    const step = plan.transactions[0];
+    if (!step) return true;
+    const identity = identityOf(step);
+    if (submitted.has(identity)) throw Error("The next step still shows a permission already confirmed. Setup is paused while chain data catches up; no duplicate transaction was sent.");
+    submitted.add(identity);
+    const pending = await options.submit(step, plan.setup);
+    setup = await options.confirm(pending);
+  }
+  return false;
+}
