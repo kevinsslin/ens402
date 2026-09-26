@@ -390,7 +390,7 @@ For the worker's verified category, set `ANALYTICS_LEDGER_DATABASE_URL` to a rea
 
 ### Hosted provider trust groups
 
-After onboarding, configure the confirmed `PROVIDER_ENS_NAME`, `PROVIDER_REGISTRY_ADDRESS` and `PROVIDER_RESOLVER_ADDRESS`. Additional providers can be added through `PROVIDER_GROUPS_JSON`, an array of `{providerName,providerRegistry,resolver}`. Hosted Guard and Admin handover use these operator-reviewed pins; publishing/indexing alone does not add a provider to that trust set. SDK integrators can supply their own resolver policy. This admission step is currently manual, and unknown provider groups are held.
+Hosted Guard derives provider Registry/Resolver bindings from native ENS within `ENS_PARENT_NAME` and verifies their factory implementation. No per-provider admission is required there. Optional external groups can use `PROVIDER_GROUPS_JSON`, an array of `{providerName,providerRegistry,resolver}`. Existing `PROVIDER_*` configuration remains available for operator and management scripts. SDK integrators can supply their own resolver policy. Search results alone never authorize payment.
 
 For a reviewed isolated service resolver only, set `ENS_MANAGEMENT_RESOLVER_POLICY=dedicated` to enable its separate governance handover. A one-bundle count is a check, not proof of exclusive resolver membership. Shared provider governance requires its configured registry/resolver binding; a service-name handover never implicitly transfers that shared governance.
 
