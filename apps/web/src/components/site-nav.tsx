@@ -17,7 +17,7 @@ export function SiteNav() {
       href: "/provider",
       label: "Onboard your service",
       icon: PlusCircle,
-      active: ["/merchant", "/provider", "/register"].some(
+      active: ["/merchant", "/provider", "/register", "/service"].some(
         (route) => path === route || path.startsWith(`${route}/`),
       ),
     },

@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { EB_Garamond, Inter, Geist_Mono } from "next/font/google";
 import { Layers3 } from "lucide-react";
+import { WalletProvider } from "@/components/wallet-provider";
+import { WalletNav } from "@/components/wallet-nav";
 import { SiteNav } from "@/components/site-nav";
 import "./globals.css";
 
@@ -38,67 +40,76 @@ export default function RootLayout({
         >
           Skip to content
         </a>
-        <header className="sticky top-0 z-40 border-b border-primary/15 bg-background/95 shadow-sm backdrop-blur-md">
-          <div className="section-shell flex min-h-18 flex-wrap items-center justify-between gap-x-6 gap-y-2 py-3">
-            <Link
-              href="/"
-              aria-label="ENS402 home"
-              className="flex items-center justify-self-start gap-2.5 text-xl font-semibold tracking-tight"
-            >
-              <Layers3 className="size-6 text-primary" aria-hidden="true" />
-              ENS<span className="-ml-2 text-primary">402</span>
-            </Link>
-            <SiteNav />
-          </div>
-        </header>
-        <main id="main-content" className="flex-1">
-          {children}
-        </main>
-        <footer className="mt-12 border-t border-primary/20 bg-[#eaf1f1]">
-          <div className="section-shell grid gap-8 py-10 sm:grid-cols-[1fr_auto] sm:py-12">
-            <div>
+        <WalletProvider appId={process.env.PRIVY_APP_ID}>
+          <header className="sticky top-0 z-40 border-b border-primary/15 bg-background/95 shadow-sm backdrop-blur-md">
+            <div className="section-shell flex min-h-18 flex-wrap items-center justify-between gap-x-6 gap-y-2 py-3">
               <Link
                 href="/"
-                className="inline-flex items-center gap-2 text-xl font-semibold tracking-tight"
+                aria-label="ENS402 home"
+                className="flex items-center justify-self-start gap-2.5 text-xl font-semibold tracking-tight"
               >
                 <Layers3 className="size-6 text-primary" aria-hidden="true" />
-                ENS402
+                ENS<span className="-ml-2 text-primary">402</span>
               </Link>
-              <p className="mt-3 max-w-sm text-sm leading-6 text-muted-foreground">
-                Discover services. Govern their configuration.
-                <br />
-                Verify before you pay.
+              <div className="order-3 w-full md:order-2 md:w-auto">
+                <SiteNav />
+              </div>
+              {process.env.PRIVY_APP_ID && (
+                <div className="order-2 ml-auto md:order-3 md:ml-0">
+                  <WalletNav />
+                </div>
+              )}
+            </div>
+          </header>
+          <main id="main-content" className="flex-1">
+            {children}
+          </main>
+          <footer className="mt-12 border-t border-primary/20 bg-[#eaf1f1]">
+            <div className="section-shell grid gap-8 py-10 sm:grid-cols-[1fr_auto] sm:py-12">
+              <div>
+                <Link
+                  href="/"
+                  className="inline-flex items-center gap-2 text-xl font-semibold tracking-tight"
+                >
+                  <Layers3 className="size-6 text-primary" aria-hidden="true" />
+                  ENS402
+                </Link>
+                <p className="mt-3 max-w-sm text-sm leading-6 text-muted-foreground">
+                  Discover services. Govern their configuration.
+                  <br />
+                  Verify before you pay.
+                </p>
+              </div>
+              <nav
+                aria-label="Footer navigation"
+                className="grid grid-cols-2 gap-x-12 gap-y-3 text-sm font-medium"
+              >
+                <Link href="/console" className="hover:text-primary">
+                  Search services
+                </Link>
+                <Link href="/docs" className="hover:text-primary">
+                  Developer docs
+                </Link>
+                <Link href="/provider" className="hover:text-primary">
+                  Onboard your service
+                </Link>
+                <Link href="/#architecture" className="hover:text-primary">
+                  How it works
+                </Link>
+              </nav>
+            </div>
+            <div className="section-shell flex flex-wrap items-center justify-between gap-3 border-t border-primary/10 py-5 text-xs text-muted-foreground">
+              <p>Independent project · ETHGlobal Tokyo 2026</p>
+              <p className="flex items-center gap-2">
+                <span
+                  className="size-1.5 rounded-full bg-primary"
+                  aria-hidden="true"
+                />
+                Testnet demo · ENS Sepolia / Base Sepolia
               </p>
             </div>
-            <nav
-              aria-label="Footer navigation"
-              className="grid grid-cols-2 gap-x-12 gap-y-3 text-sm font-medium"
-            >
-              <Link href="/console" className="hover:text-primary">
-                Search services
-              </Link>
-              <Link href="/docs" className="hover:text-primary">
-                Developer docs
-              </Link>
-              <Link href="/provider" className="hover:text-primary">
-                Onboard your service
-              </Link>
-              <Link href="/#architecture" className="hover:text-primary">
-                How it works
-              </Link>
-            </nav>
-          </div>
-          <div className="section-shell flex flex-wrap items-center justify-between gap-3 border-t border-primary/10 py-5 text-xs text-muted-foreground">
-            <p>Independent project · ETHGlobal Tokyo 2026</p>
-            <p className="flex items-center gap-2">
-              <span
-                className="size-1.5 rounded-full bg-primary"
-                aria-hidden="true"
-              />
-              Testnet demo · ENS Sepolia / Base Sepolia
-            </p>
-          </div>
-        </footer>
+          </footer>
+        </WalletProvider>
       </body>
     </html>
   );

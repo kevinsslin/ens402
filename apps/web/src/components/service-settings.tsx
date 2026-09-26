@@ -246,7 +246,7 @@ export function ServiceSettings({
         {name || "Select a service from your workspace."}
       </p>
       <p className="mt-4 text-sm leading-6 text-muted-foreground">
-        These are your current ENS records. Operations edits public details;
+        Editing permissions below are for the wallet selected in the navigation bar. Operations edits public details;
         Treasury Admin edits payment terms. Changes require a Sepolia
         transaction. Keep your API's description and payment response aligned
         with ENS so Guard can verify them.
@@ -303,7 +303,7 @@ export function ServiceSettings({
                   {title}
                 </label>
                 <span className="text-xs text-muted-foreground">
-                  {canWrite(key) ? "Can edit" : "Read only"}
+                  {canWrite(key) ? "Can edit with this wallet" : "Read only for this wallet"}
                 </span>
               </div>
               <p className="mt-1 text-sm text-muted-foreground">{hint}</p>

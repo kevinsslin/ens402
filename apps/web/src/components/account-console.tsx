@@ -1,7 +1,7 @@
 "use client";
-import { useState } from "react";
-import { PrivyProvider, usePrivy, useWallets } from "@privy-io/react-auth";
-import { baseSepolia, sepolia } from "viem/chains";
+import { useActiveWallet, usePrivy, useWallets } from "@privy-io/react-auth";
+import { Fragment } from "react";
+import { activeEthereumWallet } from "./active-wallet";
 import { Button } from "@/components/ui/button";
 import { RegistrationConsole } from "./registration-console";
 import { ProviderConsole } from "./provider-console";
@@ -25,18 +25,10 @@ function AccountWorkspace({
   workspace?: "provider" | "merchant" | "service";
   parent?: string;
 }) {
-  const {
-    ready,
-    authenticated,
-    login,
-    logout,
-    getAccessToken,
-    user,
-    connectWallet,
-  } = usePrivy();
+  const { ready, authenticated, user, login, getAccessToken } = usePrivy();
   const { wallets, ready: walletsReady } = useWallets();
-  const [selected, setSelected] = useState("");
-  const wallet = wallets.find((w) => w.address === selected) ?? wallets[0];
+  const { wallet: activeWallet } = useActiveWallet();
+  const wallet = activeEthereumWallet(wallets, activeWallet?.address);
   if (!ready || (authenticated && !walletsReady))
     return (
       <div className="section-shell py-20" role="status">
@@ -93,40 +85,7 @@ function AccountWorkspace({
       </section>
     );
   return (
-    <>
-      <div className="section-shell flex flex-wrap items-center justify-between gap-3 border-b py-3">
-        <p className="text-sm">
-          {user?.email?.address || "Account"}
-        </p>
-        <div className="flex flex-wrap items-center gap-2">
-          {wallets.length > 0 && (
-            <label className="text-xs">
-              Connected wallet
-              <select
-                aria-label="Connected wallet"
-                className="ml-2 max-w-52 rounded-md border bg-background p-2"
-                value={wallet?.address ?? ""}
-                onChange={(e) => setSelected(e.target.value)}
-              >
-                {wallets.map((w) => (
-                  <option
-                    key={`${w.address}-${w.walletClientType}`}
-                    value={w.address}
-                  >
-                    {w.address.slice(0, 8)}…{w.address.slice(-6)}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          <Button variant="outline" onClick={() => connectWallet()}>
-            {wallet ? "Switch wallet" : "Connect wallet"}
-          </Button>
-          <Button variant="ghost" onClick={() => logout()}>
-            Sign out
-          </Button>
-        </div>
-      </div>
+    <Fragment key={wallet?.address.toLowerCase() ?? "no-wallet"}>
       {workspace === "provider" ? (
         <ProviderConsole
           getToken={getAccessToken}
@@ -147,10 +106,14 @@ function AccountWorkspace({
           }}
         />
       ) : workspace === "service" ? (
-        <ServiceSettings walletAddress={wallet?.address} getToken={getAccessToken} getProvider={async () => {
-          if (!wallet) throw Error("Connect a wallet to update settings");
-          return wallet.getEthereumProvider();
-        }}/>
+        <ServiceSettings
+          walletAddress={wallet?.address}
+          getToken={getAccessToken}
+          getProvider={async () => {
+            if (!wallet) throw Error("Connect a wallet to update settings");
+            return wallet.getEthereumProvider();
+          }}
+        />
       ) : registration ? (
         <RegistrationConsole
           {...registration}
@@ -181,7 +144,7 @@ function AccountWorkspace({
           }}
         />
       )}
-    </>
+    </Fragment>
   );
 }
 export function AccountConsole({
@@ -196,20 +159,10 @@ export function AccountConsole({
   registration?: Registration;
 }) {
   return (
-    <PrivyProvider
-      appId={appId}
-      config={{
-        loginMethods: ["email", "wallet"],
-        appearance: { theme: "light", accentColor: "#0054cc" },
-        defaultChain: baseSepolia,
-        supportedChains: [baseSepolia, sepolia],
-      }}
-    >
-      <AccountWorkspace
-        registration={registration}
-        workspace={workspace}
-        parent={parent}
-      />
-    </PrivyProvider>
+    <AccountWorkspace
+      registration={registration}
+      workspace={workspace}
+      parent={parent}
+    />
   );
 }
