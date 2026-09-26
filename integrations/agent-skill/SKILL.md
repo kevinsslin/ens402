@@ -22,9 +22,11 @@ The hosted resource supports GET or bounded JSON POST to the exact ENS-published
 
 ## Discover first
 
+For public search without payment credentials, use the standalone [ENS402 discovery Skill](https://ens402.vercel.app/skills/ens402-discovery/SKILL.md). The landing page and Search services page provide Copy Skill, download and a Claude Code MCP setup command.
+
 Use `discover({ query, mode: "hybrid", maxPricePerRequestAtomic }, { apiUrl: "https://YOUR_DEPLOYMENT/api/discover" })` from `@ens402/sdk/discovery`. The API URL is configurable; no wallet or payment key is needed. The operator must configure a catalog/indexer. Semantic search can be unavailable; inspect `semantic` rather than assuming it ran.
 
-A stateless, read-only MCP endpoint is available at `/api/mcp` (Streamable HTTP, POST). It exposes `discover_services` and `resolve_service` only. Configure the deployment URL in your MCP client. No signing or approval tools are exposed.
+A stateless, read-only MCP endpoint is available at `/api/mcp` (Streamable HTTP, POST). It exposes `discover_services`, `resolve_service` and `observe_ens_changes`. Configure the deployment URL in your MCP client. No signing or approval tools are exposed.
 
 1. Search for the task, with an optional per-request price filter in atomic USDC units (10000 = 0.01 USDC).
 2. Present candidate ENS names, descriptions, match reasons, fixture labels, indexed block/time and method/input examples. Relevance is not trust or safety.

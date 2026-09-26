@@ -89,6 +89,8 @@ Hosted semantic search uses embeddings to retrieve candidates, then an OpenAI re
 
 ## Buyer and merchant product flow
 
+Agents can connect to the hosted MCP at `https://ens402.vercel.app/api/mcp`, or copy/download the discovery Skill from Search services, the landing Discover section or `/docs`. Save the downloaded file as `.claude/skills/ens402-discovery/SKILL.md` for Claude Code to reuse it. The Skill can search the HTTP API without MCP installation; it does not grant payment authority. The existing `integrations/agent-skill` payment guide remains an advanced integration.
+
 Target buyer flow: search a need, inspect ranked candidates with ENS identity and call instructions, choose a service, then approve and purchase through Guard. Rankings express relevance, not guaranteed quality. `/discover`, SDK search, MCP and onchain call-schema publication are implemented. Selecting a result opens Console for fresh inspection; the public indexed catalog and funded purchase rehearsal still require setup.
 
 Merchant flow: `/provider` prepares wallet-signed native setup and service publication, then `/merchant` reads actual control, listing status and address-level receipts. Registration confirmation is distinct from catalog ingestion. All management writes require native wallet signatures.

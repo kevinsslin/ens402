@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AgentSetup } from "@/components/agent-setup";
 const code =
   "mt-5 overflow-x-auto rounded-xl border bg-card p-5 text-xs leading-6";
 export default function DocsPage() {
@@ -29,6 +30,7 @@ export default function DocsPage() {
       </p>
       <section className="mt-9 rounded-xl border p-6">
         <h2 className="text-xl font-medium">Discover before you approve</h2>
+        <AgentSetup />
         <p className="mt-3 text-sm leading-7 text-muted-foreground">
           Search the public catalog without a wallet. The API, SDK and read-only
           MCP use the same candidate data. Resolve the chosen ENS name again in

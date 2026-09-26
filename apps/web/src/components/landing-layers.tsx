@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AgentDiscoveryFlow } from "./agent-discovery-flow";
+import { AgentSetup } from "./agent-setup";
 import { PaymentVerificationFlow } from "./payment-verification-flow";
 import { ArrowRight, Check, LockKeyhole, Search, ShieldCheck, X } from "lucide-react";
 
@@ -18,6 +19,7 @@ export function LandingLayers() {
         <p className="mt-6 text-lg leading-8 text-muted-foreground">Agents need to know what a service does, how to call it and what it costs. Publish that context under an ENS name, where anyone can read it, verify its source and follow its changes.</p>
         <p className="mt-4 leading-7 text-muted-foreground">As agent-to-agent services multiply, discovery should be rebuildable. Use our SDK or MCP, or run the open-source indexer and build your own search.</p>
         <Link href="/discover" className="mt-6 inline-flex items-center gap-2 font-medium text-primary">Explore services <ArrowRight size={17} /></Link>
+        <AgentSetup />
       </div>
       <AgentDiscoveryFlow />
       </div>

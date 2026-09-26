@@ -11,6 +11,7 @@ import {
 } from "@ens402/sdk/discovery";
 import { ArrowRight, Search, SlidersHorizontal, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AgentSetup } from "./agent-setup";
 
 function probeCommand(service: DiscoveryService) {
   const quote = (value: string) => "'" + value.replaceAll("'", "'\\''") + "'";
@@ -138,6 +139,7 @@ export function DiscoveryConsole({
           </label>
         </details>
       </form>
+      <AgentSetup />
       {!result && !busy && !error && !catalogNotReady && (
         <div className="mt-4 flex flex-wrap gap-2" aria-label="Example prompts">
           {[
