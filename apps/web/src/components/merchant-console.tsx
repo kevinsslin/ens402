@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { formatUnits } from "viem";
 import { MerchantAnalytics } from "./merchant-analytics";
 import { MerchantHandover } from "./merchant-handover";
@@ -25,6 +25,12 @@ export function MerchantConsole({
     [busy, setBusy] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshNotice, setRefreshNotice] = useState("");
+  const requestVersion = useRef(0);
+  useEffect(() => {
+    setResult(null);
+    if (walletAddress && new URLSearchParams(window.location.search).get("provider")) void load();
+    return () => { requestVersion.current++; };
+  }, [walletAddress]);
   async function refreshListings() {
     setRefreshing(true); setRefreshNotice("Reading finalized ENS changes and updating the searchable catalog. This can take a few minutes.");
     try {
@@ -37,6 +43,7 @@ export function MerchantConsole({
     finally { setRefreshing(false); }
   }
   async function load() {
+    const version = ++requestVersion.current;
     setBusy(true);
     setError("");
     try {
@@ -68,13 +75,14 @@ export function MerchantConsole({
       const response = await fetch(`/api/merchant/dashboard?${query}`);
       const data = await response.json();
       if (!response.ok) throw Error(data.error);
-      setResult(data);
+      if (version === requestVersion.current) setResult(data);
     } catch (cause) {
+      if (version !== requestVersion.current) return;
       setError(
         cause instanceof Error ? cause.message : "Dashboard unavailable",
       );
     } finally {
-      setBusy(false);
+      if (version === requestVersion.current) setBusy(false);
     }
   }
   return (

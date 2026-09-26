@@ -5,7 +5,7 @@ Current scope: **Discover, Govern, Guard**. Namespace: **Platform Registry -> Pr
 ## Demo critical path
 
 - Production database is reachable but has no catalog snapshot or services (verified September 27). Search cannot return real results until the first publication and sync.
-- Owner: open `/provider`, connect the wallet holding `ens402.eth`, then complete platform setup with the displayed transactions.
+- Platform setup completed: native child registry `0xf537B10228b82726c9B0216d8a51097f6554e4CD` is linked to `ens402.eth`; owner authority verified at Sepolia block 11787963.
 - Provider: configure the real Admin, Ops and Treasury wallets, publish services, then use **Refresh listings**. No always-on worker or Cron is required for this demo.
 - Verify indexed listings and live semantic results, then fund the buyer with Base Sepolia USDC and rehearse Guard, payment and delivery.
 - Search now distinguishes first-sync setup from an outage. Local tests and UI verification do not imply the public payment journey is complete.
@@ -24,6 +24,8 @@ Current scope: **Discover, Govern, Guard**. Namespace: **Platform Registry -> Pr
 - [x] Address-level USDC analytics: finalized receipts, shared-address deduplication, integer totals, unique payers, observation windows, historical control/address epochs and reorg replay.
 - [x] Separate unclassified/facilitator/verified categories. Trusted terminal local payment evidence is independently verified against canonical settlement receipts; no public proof submission.
 - [x] Contract interface and NatSpec, native deployment/role libraries, explicit atomic units/expiry, commitment binding, reentrancy protection and atomic rollback coverage. No duplicate custom RBAC or new upgrade system.
+
+- [x] Provider onboarding finds current name owners and registry publishers from native events without requiring the service catalog. Existing providers link to management; first-time users see a guided wallet/name form. Ops/Treasury-only delegates can open a known provider by name. Demo discovery is bounded to 100 provider labels and roughly 200,000 blocks of registry history; longer histories require indexed provider enumeration.
 
 ## Registration preflight: implemented
 
@@ -47,7 +49,7 @@ Current scope: **Discover, Govern, Guard**. Namespace: **Platform Registry -> Pr
 
 Local tests do not complete these steps. No mainnet transactions.
 
-1. [ ] **Platform owner:** enable the native child registry under `ens402.eth`, sign the reviewed setup plan, and verify pointers/roles. Existing root owner: `0x0D2FDDee5b84540A9766c025ad26dCaFb9FeF380`.
+1. [x] **Platform owner:** native child registry linked and bootstrap registration roles verified on Sepolia (block 11787963). Existing root owner: `0x0D2FDDee5b84540A9766c025ad26dCaFb9FeF380`.
 2. [ ] **Treasury:** supply the real Sepolia Safe, verify owners/threshold and rehearse its signing. Local contract fixtures are not a Safe audit. For a contract service-name holder, deploy/control its Base Sepolia wallet and publish the destination signature proof.
 3. [ ] **Provider:** complete `/provider` using the real Admin/Platform/Ops/Treasury signers. Publish fixture services and a second independent provider; verify allowed/denied writes publicly with receipts. Add confirmed provider bindings to hosted Guard configuration (`PROVIDER_*` or `PROVIDER_GROUPS_JSON`).
 4. [ ] **Discovery:** database and Vercel configuration are ready. Use the Next.js sync route with the same live source/roots and verify the first finalized service listing. Never import the local fixture catalog.

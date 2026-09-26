@@ -1,4 +1,6 @@
 "use client";
+import Link from "next/link";
+import { ArrowRight, Building2, Plus, RefreshCw, Wallet } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   createPublicClient,
@@ -28,7 +30,13 @@ type Plan = {
     description: string;
   }[];
 };
-const field = "mt-2 w-full rounded-lg border p-3 text-sm";
+type Directory = Awaited<ReturnType<typeof import("@/server/provider-directory").providerDirectory>>;
+const field = "mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition-shadow focus:border-primary focus:ring-4 focus:ring-primary/10 disabled:bg-slate-50 disabled:text-muted-foreground";
+const walletFields = [
+  { key: "admin", title: "Provider Admin", hint: "Owns the provider name, manages service registration and grants or replaces wallet permissions. Also retains full text control of the shared resolver.", note: "Use a wallet you control." },
+  { key: "ops", title: "Operations wallet", hint: "Updates descriptions, images, API endpoints and call schemas across your services. Cannot change payment terms.", note: "A separate hot wallet or agent wallet." },
+  { key: "treasury", title: "Treasury Safe", hint: "Updates payment terms across your services. Each service's name holder is its payment recipient.", note: "A deployed Safe contract on Sepolia, separate from Admin and Ops." },
+] as const;
 export function ProviderConsole({
   walletAddress,
   getProvider,
@@ -52,12 +60,35 @@ export function ProviderConsole({
   const [plan, setPlan] = useState<Plan | null>(null),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
+  const [directory, setDirectory] = useState<Directory | null>(null);
+  const [directoryError, setDirectoryError] = useState("");
+  const [directoryLoading, setDirectoryLoading] = useState(true);
+  const [directoryVersion, setDirectoryVersion] = useState(0);
+  const [creating, setCreating] = useState(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    setDirectory(null); setDirectoryError(""); setDirectoryLoading(true); setCreating(false);
+    if (!walletAddress) { setDirectoryLoading(false); return; }
+    fetch(`/api/provider/directory?wallet=${encodeURIComponent(walletAddress)}`, { signal: controller.signal })
+      .then(async response => { const data = await response.json(); if (!response.ok) throw Error(data.error); return data as Directory; })
+      .then(data => {
+        if (controller.signal.aborted) return;
+        setDirectory(data);
+        setSetup(previous => ({ ...previous, platformSigner: previous.platformSigner === walletAddress || !previous.platformSigner ? data.platformOwner : previous.platformSigner }));
+      })
+      .catch(error => { if (!controller.signal.aborted) setDirectoryError(error instanceof Error ? error.message : "Provider lookup unavailable"); })
+      .finally(() => { if (!controller.signal.aborted) setDirectoryLoading(false); });
+    return () => controller.abort();
+  }, [walletAddress, directoryVersion]);
   const storageKey = `ens402-provider-setup:${parent}`;
   useEffect(() => {
     const raw = localStorage.getItem(storageKey);
     if (raw) {
       try {
-        setSetup(JSON.parse(raw));
+        const saved = JSON.parse(raw) as ProviderSetup;
+        const associated = [saved.admin, saved.platformSigner, saved.ops, saved.treasury].some(value => value?.toLowerCase() === walletAddress?.toLowerCase());
+        if (saved.parent === parent && associated) { setSetup(saved); setCreating(!saved.registrar); }
+        else setSetup({ parent, label: "", admin: walletAddress ?? "", platformSigner: "", ops: "", treasury: "", salt: BigInt(`0x${crypto.randomUUID().replaceAll("-", "")}`).toString() });
       } catch {}
     } else
       setSetup((previous) => ({
@@ -69,12 +100,13 @@ export function ProviderConsole({
     setPlan(null);
   }, [storageKey, walletAddress]);
   function startNew() {
+    setCreating(true);
     localStorage.removeItem(storageKey);
     setSetup({
       parent,
       label: "",
       admin: walletAddress ?? "",
-      platformSigner: walletAddress ?? "",
+      platformSigner: directory?.platformOwner ?? walletAddress ?? "",
       ops: "",
       treasury: "",
       salt: BigInt(`0x${crypto.randomUUID().replaceAll("-", "")}`).toString(),
@@ -99,6 +131,7 @@ export function ProviderConsole({
       `ens402-provider:${result.name}`,
       JSON.stringify(result.setup),
     );
+    return result as Plan;
   }
   async function run(sign = false) {
     setBusy(true);
@@ -106,7 +139,8 @@ export function ProviderConsole({
     try {
       if (!sign) await refresh();
       else {
-        const step = plan?.transactions[0];
+        const current = await refresh();
+        const step = current.transactions[0];
         if (!step) throw Error("Refresh the plan first");
         const provider = await getProvider();
         const signer = (await selectedWallet(
@@ -132,7 +166,7 @@ export function ProviderConsole({
         if (receipt.status !== "success")
           throw Error("Transaction reverted. Refresh before retrying.");
         const next = {
-          ...setup,
+          ...current.setup,
           ...(!step.to && receipt.contractAddress
             ? { registrar: receipt.contractAddress }
             : {}),
@@ -151,50 +185,71 @@ export function ProviderConsole({
     }
   }
   return (
-    <section className="section-shell py-12">
-      <p className="eyebrow">Provider onboarding</p>
-      <h1 className="mt-3 text-4xl">Create your service namespace</h1>
-      <p className="mt-4 max-w-2xl text-muted-foreground">
-        Each step is signed on Sepolia. Provider Admin creates the registry; the
-        platform registrar admits the provider name. Connect the requested
-        signer for each transaction.
-      </p>
-      <PlatformBootstrap parent={parent} walletAddress={walletAddress} getProvider={getProvider} />
-      <div className="mt-8 grid gap-4 rounded-2xl border p-6 sm:grid-cols-2">
-        {(
-          [
-            ["label", "Provider label"],
-            ["admin", "Provider Admin wallet"],
-            ["platformSigner", "Platform registrar wallet"],
-            ["ops", "Ops wallet"],
-            ["treasury", "Treasury Safe on Sepolia"],
-          ] as const
-        ).map(([key, label]) => (
-          <label key={key} className="text-sm">
-            {label}
-            <input
-              className={field}
-              value={setup[key]}
-              disabled={busy || !!plan}
-              onChange={(event) =>
-                setSetup((old) => ({ ...old, [key]: event.target.value }))
-              }
-            />
-          </label>
-        ))}
-        <p className="self-end text-sm text-muted-foreground">
-          {setup.label || "provider"}.{parent}
-        </p>
+    <section className="mx-auto w-full max-w-4xl px-5 py-12 sm:px-8">
+      <p className="eyebrow">Onboard your service</p>
+      <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-4xl sm:text-5xl">Your service workspace</h1>
+          <p className="mt-3 max-w-xl text-muted-foreground">Manage your providers, or create a home for your APIs on ENS.</p>
+        </div>
+        {directory && directory.providers.length > 0 && <Button variant="outline" disabled={busy} onClick={startNew}><Plus className="mr-2 size-4" />Create provider</Button>}
       </div>
+      {!walletAddress && <p className="mt-8 text-sm text-muted-foreground">Connect a wallet above to find your providers or create one.</p>}
+      {directoryLoading && <p role="status" className="mt-8 flex items-center gap-2 text-sm text-muted-foreground"><RefreshCw className="size-4 animate-spin" />Checking your providers on Sepolia…</p>}
+      {directoryError && <div role="alert" className="mt-6 rounded-xl border bg-slate-50 p-5 text-sm"><p>{directoryError}</p><div className="mt-3 flex flex-wrap gap-3"><Button variant="outline" onClick={() => setDirectoryVersion(value => value + 1)}>Retry</Button><Button asChild variant="outline"><Link href="/merchant">Open a known provider</Link></Button><Button variant="ghost" onClick={() => setCreating(true)}>Create a provider</Button></div></div>}
+      {directory && directory.providers.length > 0 && <div className="mt-8 grid gap-4 sm:grid-cols-2">
+        {directory.providers.map(provider => <article key={provider.name} className="rounded-2xl border bg-white p-6">
+          <div className="flex items-center gap-3"><div className="rounded-xl bg-primary/10 p-3 text-primary"><Building2 className="size-5" /></div><span className="text-xs font-medium text-primary">{provider.role}</span></div>
+          <h2 className="mt-4 break-all text-xl">{provider.name}</h2>
+          <p className="mt-2 text-sm text-muted-foreground">Manage service listings, settings and permissions.</p>
+          <Button asChild className="mt-5"><Link href={`/merchant?provider=${encodeURIComponent(provider.name)}`}>Manage provider <ArrowRight className="ml-2 size-4" /></Link></Button>
+          {`${setup.label}.${setup.parent}` === provider.name && <Button variant="ghost" className="mt-5 ml-2" onClick={() => setCreating(true)}>Open saved setup</Button>}
+        </article>)}
+      </div>}
+      {directory && <p className="mt-4 text-xs text-muted-foreground">Providers you own or can register services under. Have an Ops or Treasury role? <Link href="/merchant" className="text-primary underline underline-offset-4">Open your provider by name.</Link></p>}
+      {directory?.platformOwner.toLowerCase() === walletAddress?.toLowerCase() && <PlatformBootstrap parent={parent} walletAddress={walletAddress} getProvider={getProvider} />}
+      {(creating || (directory && directory.providers.length === 0)) && <>
+      <form onSubmit={event => { event.preventDefault(); void run(); }} className="mt-8 overflow-hidden rounded-2xl border bg-white">
+        <div className="border-b bg-slate-50/70 px-6 py-5 sm:px-8">
+          <h2 className="text-2xl">Create a provider</h2>
+          <p className="mt-2 text-sm text-muted-foreground">A provider groups your services under one ENS name and one set of management wallets.</p>
+        </div>
+        <div className="space-y-8 p-6 sm:p-8">
+          <fieldset disabled={busy || !!plan}>
+            <legend className="flex items-center gap-2 font-medium"><Building2 className="size-4 text-primary" />1. Choose your name</legend>
+            <label htmlFor="provider-label" className="mt-4 block text-sm font-medium">Provider name</label>
+            <div className="mt-2 flex items-center overflow-hidden rounded-xl border focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10"><input id="provider-label" required pattern={"[a-z0-9](?:[a-z0-9\\-]{0,61}[a-z0-9])?"} maxLength={63} aria-describedby="provider-label-hint" placeholder="e.g. dataco" value={setup.label} onChange={event => setSetup(old => ({ ...old, label: event.target.value.toLowerCase() }))} className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm outline-none" /><span className="shrink-0 pr-4 text-sm text-muted-foreground">.{parent}</span></div>
+            <p id="provider-label-hint" className="mt-2 text-xs leading-5 text-muted-foreground">Use letters, numbers or hyphens. A weather API could become <span className="font-medium text-foreground">weather.{setup.label || "dataco"}.{parent}</span>.</p>
+          </fieldset>
+          <fieldset disabled={busy || !!plan} className="border-t pt-7">
+            <legend className="flex items-center gap-2 pr-3 font-medium"><Wallet className="size-4 text-primary" />2. Assign management wallets</legend>
+            <p className="mt-2 text-sm text-muted-foreground">Use three different addresses. These permissions apply across the provider's shared resolver.</p>
+            <div className="mt-5 space-y-6">
+              {walletFields.map(({ key, title, hint, note }) => <div key={key}>
+                <div className="flex items-center justify-between gap-2"><label htmlFor={`provider-${key}`} className="text-sm font-semibold">{title}</label>{key === "admin" && <button type="button" disabled={busy || !!plan} className="text-xs font-medium text-primary disabled:opacity-50" onClick={() => setSetup(old => ({ ...old, admin: walletAddress ?? "" }))}>Use connected wallet</button>}</div>
+                <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{hint}</p>
+                <input id={`provider-${key}`} required pattern="0x[0-9a-fA-F]{40}" aria-describedby={`provider-${key}-hint`} spellCheck={false} autoComplete="off" className={`${field} font-mono`} placeholder="0x…" value={setup[key]} onChange={event => setSetup(old => ({ ...old, [key]: event.target.value.trim() }))} />
+                <p id={`provider-${key}-hint`} className="mt-2 text-xs text-muted-foreground">{note}</p>
+              </div>)}
+            </div>
+          </fieldset>
+          <details className="rounded-xl border bg-slate-50/70 p-4">
+            <summary className="cursor-pointer text-sm font-medium">Platform approval <span className="ml-2 font-normal text-muted-foreground">Provided by ENS402</span></summary>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">The platform registrar registers your provider name under {parent}. It must already hold the platform registration role. This step needs its signature, even when another wallet is your Provider Admin.</p>
+            <label htmlFor="provider-platformSigner" className="mt-4 block text-sm font-medium">Platform registrar wallet</label>
+            <input id="provider-platformSigner" required pattern="0x[0-9a-fA-F]{40}" disabled={busy || !!plan} className={`${field} font-mono`} value={setup.platformSigner} onChange={event => setSetup(old => ({ ...old, platformSigner: event.target.value.trim() }))} />
+          </details>
+          {!plan && <div className="flex flex-wrap items-center gap-4"><Button type="submit" disabled={busy}>{busy ? "Checking setup…" : "Review setup"}<ArrowRight className="ml-2 size-4" /></Button><span className="text-xs text-muted-foreground">No transaction until you review and sign.</span></div>}
+        </div>
+      </form>
       <div className="mt-5 flex flex-wrap gap-3">
         {plan && (
           <Button variant="outline" disabled={busy} onClick={startNew}>
             Start another provider
           </Button>
         )}
-        <Button disabled={busy} onClick={() => run()}>
-          Read setup status
-        </Button>
+        {plan && <Button variant="outline" disabled={busy} onClick={() => run()}>Refresh setup status</Button>}
+        {plan && !busy && <Button variant="ghost" onClick={() => setPlan(null)}>Edit details</Button>}
         {plan?.transactions[0] && (
           <Button
             disabled={
@@ -260,6 +315,7 @@ export function ProviderConsole({
           />
         </>
       )}
+      </>}
     </section>
   );
 }
