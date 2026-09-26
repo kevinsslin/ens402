@@ -1,5 +1,5 @@
 import { ensClient } from "@ens402/server";
-import { BlockNotFoundError, TransactionNotFoundError, TransactionReceiptNotFoundError, type Address, type Hex } from "viem";
+import { type Address, type Hex } from "viem";
 export type SetupStep = { signer: string; to?: string; data: string; value?: string; description: string };
 /** Simulate and estimate on our RPC before asking the wallet to sign. No submission here. */
 export async function prepareSetupStep<T extends SetupStep>(step: T, client = ensClient()) {
@@ -16,7 +16,10 @@ export async function setupReceipt(hash: string, client = ensClient()) {
     if (block.hash !== receipt.blockHash || transaction.blockHash !== receipt.blockHash) return { status: "pending" as const };
     return { status: receipt.status, hash: receipt.transactionHash, from: transaction.from, to: transaction.to, data: transaction.input, value: transaction.value.toString(), contractAddress: receipt.contractAddress };
   } catch (error) {
-    if (error instanceof TransactionReceiptNotFoundError || error instanceof TransactionNotFoundError || error instanceof BlockNotFoundError) return { status: "pending" as const };
+    // Workspace packages can load separate viem copies, so instanceof is unreliable.
+    // Only explicit not-found errors mean pending; transport failures still propagate.
+    if (error && typeof error === "object" && "name" in error &&
+      ["TransactionReceiptNotFoundError", "TransactionNotFoundError", "BlockNotFoundError"].includes(String(error.name))) return { status: "pending" as const };
     throw error;
   }
 }

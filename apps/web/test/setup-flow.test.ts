@@ -91,3 +91,20 @@ it("waits when transaction or block reads lag behind a mined receipt", async () 
  client.getBlock.mockRejectedValue(new BlockNotFoundError({blockNumber:100n}));
  await expect(setupReceipt(hash,client as never)).resolves.toEqual({status:"pending"});
 });
+
+it("recognizes pending receipts across separate viem module instances", async () => {
+ for (const name of ["TransactionReceiptNotFoundError", "TransactionNotFoundError", "BlockNotFoundError"]) {
+  const foreignError=Object.assign(new Error("Not yet available"),{name});
+  expect(foreignError instanceof TransactionReceiptNotFoundError).toBe(false);
+  await expect(setupReceipt(hash,{getTransactionReceipt:async()=>{throw foreignError;}} as never)).resolves.toEqual({status:"pending"});
+ }
+});
+it("handles a real RPC null receipt through the workspace client", async () => {
+ vi.stubGlobal("fetch",vi.fn(async(_url,init)=>{
+  const payload=JSON.parse(init.body);
+  const result=(item:{id:number})=>({jsonrpc:"2.0",id:item.id,result:null});
+  return Response.json(Array.isArray(payload)?payload.map(result):result(payload));
+ }));
+ const client=createEnsClient("http://127.0.0.1:18549");
+ await expect(setupReceipt(hash,client)).resolves.toEqual({status:"pending"});
+});

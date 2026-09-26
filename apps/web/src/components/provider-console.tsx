@@ -257,8 +257,8 @@ export function ProviderConsole({
       </details>
       {(plan || pending) && <SetupProgressCard
         phase={pending?.phase ?? plan?.phase ?? 0} activity={activity}
-        title={pending ? "Confirm your submitted transaction" : nextStep.title}
-        description={pending ? "We are checking the transaction you already sent. No new signature is needed." : nextStep.body}
+        title={pending ? setupStepCopy(pending.step.description).title : nextStep.title}
+        description={pending ? `${setupStepCopy(pending.step.description).body} Submitted. Checking automatically; no new signature is needed.` : nextStep.body}
         actionLabel={pending ? "Check transaction" : nextStep.action}
         signer={pending?.step.signer ?? plan?.transactions[0]?.signer}
         signerRole={(pending?.step.signer ?? plan?.transactions[0]?.signer)?.toLowerCase() === setup.admin.toLowerCase() ? "Provider Admin" : "Platform registrar"}
