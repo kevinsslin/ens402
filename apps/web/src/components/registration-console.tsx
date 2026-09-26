@@ -5,6 +5,8 @@ import {
   bytesToHex,
   formatUnits,
   createPublicClient,
+  fallback,
+  http,
   createWalletClient,
   custom,
   type Address,
@@ -244,7 +246,8 @@ export function RegistrationConsole({
       )) as Address;
       const client = createPublicClient({
           chain: sepolia,
-          transport: custom(provider),
+          transport: fallback([http("https://ethereum-sepolia-rpc.publicnode.com", { batch: true, retryCount: 0 }), http("https://rpc.sepolia.ethpandaops.io", { batch: true, retryCount: 0 })], { retryCount: 1 }),
+          pollingInterval: 5000,
         }),
         wallet = createWalletClient({
           chain: sepolia,
@@ -373,12 +376,9 @@ export function RegistrationConsole({
         sessionStorage.setItem(storageKey, JSON.stringify(draft));
         setPending(draft);
         setPhase("awaiting signature");
-        const hash = await wallet.writeContract({
-          address,
-          abi: serviceRegistrarAbi,
-          functionName: "commit",
-          args: [commitment],
-        });
+        const commitRequest = { account: owner, address, abi: serviceRegistrarAbi, functionName: "commit" as const, args: [commitment] as const };
+        const gas = await client.estimateContractGas(commitRequest);
+        const hash = await wallet.writeContract({ ...commitRequest, gas: gas * 120n / 100n });
         setPhase("registering");
         const receipt = await client.waitForTransactionReceipt({ hash });
         if (receipt.status !== "success")
@@ -420,7 +420,8 @@ export function RegistrationConsole({
           ],
         });
         setPhase("awaiting signature");
-        const hash = await wallet.writeContract(simulation.request);
+        const gas = await client.estimateContractGas(simulation.request);
+        const hash = await wallet.writeContract({ ...simulation.request, gas: gas * 120n / 100n });
         setPhase("registering");
         const receipt = await client.waitForTransactionReceipt({ hash });
         if (receipt.status !== "success")
@@ -466,7 +467,7 @@ export function RegistrationConsole({
       </div>
       {shared && (
         <p className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-900">
-          Shared provider resolver. Ops and Treasury Safe below must already
+          Shared provider resolver. Ops and Treasury Admin below must already
           hold their key grants. These grants apply to every service in this
           resolver; this form does not grant new permissions. Provider Admin
           keeps resolver governance. The payment recipient is specific to this
@@ -703,8 +704,8 @@ export function RegistrationConsole({
                 ],
                 [
                   shared
-                    ? "Treasury Admin · Safe (existing payment writer)"
-                    : "Treasury wallet (price and payment settings)",
+                    ? "Treasury Admin (existing payment writer)"
+                    : "Treasury Admin (price and payment settings)",
                   treasury,
                   setTreasury,
                 ],

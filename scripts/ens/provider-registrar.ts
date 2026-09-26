@@ -57,7 +57,7 @@ export async function providerRegistrarPlan(
   },
 ) {
   if (shared && (!ops || !treasury))
-    throw Error("Shared registrar requires pinned Ops and Treasury Safe");
+    throw Error("Shared registrar requires pinned Ops and Treasury Admin");
   const variant = shared
     ? "SharedProviderServiceRegistrar"
     : "ProviderServiceRegistrar";

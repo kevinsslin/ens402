@@ -6,7 +6,7 @@ Start with [README.md](README.md) for current scope and status. This file contai
 
 1. Open `/provider`, sign in with **Continue with a wallet**, and select the wallet that owns `ens402.eth`. An email-created Privy wallet does not automatically control an existing ENS name.
 2. Open **Platform owner setup**, then **Read Sepolia setup**. Review and confirm the two transactions: create the native Platform Registry, then attach it to `ens402.eth`. The UI verifies each receipt and can resume. No CLI or private-key export is required. Current bootstrap supports direct EOA transactions, not Safe internal deployment receipts.
-3. Provide a real **Sepolia Treasury Safe** address. Verify its owners and threshold. Provider Admin, Ops and Treasury must be distinct. Treasury is the shared payment-record writer; each service-name holder is its own payout recipient.
+3. Choose a **Treasury Admin** address: an EOA, multisig or MPC wallet. Contract deployment is not required. Provider Admin, Ops and Treasury must be distinct. Treasury is the shared payment-record writer; each service-name holder is its own payout recipient.
 4. Complete provider setup below, publish a service, and send the confirmed provider name to the operator so its registry/resolver binding can be added to hosted Guard.
 5. For the buyer demo, log in to Console and fund its displayed payer with **Base Sepolia USDC**. Sepolia gas and Base Sepolia USDC are different balances.
 
@@ -208,7 +208,7 @@ Ops and Treasury are freshly generated test-only wallets. Their keys are stored 
 
 ## Native contract roles
 
-ENS official contracts enforce permissions. Interfaces only declare their ABI. Provider services now share a native PermissionedResolver when the same Ops and Treasury Safe manage them. Setter-key grants apply across every bundle in that resolver. The earlier direct-service flow still uses isolated resolvers.
+ENS official contracts enforce permissions. Interfaces only declare their ABI. Provider services now share a native PermissionedResolver when the same Ops and Treasury Admin manage them. Setter-key grants apply across every bundle in that resolver. The earlier direct-service flow still uses isolated resolvers.
 
 | Wallet | Contract and scope | Native role |
 | --- | --- | --- |
@@ -219,7 +219,7 @@ ENS official contracts enforce permissions. Interfaces only declare their ABI. P
 | Ops | Separate hashes of endpoint, description, avatar and ens402.call keys | `ROLE_SET_TEXT` |
 | Treasury writer | Hash of `ens402.payment` key | `ROLE_SET_TEXT` |
 
-Shared-provider setup requires three distinct identities: Provider Admin, Ops and Treasury Safe. The older isolated flow permits Treasury to equal Admin, which retains broader authority. A payout recipient gains no ENS role by receiving USDC. These are intended grants, not a live audit.
+Shared-provider setup requires three distinct identities: Provider Admin, Ops and Treasury Admin. The older isolated flow permits Treasury to equal Admin, which retains broader authority. A payout recipient gains no ENS role by receiving USDC. These are intended grants, not a live audit.
 
 Our optional `contracts/src/ServiceRegistrar.sol` uses commit/reveal to deploy a native resolver, publish records, grant delegates, hand root text administration to the service registrant and remove its own resolver privileges in one reverting transaction. Commitments wait 60 seconds and expire after one day. It has reentrancy protection, narrow ASCII labels and bounded inputs. Native role constants and deployment pins are in `contracts/src/libraries/`; external ABIs are in `contracts/src/interfaces/`.
 
@@ -263,10 +263,10 @@ The provider receives its own native UserRegistry. No service text rights are in
 
 After linking, run `pnpm ens:provider:plan --with-service-registrar` to prepare a shared provider resolver and the
 SharedProviderServiceRegistrar deployment. Shared mode also requires PROVIDER_OPS_ADDRESS
-and PROVIDER_TREASURY_SAFE_ADDRESS (three distinct Admin/Ops/Safe identities). Use
+and PROVIDER_TREASURY_ADMIN_ADDRESS (three distinct Admin/Ops/Treasury identities). Use
 --isolated-resolvers for separate per-service resolvers. Set `PROVIDER_SERVICE_REGISTRAR_ADDRESS`
 from its receipt, then rerun. The planner verifies runtime bytecode and constructor
-settings before preparing its ROLE_REGISTRAR grant and six specific initialization setter grants: endpoint, description, avatar, ens402.call, payment and status. Ops receives the first four; Treasury Safe receives payment. Neither delegate gets text-administration rights. Provider Admin retains root text writing and regrant authority. Never grant the permissionless
+settings before preparing its ROLE_REGISTRAR grant and six specific initialization setter grants: endpoint, description, avatar, ens402.call, payment and status. Ops receives the first four; Treasury Admin receives payment. Neither delegate gets text-administration rights. Provider Admin retains root text writing and regrant authority. Never grant the permissionless
 base ServiceRegistrar to a company registry. Publication requires the caller's live
 ROLE_REGISTRAR in that same registry. No command above broadcasts transactions.
 
@@ -336,8 +336,8 @@ Local proof: `pnpm exec tsx indexer/src/fork.ts` tests native setup/registration
 Shared mode configuration: set `PROVIDER_ENS_NAME`, `PROVIDER_REGISTRY_ADDRESS`,
 `PROVIDER_RESOLVER_ADDRESS` and `PROVIDER_SERVICE_REGISTRAR_ADDRESS` from verified receipts.
 The registration page then checks the selected shared resolver and native publisher authority.
-`PROVIDER_OPS_ADDRESS` and `PROVIDER_TREASURY_SAFE_ADDRESS` prefill existing delegates;
-registration must validate live permissions, not grant new ones. Treasury Safe is a payment-key
+`PROVIDER_OPS_ADDRESS` and `PROVIDER_TREASURY_ADMIN_ADDRESS` prefill existing delegates;
+registration must validate live permissions, not grant new ones. Treasury Admin is a payment-key
 writer across all services. Schema-v3 recipients follow each service name owner. Contract code
 presence does not prove Safe identity or threshold; verify the actual Safe before public use.
 
@@ -357,7 +357,7 @@ Local OpenAI vector generation is verified: three fixture vectors persisted, wit
 ## Provider onboarding and merchant management
 
 1. The owner enables the Platform Registry beneath `ens402.eth` directly in `/provider` using **Platform owner setup**. The unsigned `ens:namespace:plan` script remains an alternative. Both require the current owner wallet to sign.
-2. Open `/provider`, connect Provider Admin, and enter a provider label, Platform registrar signer, Ops EOA and deployed Treasury Safe. The page reads actual native state and presents one wallet-signed transaction at a time. Switch to the stated signer when requested. Setup progress is stored locally and revalidated onchain.
+2. Open `/provider`, connect Provider Admin, and enter a provider label, Platform registrar signer, Operations wallet and Treasury Admin. The page reads actual native state and presents one wallet-signed transaction at a time. Switch to the stated signer when requested. Setup progress is stored locally and revalidated onchain.
 3. Once registry, shared resolver and restricted registrar are verified, publish service description, optional image, endpoint, fixed USDC price and call metadata in the same page. Native commit/reveal waits at least 60 seconds. The registering wallet becomes the service-name holder and initial recipient.
 4. After the registration receipt, `/merchant?provider=<name>&service=<name>` checks live membership, ownership, effective writers and listing status. `awaiting-index` is distinct from `listed`. Permissions are public observations, not authenticated account data; edits require the connected wallet to sign native transactions.
 5. Replace Ops/Treasury in the merchant permissions control. Native resolver multicall grants the incoming writer and removes the outgoing writer atomically. Unexpected broad/root permissions stop the operation. Shared resolver scope covers every service bundle. Treasury replacement does not change the recipient.
@@ -456,3 +456,5 @@ The endpoint must return an unsigned x402 HTTP 402 challenge containing `resourc
 `metadataExtension(description, call)` from `@ens402/sdk/metadata` constructs this extension. The same call object is published in `ens402.call`. Descriptions are trimmed and limited to 1024 UTF-8 bytes; call metadata is limited to 16384 bytes. Both schemas are required for verified publication. Key order does not matter, array order does; `$ref` and nesting beyond the supported limit are rejected. This checks declared metadata consistency, not whether actual service output follows the schema.
 
 The registration page inspects the endpoint, lets the merchant review proposed values, and rechecks metadata/payment equality before both commit and reveal. Editing any field discards the pending draft. Guard pins verified metadata in buyer approval and rejects later changes or removal before signing. Legacy records lacking the verification marker retain their existing payment checks but do not gain a metadata-verification claim.
+
+Treasury Admin is a payment-settings role, not a wallet type. `PROVIDER_TREASURY_ADMIN_ADDRESS` is the preferred variable; the previous `PROVIDER_TREASURY_SAFE_ADDRESS` remains accepted as a compatibility alias. The registrar ABI retains its legacy `treasurySafe()` getter; it does not require contract code.

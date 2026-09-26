@@ -35,7 +35,6 @@ try {
     await client.request({ method: "anvil_setBalance" as never, params: [address, "0x3635c9adc5dea00000"] as never });
   }
   // Explicit local contract fixture, not a verified Safe deployment.
-  if (shared) await client.request({ method: "anvil_setCode" as never, params: [treasury, "0x00"] as never });
   const init = providerInitialization(admin);
   const { result: platform } = await client.simulateContract({ account: admin, address: d.factory, abi: factoryAbi, functionName: "deployProxy", args: [d.registryImplementation, 909901n, init] });
   await client.waitForTransactionReceipt({ hash: await wallet.writeContract({ account: admin, address: d.factory, abi: factoryAbi, functionName: "deployProxy", args: [d.registryImplementation, 909901n, init] }) });
@@ -49,7 +48,7 @@ try {
   const { symlink } = await import("node:fs/promises");
   await symlink(resolve(cwd, "contracts"), resolve(dir, "contracts"));
   const run = () => new Promise<void>((ok, bad) => {
-    const child = spawn(resolve(cwd, "node_modules/.bin/tsx"), [resolve(cwd, "scripts/provider-plan.ts"), "--with-service-registrar", ...(shared ? [] : ["--isolated-resolvers"])], { cwd: dir, env: { ...process.env, SEPOLIA_RPC_URL: `http://127.0.0.1:${port}`, ENS_PARENT_NAME: "providerfork402.eth", PROVIDER_LABEL: "alpha", PROVIDER_ADMIN_ADDRESS: admin, PLATFORM_REGISTRAR_ADDRESS: admin, PROVIDER_OPS_ADDRESS: ops, PROVIDER_TREASURY_SAFE_ADDRESS: treasury }, stdio: "inherit" });
+    const child = spawn(resolve(cwd, "node_modules/.bin/tsx"), [resolve(cwd, "scripts/provider-plan.ts"), "--with-service-registrar", ...(shared ? [] : ["--isolated-resolvers"])], { cwd: dir, env: { ...process.env, SEPOLIA_RPC_URL: `http://127.0.0.1:${port}`, ENS_PARENT_NAME: "providerfork402.eth", PROVIDER_LABEL: "alpha", PROVIDER_ADMIN_ADDRESS: admin, PLATFORM_REGISTRAR_ADDRESS: admin, PROVIDER_OPS_ADDRESS: ops, PROVIDER_TREASURY_ADMIN_ADDRESS: treasury }, stdio: "inherit" });
     child.on("exit", code => code === 0 ? ok() : bad(Error(`planner ${code}`)));
   });
   const plan = async () => JSON.parse(await readFile(resolve(dir, "docs/setup/provider-alpha-transactions.json"), "utf8"));

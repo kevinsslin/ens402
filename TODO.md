@@ -50,8 +50,8 @@ Current scope: **Discover, Govern, Guard**. Namespace: **Platform Registry -> Pr
 Local tests do not complete these steps. No mainnet transactions.
 
 1. [x] **Platform owner:** native child registry linked and bootstrap registration roles verified on Sepolia (block 11787963). Existing root owner: `0x0D2FDDee5b84540A9766c025ad26dCaFb9FeF380`.
-2. [ ] **Treasury:** supply the real Sepolia Safe, verify owners/threshold and rehearse its signing. Local contract fixtures are not a Safe audit. For a contract service-name holder, deploy/control its Base Sepolia wallet and publish the destination signature proof.
-3. [ ] **Provider:** complete `/provider` using the real Admin/Platform/Ops/Treasury signers. Publish fixture services and a second independent provider; verify allowed/denied writes publicly with receipts. Add confirmed provider bindings to hosted Guard configuration (`PROVIDER_*` or `PROVIDER_GROUPS_JSON`).
+2. [ ] **Treasury:** choose the Treasury Admin wallet (EOA, multisig or MPC) and rehearse its signing. No Safe or contract-code requirement. For a contract service-name holder, deploy/control its Base Sepolia wallet and publish the destination signature proof.
+3. [ ] **Provider:** complete `/provider` using the real Admin/Platform/Ops/Treasury Admin signers. Publish fixture services and a second independent provider; verify allowed/denied writes publicly with receipts. Add confirmed provider bindings to hosted Guard configuration (`PROVIDER_*` or `PROVIDER_GROUPS_JSON`).
 4. [ ] **Discovery:** database and Vercel configuration are ready. Use the Next.js sync route with the same live source/roots and verify the first finalized service listing. Never import the local fixture catalog.
 5. [ ] **Indexer:** verify the manual in-app bounded refresh. RPC reconstruction runs first; hosted Envio and the Railway worker are optional scaling paths. Verify finalized checkpoints, listing updates and live catalog embeddings.
 6. [ ] **Analytics:** hosted schema and web DB configuration are ready. Set the worker DB and `ANALYTICS_FROM_BLOCK`, then run the scanner and verify real receipts. Optional reviewed facilitator file and read-only `ANALYTICS_LEDGER_DATABASE_URL` enable additional coverage.
@@ -73,3 +73,9 @@ Local tests do not complete these steps. No mainnet transactions.
 - Global ENS discovery beyond configured supported roots, unbounded/ANN search and fully permissionless platform admission.
 
 Public discovery metadata is reconstructible; our hosted search/ranking remains one replaceable provider. Bazaar and x402scan have open discovery capabilities too. Compare shared source reconstruction, not invented exclusivity.
+
+## Onboarding reliability
+
+- [x] Treasury Admin accepts EOAs, multisigs and MPC wallets. No contract-code requirement. Shared-provider Anvil setup and permission grants passed with an EOA Treasury Admin.
+- [x] Setup uses a three-stage progress card with separate checking, wallet-confirmation and chain-confirmation states. Submitted transaction hashes and context are saved locally; receipt retries never resubmit.
+- [x] Provider/platform gas estimation and receipt reads use server RPCs with batching and independent fallback. Service publication reads also avoid the wallet RPC. Wallet-internal simulation services remain controlled by the connected wallet.

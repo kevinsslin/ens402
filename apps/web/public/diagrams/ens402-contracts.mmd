@@ -1,6 +1,6 @@
 flowchart TB
   accTitle: ENS402 shared provider resolver model
-  accDescr: Platform and provider registries route service names to one shared resolver per provider. Each service has a separate record bundle. Ops and Treasury Safe have distinct key-scoped writer roles across all bundles.
+  accDescr: Platform and provider registries route service names to one shared resolver per provider. Each service has a separate record bundle. Ops and Treasury Admin have distinct key-scoped writer roles across all bundles.
   platform["Platform Registry"]
   provider["Provider Registry: provider.ens402.eth"]
   platform -->|provider subregistry| provider

@@ -1,3 +1,4 @@
+import { createEnsClient } from "./ens-rpc";
 import { canonicalMetadata } from "@ens402/sdk/metadata";
 import { checkNameOwnerRecipient } from "@ens402/sdk/recipient";
 import {
@@ -37,15 +38,7 @@ let stored: Store | undefined;
 let scanner: InterceptaProvider | undefined;
 export const getStore = () =>
   (stored ??= new Store(requireEnv("DATABASE_URL")));
-export const ensClient = () =>
-  createPublicClient({
-    chain: sepolia,
-    transport: http(requireEnv("SEPOLIA_RPC_URL"), {
-      timeout: 12000,
-      retryCount: 1,
-    }),
-    ccipRead: false,
-  });
+export const ensClient = () => createEnsClient(requireEnv("SEPOLIA_RPC_URL"));
 export const baseClient = () =>
   createPublicClient({
     chain: baseSepolia,

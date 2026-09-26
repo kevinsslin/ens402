@@ -158,3 +158,11 @@ Validation this round:
 | Browser | Provider/merchant sign-in gates and editable service example loaded; 390px form had no horizontal overflow |
 
 The browser verification did not sign in as the real owner or execute wallet transactions. Hosted ingestion, public grants, Safe execution and a funded buyer purchase remain explicit TODO items. Ancestor/root/link/upgrade powers are not renounced and exclusive resolver membership is not claimed.
+
+## Onboarding recovery and Treasury Admin correction
+
+- Treasury Admin is wallet-type agnostic. Removed the planner's contract-code requirement; native EAC still requires separate Admin, Operations and Treasury identities in the shared-provider setup. The existing Solidity ABI is unchanged.
+- Shared-provider deployment, resume and permission grants passed on Anvil with an EOA Treasury Admin. A Sepolia read-only plan and gas estimate also accepted an EOA; no public transaction was sent by the assistant.
+- Application setup simulation/confirmation uses server read RPCs with an independent fallback and JSON-RPC batching. Tests cover a throttled primary, pending/reverted receipts, payload mismatches, cancellation/error copy and EOA planning. Wallet submissions are never automatically retried.
+- Submitted setup transactions persist in local storage with their planned context. A resumed confirmation checks sender, destination, calldata and value before advancing.
+- The three-stage progress card was checked on desktop and mobile using explicit UI fixtures, including wallet confirmation, error/retry and completion. Wallet-internal Tenderly simulation remains outside application control.

@@ -24,7 +24,7 @@ export const roles = {
   ROLE_SET_TEXT_ADMIN: 16n << 128n,
 } as const;
 export function required(key: string): string {
-  const value = process.env[key]?.trim();
+  const value = (process.env[key] || (key === "PROVIDER_TREASURY_ADMIN_ADDRESS" ? process.env.PROVIDER_TREASURY_SAFE_ADDRESS : undefined))?.trim();
   if (!value) throw new Error(`Set ${key} in root .env`);
   return value;
 }

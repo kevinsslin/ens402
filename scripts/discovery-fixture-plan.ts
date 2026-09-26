@@ -20,7 +20,7 @@ import { currentRegistryAbi } from "../packages/sdk/src/ens/current";
 import type { Catalog } from "../packages/server/src/discovery";
 config({ path: ".env", quiet: true });
 function value(key: string) {
-  const raw = process.env[key]?.trim();
+  const raw = (process.env[key] || (key === "PROVIDER_TREASURY_ADMIN_ADDRESS" ? process.env.PROVIDER_TREASURY_SAFE_ADDRESS : undefined))?.trim();
   if (!raw) throw Error(`Configure ${key}`);
   return raw;
 }
@@ -39,7 +39,7 @@ try {
   const resolver = address("PROVIDER_RESOLVER_ADDRESS");
   const admin = address("PROVIDER_ADMIN_ADDRESS");
   const ops = address("PROVIDER_OPS_ADDRESS");
-  const treasury = address("PROVIDER_TREASURY_SAFE_ADDRESS");
+  const treasury = address("PROVIDER_TREASURY_ADMIN_ADDRESS");
   const client = createPublicClient({
     chain: sepolia,
     transport: http(value("SEPOLIA_RPC_URL")),

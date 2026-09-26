@@ -8,7 +8,7 @@ export default function RegisterPage() {
   const shared = providerRegistrar && process.env.PROVIDER_RESOLVER_ADDRESS ? {
     resolver: process.env.PROVIDER_RESOLVER_ADDRESS,
     ops: process.env.PROVIDER_OPS_ADDRESS || "",
-    treasury: process.env.PROVIDER_TREASURY_SAFE_ADDRESS || "",
+    treasury: process.env.PROVIDER_TREASURY_ADMIN_ADDRESS || process.env.PROVIDER_TREASURY_SAFE_ADDRESS || "",
   } : undefined;
   if (!registrar || !parent)
     return (

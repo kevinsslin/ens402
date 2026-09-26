@@ -8,27 +8,31 @@ const permissions = parseAbi([
   "function hasRootRoles(uint256 roles,address account) view returns(bool)",
 ]);
 export async function sharedSetterPlan(client: PublicClient, resolver: Address, admin: Address, account: Address, keys: readonly string[], name: string, blockNumber: bigint) {
-  for (const bit of [4n, 28n, 124n]) for (const shift of [0n, 128n]) {
-    if (await client.readContract({ address: resolver, abi: permissions, functionName: "hasRootRoles", args: [1n << (bit + shift), account], blockNumber }))
-      throw Error("Shared resolver delegate has broad text, linking, upgrade or administration rights");
-  }
+  const broadRoles = [4n, 28n, 124n].flatMap(bit => [0n, 128n].map(shift => 1n << (bit + shift)));
+  const [broad, scoped] = await Promise.all([
+    Promise.all(broadRoles.map(role => client.readContract({ address: resolver, abi: permissions, functionName: "hasRootRoles", args: [role, account], blockNumber }))),
+    Promise.all(sharedKeys.map(async key => {
+      const resource = BigInt(keccak256(stringToHex(key)));
+      const [adminRole, setter] = await Promise.all([
+        client.readContract({ address: resolver, abi: permissions, functionName: "hasRoles", args: [resource, 16n << 128n, account], blockNumber }),
+        client.readContract({ address: resolver, abi: permissions, functionName: "hasRoles", args: [resource, 16n, account], blockNumber }),
+      ]);
+      return { key, adminRole, setter };
+    })),
+  ]);
+  if (broad.some(Boolean)) throw Error("Shared resolver delegate has broad text, linking, upgrade or administration rights");
   const txs = [];
-  for (const key of sharedKeys) {
-    const resource = BigInt(keccak256(stringToHex(key)));
-    if (await client.readContract({ address: resolver, abi: permissions, functionName: "hasRoles", args: [resource, 16n << 128n, account], blockNumber }))
-      throw Error("Shared resolver delegate unexpectedly has text administration");
-    const has = await client.readContract({ address: resolver, abi: permissions, functionName: "hasRoles", args: [resource, 16n, account], blockNumber });
-    if (has && !keys.includes(key)) throw Error(`Delegate unexpectedly controls ${key}`);
-    if (!has && keys.includes(key)) txs.push({ signer: admin, to: resolver, value: "0x0",
+  for (const { key, adminRole, setter } of scoped) {
+    if (adminRole) throw Error("Shared resolver delegate unexpectedly has text administration");
+    if (setter && !keys.includes(key)) throw Error(`Delegate unexpectedly controls ${key}`);
+    if (!setter && keys.includes(key)) txs.push({ signer: admin, to: resolver, value: "0x0",
       data: encodeFunctionData({ abi: currentResolverAbi, functionName: "grantSetterRoles", args: [encodeFunctionData({ abi: currentResolverAbi, functionName: "setText", args: [bytesToHex(packetToBytes(name)), key, ""] }), account] }),
       description: `Grant ${key} writer across this provider resolver to ${account}` });
   }
   return txs;
 }
 export async function sharedResolverPlan(client: PublicClient, admin: Address, ops: Address, treasury: Address, name: string, salt: bigint, blockNumber: bigint, existing?: Address) {
-  if (new Set([admin, ops, treasury].map(a => a.toLowerCase())).size !== 3) throw Error("Provider Admin, Ops and Treasury Safe must be distinct");
-  const safeCode = await client.getCode({ address: treasury, blockNumber });
-  if (!safeCode || safeCode === "0x") throw Error("PROVIDER_TREASURY_SAFE_ADDRESS must be a deployed Sepolia contract; verify Safe owners/threshold separately");
+  if (new Set([admin, ops, treasury].map(a => a.toLowerCase())).size !== 3) throw Error("Provider Admin, Ops and Treasury Admin must be distinct");
   const d = currentDeployment;
   const code = existing && await client.getCode({ address: existing, blockNumber });
   if (!code || code === "0x") {

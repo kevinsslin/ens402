@@ -121,7 +121,7 @@ export function MerchantPermissions({
           onChange={(e) => setRole(e.target.value)}
         >
           <option value="ops">Ops</option>
-          <option value="treasury">Treasury Safe</option>
+          <option value="treasury">Treasury Admin</option>
         </select>
       </label>
       <label className="mt-3 block text-sm">

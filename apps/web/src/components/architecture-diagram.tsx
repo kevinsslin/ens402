@@ -4,7 +4,7 @@ export function ArchitectureDiagram() {
   return <figure className="mt-8 overflow-hidden rounded-2xl border bg-card" aria-label="ENS402 architecture: merchant permissions, public ENS records, agent checks, and Privy signing">
     <div className="border-b p-5 sm:p-7"><p className="eyebrow">Merchant / publish once, update with separate keys</p><div className="mt-5 grid gap-3 sm:grid-cols-3">{[
       ['API operator', 'Change the API URL', 'Endpoint record only'],
-      ['Treasury', 'Change where payments go', 'Payment record only'],
+      ['Treasury Admin', 'Manage payment terms', 'Payment record only'],
       ['Administrator', 'Grant or revoke these permissions', 'Native ENSv2 EAC'],
     ].map(([title, action, detail]) => <div key={title} className="rounded-lg border bg-background p-4"><KeyRound className="size-4 text-primary" aria-hidden="true"/><p className="mt-3 text-sm font-medium">{title}</p><p className="mt-2 text-xs leading-5 text-muted-foreground">{action}</p><p className="mt-3 text-[11px] text-primary">{detail}</p></div>)}</div>
       <div className="flex justify-center py-4"><ArrowDown className="size-4 text-muted-foreground" aria-hidden="true"/></div>

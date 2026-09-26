@@ -75,7 +75,7 @@ if (existingOwner === zeroAddress) {
 const wantsRegistrar = process.argv.includes("--with-service-registrar");
 const isolated = process.argv.includes("--isolated-resolvers");
 const ops = wantsRegistrar && !isolated ? wallet("PROVIDER_OPS_ADDRESS") : undefined;
-const treasury = wantsRegistrar && !isolated ? wallet("PROVIDER_TREASURY_SAFE_ADDRESS") : undefined;
+const treasury = wantsRegistrar && !isolated ? wallet("PROVIDER_TREASURY_ADMIN_ADDRESS") : undefined;
 if ((previous?.ops && ops && previous.ops.toLowerCase() !== ops.toLowerCase()) ||
     (previous?.treasury && treasury && previous.treasury.toLowerCase() !== treasury.toLowerCase()))
   throw Error("Pinned shared delegates changed; use an explicit rotation workflow, not initialization");
@@ -85,7 +85,7 @@ const sharedResolver = wantsRegistrar && !isolated && transactions.length === 0
   : previous?.sharedResolver;
 const registrarPlan = wantsRegistrar && transactions.length === 0 && (isolated || (sharedResolver && "transactions" in sharedResolver && Array.isArray(sharedResolver.transactions) && sharedResolver.transactions.length === 0))
   ? await providerRegistrarPlan(client, admin, registry!, name, expiry, block.number,
-      process.env.PROVIDER_SERVICE_REGISTRAR_ADDRESS ? wallet("PROVIDER_SERVICE_REGISTRAR_ADDRESS") : undefined, isolated ? undefined : sharedResolver!.resolver, isolated ? undefined : wallet("PROVIDER_OPS_ADDRESS"), isolated ? undefined : wallet("PROVIDER_TREASURY_SAFE_ADDRESS"))
+      process.env.PROVIDER_SERVICE_REGISTRAR_ADDRESS ? wallet("PROVIDER_SERVICE_REGISTRAR_ADDRESS") : undefined, isolated ? undefined : sharedResolver!.resolver, isolated ? undefined : wallet("PROVIDER_OPS_ADDRESS"), isolated ? undefined : wallet("PROVIDER_TREASURY_ADMIN_ADDRESS"))
   : undefined;
 await savePlan(filename, { name, admin, signer, registry, salt: String(salt), expiry: String(expiry),
   chainId: deployment.chainId, observedBlock: String(block.number), sourceCommit: deployment.sourceCommit,
@@ -101,6 +101,6 @@ await savePlan(filename, { name, admin, signer, registry, salt: String(salt), ex
     "Provider Admin receives name-scoped renewal/pointer administration and registry-root registration administration. No service resolver text rights are inherited.",
     "Do not grant this provider registry to the current permissionless ServiceRegistrar: anyone could register inside the company namespace. Use --with-service-registrar after the provider is linked to prepare the restricted variant.",
     "Restricted registrar deployment and verified grant are separate stages. Rerun after every receipt; no grant is emitted for unverified bytecode.",
-    "Default shared resolver: Ops and Treasury Safe key permissions cover every service. Provider Admin retains root text writing and regrant governance. Service registrants get no resolver root rights. --isolated-resolvers retains the alternative.",
-    "Treasury Safe is a control wallet, not a requirement for service payTo. Contract-code presence does not verify its Safe owners or threshold."],
+    "Default shared resolver: Ops and Treasury Admin key permissions cover every service. Provider Admin retains root text writing and regrant governance. Service registrants get no resolver root rights. --isolated-resolvers retains the alternative.",
+    "Treasury Admin is a control wallet, not a requirement for service payTo. EOA, multisig and MPC wallets are supported; permissions are checked onchain."],
 });

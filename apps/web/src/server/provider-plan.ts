@@ -201,8 +201,10 @@ export async function planProvider(input: ProviderSetup) {
       description: "Register provider name and attach its registry",
     });
   }
+  let phase = 0;
   let resolver = input.resolver ? address(input.resolver) : undefined;
   if (!txs.length) {
+    phase = 1;
     const shared = await sharedResolverPlan(
       client,
       admin,
@@ -216,6 +218,7 @@ export async function planProvider(input: ProviderSetup) {
     resolver = shared.resolver;
     txs.push(...shared.transactions);
     if (!txs.length) {
+      phase = 2;
       const registrar = await providerRegistrarPlan(
         client,
         admin,
@@ -244,6 +247,8 @@ export async function planProvider(input: ProviderSetup) {
     name,
     observedBlock: String(block.number),
     ready: !txs.length,
+    phase: txs.length ? phase : 3,
+    hasConfirmedSetup: Boolean(code && code !== "0x"),
     transactions: txs,
   };
 }

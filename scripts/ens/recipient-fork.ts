@@ -166,7 +166,7 @@ try {
             PROVIDER_ADMIN_ADDRESS: admin,
             PLATFORM_REGISTRAR_ADDRESS: admin,
             PROVIDER_OPS_ADDRESS: ops,
-            PROVIDER_TREASURY_SAFE_ADDRESS: treasury,
+            PROVIDER_TREASURY_ADMIN_ADDRESS: treasury,
           },
           stdio: "inherit",
         },

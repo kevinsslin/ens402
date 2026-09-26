@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
 import {
-  createPublicClient,
   createWalletClient,
   custom,
   type Address,
@@ -9,6 +8,7 @@ import {
 } from "viem";
 import { sepolia } from "viem/chains";
 import { Button } from "./ui/button";
+import { confirmSetup, setupError, type PendingSetup } from "./setup-flow";
 import { selectedWallet } from "./wallet-session";
 
 type Provider = {
@@ -34,6 +34,7 @@ type Plan = {
     data: string;
     value?: string;
     description: string;
+    gas?: string;
   }>;
 };
 
@@ -52,8 +53,10 @@ export function PlatformBootstrap({
   const [plan, setPlan] = useState<Plan | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  const [pending, setPending] = useState<(PendingSetup & { setup: Setup }) | null>(null);
   useEffect(() => {
     const saved = localStorage.getItem(key);
+    try { setPending(JSON.parse(localStorage.getItem(`${key}:transaction`) || "null")); } catch {}
     try {
       if (saved) {
         const value = JSON.parse(saved);
@@ -69,11 +72,11 @@ export function PlatformBootstrap({
     });
     setPlan(null);
   }, [key, parent]);
-  async function refresh(current = setup) {
+  async function refresh(current = setup, prepare = false) {
     const response = await fetch("/api/provider/platform-plan", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...current, owner: walletAddress }),
+      body: JSON.stringify({ ...current, owner: walletAddress, prepare }),
     });
     const result = await response.json();
     if (!response.ok) throw Error(result.error || "Platform setup unavailable");
@@ -87,51 +90,41 @@ export function PlatformBootstrap({
     setBusy(true);
     setNotice("");
     try {
-      // Re-read ownership and pointer state before asking for a signature.
-      const current = await refresh();
-      if (!sign) return;
-      const step = current.transactions[0];
-      if (!step) {
-        setNotice("The platform registry is already configured and verified.");
+      if (pending) {
+        setNotice("Checking your saved transaction. No new signature is needed.");
+        const receipt = await confirmSetup(pending);
+        if (receipt.status === "reverted") {
+          localStorage.removeItem(`${key}:transaction`); setPending(null);
+          if (pending.setup.deploymentHash) { const retry = { ...pending.setup, deploymentHash: undefined }; localStorage.setItem(key, JSON.stringify(retry)); setSetup(retry); }
+          throw Error("Transaction reverted. Your setup is saved; try this step again.");
+        }
+        setSetup(pending.setup); localStorage.setItem(key, JSON.stringify(pending.setup));
+        localStorage.removeItem(`${key}:transaction`); setPending(null);
+        await refresh(pending.setup);
+        setNotice("Transaction confirmed. Continue with the next step shown below.");
         return;
       }
+      const current = await refresh(setup, sign);
+      if (!sign) return;
+      const step = current.transactions[0];
+      if (!step) { setNotice("The platform registry is configured and verified."); return; }
+      if (!step.gas) throw Error("Transaction preparation is incomplete");
       const provider = await getProvider();
-      const account = (await selectedWallet(
-        provider,
-        step.signer,
-        "0xaa36a7",
-      )) as Address;
-      const transport = custom(provider);
-      const client = createPublicClient({ chain: sepolia, transport });
-      const transaction = {
-        account,
-        to: step.to as Address,
-        data: step.data as Hex,
-        value: BigInt(step.value ?? "0"),
-      };
-      await client.call(transaction);
-      const hash = await createWalletClient({
-        chain: sepolia,
-        transport,
-      }).sendTransaction(transaction);
-      const submitted = {
-        ...current.setup,
-        ...(current.stage === "deploy" ? { deploymentHash: hash } : {}),
-      };
-      setSetup(submitted);
-      localStorage.setItem(key, JSON.stringify(submitted));
-      setNotice(`Waiting for Sepolia confirmation: ${hash}`);
-      const receipt = await client.waitForTransactionReceipt({ hash });
-      if (receipt.status !== "success") {
-        if (current.stage === "deploy") {
-          const retry = { ...current.setup, deploymentHash: undefined };
-          setSetup(retry);
-          localStorage.setItem(key, JSON.stringify(retry));
-        }
-        throw Error(
-          "Transaction reverted. Read the platform state before retrying.",
-        );
+      const account = (await selectedWallet(provider, step.signer, "0xaa36a7")) as Address;
+      setNotice("Confirm this transaction in your wallet.");
+      const hash = await createWalletClient({ chain: sepolia, transport: custom(provider) }).sendTransaction({ account, to: step.to as Address, data: step.data as Hex, value: BigInt(step.value ?? "0"), gas: BigInt(step.gas) });
+      const submitted = { ...current.setup, ...(current.stage === "deploy" ? { deploymentHash: hash } : {}) };
+      const transaction = { hash, step, setup: submitted };
+      localStorage.setItem(`${key}:transaction`, JSON.stringify(transaction)); setPending(transaction);
+      setSetup(submitted); localStorage.setItem(key, JSON.stringify(submitted));
+      setNotice("Submitted. Waiting for confirmation on Sepolia.");
+      const receipt = await confirmSetup(transaction);
+      if (receipt.status === "reverted") {
+        localStorage.removeItem(`${key}:transaction`); setPending(null);
+        const retry = { ...current.setup, deploymentHash: undefined }; localStorage.setItem(key, JSON.stringify(retry)); setSetup(retry);
+        throw Error("Transaction reverted. Review this step before trying again.");
       }
+      localStorage.removeItem(`${key}:transaction`); setPending(null);
       const next = await refresh(submitted);
       setNotice(
         next.ready
@@ -140,7 +133,7 @@ export function PlatformBootstrap({
       );
     } catch (error) {
       setNotice(
-        error instanceof Error ? error.message : "Platform setup failed",
+        setupError(error),
       );
     } finally {
       setBusy(false);
@@ -162,9 +155,9 @@ export function PlatformBootstrap({
           disabled={busy || !setup.salt || !walletAddress}
           onClick={() => run(false)}
         >
-          Read Sepolia setup
+          {pending ? "Check transaction" : "Check platform setup"}
         </Button>
-        {plan?.transactions[0] && (
+        {!pending && plan?.transactions[0] && (
           <Button
             disabled={
               busy ||
@@ -173,7 +166,7 @@ export function PlatformBootstrap({
             }
             onClick={() => run(true)}
           >
-            Sign next setup step
+            {plan.stage === "deploy" ? "Create platform directory" : "Connect directory to ENS"}
           </Button>
         )}
       </div>

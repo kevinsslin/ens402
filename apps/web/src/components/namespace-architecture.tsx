@@ -204,7 +204,7 @@ export function NamespaceArchitecture() {
             <span className={styles.walletType}>DELEGATED WRITER</span>
             <h4>
               <ShieldCheck size={18} /> Treasury Admin{" "}
-              <span>Demo: Safe multisig</span>
+              <span>EOA, multisig or MPC</span>
             </h4>
             <p>Approve changes to the payment terms for any service.</p>
             <div className={styles.permission}>
