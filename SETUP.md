@@ -480,3 +480,7 @@ In the merchant service card, open **Permissions and ownership**. Permissions sh
 Onboarding has separate **Service workspaces** and **Registered services** sections. **Manage service** opens `/service?name=<service ENS>` with current values and native field permissions. Ops can edit public metadata, Treasury Admin can edit payment terms, and Resolver Admin can edit both. Review changes simulates one resolver transaction; confirmation saves it on Sepolia. Keep endpoint metadata aligned and refresh search after finality.
 
 Image uploads use the existing application `DATABASE_URL`, not the discovery database. `pnpm db:migrate` includes the `ens402_service_images` table (already installed for this deployment). Images are public and content-addressed, up to 1 MB PNG/JPEG/WebP; an external HTTPS image URL also works. No new storage credential is required.
+
+## Agent CLI
+
+Download [the standalone CLI](https://ens402.vercel.app/downloads/ens402.mjs) (Node.js 22+). Run `node ens402.mjs search "Tokyo weather"`. For payment, export an active checkout from Console; follow the [CLI reference](apps/web/public/skills/ens402-discovery/references/cli.md). Local signing uses `ENS402_PRIVATE_KEY` only in the local process, never the hosted environment. Source workflow: `pnpm cli:build`, `pnpm test:cli`.

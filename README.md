@@ -8,7 +8,7 @@ This is the single current scope and status overview. Updated September 27, 2026
 
 **Search services** opens a prompt-first keyword/semantic search, with results directly below the input. Search is public; selecting a service prompts login before current ENS inspection and checkout. **Onboard your service** opens provider setup. The footer repeats these destinations and links to docs and architecture.
 
-The human demo confirms the current fixed price and payment wallet. It does not expose recurring authorization management, daily-budget fields, agent-key creation or World ID. The existing payment backend still binds checkout to the inspected endpoint, recipient and price, with a short-lived internal payment context; Guard checks and wallet signing remain required. The SDK's existing advanced integrations remain separate from this UI.
+The human demo confirms the current fixed price and payment wallet. It does not expose recurring authorization management, daily-budget fields, manual agent-key creation or World ID. The existing payment backend still binds checkout to the inspected endpoint, recipient and price, with a short-lived internal payment context; Guard checks and wallet signing remain required. An active checkout can export a scoped CLI credential for the same price, budget and expiry.
 
 ## What works, and what does not yet
 
@@ -26,6 +26,7 @@ The human demo confirms the current fixed price and payment wallet. It does not 
 | Envio indexer | Implemented; public hosting pending | Dynamic native event journal, finalized catalog reconstruction, recurring sync and independent Anvil reconstruction tested |
 | Keyword and semantic search | Implemented; local live embeddings verified | PostgreSQL full-text search and hybrid ranking; OpenAI generated three persisted fixture vectors. Public indexed catalog remains pending |
 | SDK `discover()` | Implemented; catalog setup pending | Configurable candidate search API client; public API returns 503 until an operator catalog is configured |
+| CLI | Implemented | Download `/downloads/ens402.mjs`; search, inspect, approved payment, status and reconciliation. Payment requires an exported Console checkout; no npm publication |
 | MCP | Implemented and route-tested | Read-only discovery and resolution at `/api/mcp`; no signing or approval tools |
 | Curvegrid MultiBaas | Root contracts linked on Sepolia; event ingestion pending live activity | Read-only indexed Registry/Resolver history through API and MCP; initial free-plan backfill spans only 100 blocks and does not index every provider resolver |
 | Agent Skill | Implemented | Discovery, source validation, fresh resolution and approved payment instructions in `integrations/agent-skill/SKILL.md` |

@@ -3,6 +3,9 @@
   "private": true,
   "packageManager": "pnpm@9.12.3",
   "scripts": {
+    "cli": "tsx scripts/cli/ens402.ts",
+    "cli:build": "tsx scripts/build-cli.ts",
+    "test:cli": "tsc -p tsconfig.cli.json --noEmit && vitest run scripts/cli/core.test.ts",
     "dev": "pnpm --filter @ens402/web dev",
     "build": "pnpm --filter @ens402/web build",
     "typecheck": "pnpm --filter @ens402/sdk typecheck && pnpm --filter @ens402/server typecheck && pnpm --filter @ens402/web typecheck",
@@ -48,9 +51,11 @@
   },
   "devDependencies": {
     "@privy-io/node": "0.35.0",
+    "@types/node": "^22",
     "@x402/core": "2.27.0",
     "@x402/evm": "2.27.0",
     "dotenv": "^18.0.4",
+    "esbuild": "0.28.2",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3",
     "viem": "^2.56.9",

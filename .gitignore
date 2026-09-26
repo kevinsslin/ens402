@@ -11,3 +11,6 @@ dist/
 contracts/out/
 contracts/cache/
 .local/
+.ens402/
+ens402-checkout.json
+ens402-attempts/

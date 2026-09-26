@@ -209,3 +209,11 @@ The browser verification did not sign in as the real owner or execute wallet tra
 - Production reproduced unrelated semantic-only weather results for `eat` (cosine 0.144) and `test` (0.317). The former default accepted every positive cosine score. A valid umbrella query scored 0.252, demonstrating why raising one cutoff cannot distinguish these cases.
 - Retrieval now excludes similarity below 0.2. Hosted OpenAI search checks up to 20 semantic-only candidates for task relevance before returning them. Exact-name and keyword matches remain available on classifier failure; unknown candidates, malformed output and failed requests cannot add listings. Query/candidate metadata keys the five-minute relevance cache; embedding and relevance misses share the durable request budget.
 - 36 targeted tests passed, including PostgreSQL shared-budget coverage. Live OpenAI relevance calls excluded `eat`, `test` and `buy cryptocurrency`, while accepting umbrella intent, Chinese weather intent and `weahter` for the published weather fixture. This is a bounded relevance check, not a service-quality or safety assessment.
+
+## Downloadable CLI (2026-09-27)
+
+- Added standalone Node bundle, Console-scoped checkout export and Discover CLI entry. No npm publication or automatic wallet creation is claimed.
+- `pnpm test:cli`: six tests passed for confirmation/expiry, origin/fixed-price parsing, durable attempt persistence, uncertain-response retry prevention, payer mismatch, POST binding and concurrent execution.
+- SDK platform tests: four passed, including local-signature validation and rejection of altered chain/payment amount before signing. Workspace typecheck and production build passed.
+- Live known-name inspection succeeded against the public MCP. Public search initially returned 503 from the stale/unavailable catalog; this is reported explicitly by the CLI.
+- No funded CLI purchase was performed in this change. Hosted signing depends on an active exported checkout and funded managed wallet; local signing requires the approved payer's key. Console checkouts expire after ten minutes and cover one purchase.

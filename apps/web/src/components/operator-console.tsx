@@ -254,6 +254,17 @@ export function OperatorConsole({
       setApprovalKey(crypto.randomUUID());
     });
   }
+  async function exportCli(row: ApprovalRow) {
+    await run("export-cli", async () => {
+      const key = await api<{ token: string }>({ action: "create-key", approvalId: row.id, label: "CLI checkout" });
+      const blob = new Blob([JSON.stringify({ version: 1, baseUrl: window.location.origin, apiKey: key.token, approvalId: row.id, mode: row.mode, payer: row.payer, approval: row.approval }, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a"); link.href = url; link.download = "ens402-checkout.json";
+      document.body.appendChild(link); link.click(); link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setNotice("CLI checkout downloaded. Keep it private and out of Git. It shares this checkout's price, budget and expiry; revoking checkout also revokes its CLI access.");
+    });
+  }
   async function buy(approvalId: string) {
     await run("purchase", async () => {
       const row = state.approvals.find((a) => a.id === approvalId);
@@ -948,6 +959,7 @@ export function OperatorConsole({
                             ? "Resume same attempt"
                             : "Buy once"}
                         </Button>
+                        {account && <Button variant="outline" disabled={!!busy || approvalStatus(row, now) !== "active" || !row.payer} onClick={() => exportCli(row)}>Export CLI checkout</Button>}
                         <Button
                           variant="ghost"
                           disabled={!!busy || row.state === "revoked"}

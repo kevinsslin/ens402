@@ -17,7 +17,7 @@ export function LandingLayers() {
         <h2 className="mt-5 text-4xl leading-tight sm:text-5xl">A public context layer<br />for agent services.</h2>
         <ul aria-label="Discovery benefits" className="mt-5 flex flex-wrap gap-2">{["Publicly readable", "Verifiable source", "Traceable changes", "Rebuildable catalog"].map(label => <li key={label} className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary">{label}</li>)}</ul>
         <p className="mt-6 text-lg leading-8 text-muted-foreground">Agents need to know what a service does, how to call it and what it costs. Publish that context under an ENS name, where anyone can read it, verify its source and follow its changes.</p>
-        <p className="mt-4 leading-7 text-muted-foreground">As agent-to-agent services multiply, discovery should be rebuildable. Use our SDK or MCP, or run the open-source indexer and build your own search.</p>
+        <p className="mt-4 leading-7 text-muted-foreground">As agent-to-agent services multiply, discovery should be rebuildable. Use our CLI, SDK or MCP, or run the open-source indexer and build your own search.</p>
         <Link href="/discover" className="mt-6 inline-flex items-center gap-2 font-medium text-primary">Explore services <ArrowRight size={17} /></Link>
         <AgentSetup />
       </div>
