@@ -1,8 +1,22 @@
 # ENS402
 
-**Let agents find services. Verify where they pay.**
+**Discover. Govern. Guard.**
+
+ENS402 puts x402 service configuration on ENS, governs updates with native EAC, and verifies payment requests before agents sign.
 
 An agent resolves a merchant's current API through ENS, compares the HTTP 402 bill with public payment settings, screens the recipient, and asks its wallet to sign. Native ENSv2 EAC lets an operator update the API URL without permission to change the payment recipient.
+
+## Three connected layers
+
+| Layer | Responsibility |
+| --- | --- |
+| ENS / Discovery | Public service configuration that independent indexers can use to reconstruct catalogs. |
+| Native EAC / Governance | Scoped configuration updates: Ops maintains descriptions and endpoints, Treasury maintains payment terms, and Admin manages grants. |
+| ENS402 SDK / Guard | Compare actual HTTP 402 requests with current ENS configuration and buyer approval before requesting a signature. |
+
+Registration and management are the provider entry point. The Console is a reference application using the SDK through its backend; other applications can integrate the same core with their own signer.
+
+Open indexing, description publishing and published fixed-price comparison remain planned. Existing payment checks do not imply these features are implemented. EAC controls ENS writes, while integrated clients detect conflicting HTTP responses. ENS resolution does not proxy traffic, and endpoint changes remain subject to buyer approval.
 
 ## Components
 

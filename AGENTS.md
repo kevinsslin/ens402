@@ -14,3 +14,9 @@ ENS402 (formerly HuFu) is an ENS-based public service configuration and payment 
 - Separate user decisions, proposed defaults, and verified integrations. The new EAC product design and provider setup remain open. Do not restore the entire previous payment scope automatically.
 - Keep the core wallet-provider independent. Provider policies, World approvals, and ERC-8004 reputation are adapters or future inputs, not required core accounts. SDK packaging is not hard wallet enforcement.
 - Use ENS402 for current branding and `ens402.payment` / `ens402.status` for the proposed application records. These are not official ENS/x402 standards. Preserve old names in historical test evidence.
+
+## Accepted narrative baseline (2026-09-26)
+
+ENS402 puts x402 service configuration on ENS, governs updates with native EAC, and verifies payment requests before agents sign.
+
+Use the same three layers across the landing page, documentation, architecture diagrams and pitch: **ENS / Discovery**, **Native EAC / Governance**, **ENS402 SDK / Guard**. Explain public x402 configuration first, scoped updates second, and onchain/offchain payment comparison third. Registration is the provider entry point; the Console is the SDK reference app. Keep actual implementation status explicit. Do not revert to directory-only or recipient-comparison-only positioning. See README.md for the shared summary and docs/DISCOVERY-DESIGN.md for use cases and boundaries.
