@@ -94,6 +94,8 @@ export function OperatorConsole({
   const [balances, setBalances] = useState<Record<string, string>>({});
   const [operatorWallet, setOperatorWallet] = useState("");
   const seller = account ? (account.walletAddress ?? "") : operatorWallet;
+  const [buyLabel, setBuyLabel] = useState("");
+  const [buyRecipient, setBuyRecipient] = useState("");
   const [record, setRecord] = useState("agent-endpoint[x402]");
   const [operation, setOperation] = useState("set");
   const [value, setValue] = useState("");
@@ -215,6 +217,10 @@ export function OperatorConsole({
         name: service.name,
         authority: service.authority,
         payTo: service.payment.payTo,
+        fixedPrice:
+          service.payment.version === 2
+            ? service.payment.pricing.amount
+            : undefined,
         endpoints: endpoints
           .split("\n")
           .map((s) => s.trim())
@@ -240,6 +246,28 @@ export function OperatorConsole({
         attempt?.approvalId === approvalId
           ? attempt
           : { id: crypto.randomUUID(), approvalId };
+      const isRegistration = row.service.endpoint.endsWith(
+        "/api/merchant/register",
+      );
+      if (
+        isRegistration &&
+        (!/^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$/.test(buyLabel) ||
+          !/^0x[0-9a-fA-F]{40}$/.test(buyRecipient) ||
+          /^0x0{40}$/.test(buyRecipient))
+      )
+        throw new Error(
+          "Enter the subname label and recipient before purchasing.",
+        );
+      const resourceRequest = isRegistration
+        ? {
+            method: "POST",
+            body: JSON.stringify({
+              orderId: current.id,
+              label: buyLabel,
+              recipient: buyRecipient,
+            }),
+          }
+        : undefined;
       setAttempt(current);
       sessionStorage.setItem(storageKey, JSON.stringify(current));
       let result: Execution;
@@ -247,6 +275,7 @@ export function OperatorConsole({
         result = await api<Execution>({
           action: "prepare-external",
           ...current,
+          request: resourceRequest,
         });
         if (result.state === "reserved" && result.prepared) {
           const provider = await wallet();
@@ -271,7 +300,12 @@ export function OperatorConsole({
             signature,
           });
         }
-      } else result = await api<Execution>({ action: "execute", ...current });
+      } else
+        result = await api<Execution>({
+          action: "execute",
+          ...current,
+          request: resourceRequest,
+        });
       setBalances((previous) => {
         const next = { ...previous };
         delete next[approvalId];
@@ -427,6 +461,42 @@ export function OperatorConsole({
             {error}
           </p>
         )}
+        {connected &&
+          state.approvals.some((a) =>
+            a.service.endpoint.endsWith("/api/merchant/register"),
+          ) && (
+            <details className="mt-6 rounded-xl border p-5">
+              <summary className="cursor-pointer text-sm font-medium">
+                Buy an ENS subname for a recipient
+              </summary>
+              <p className="mt-3 text-sm text-muted-foreground">
+                For a service pointing to /api/merchant/register. Enter the
+                label and recipient, then purchase with its approval below. This
+                buys a Sepolia subname, with no resolver. Payment and
+                registration have separate receipts.
+              </p>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <label className="text-sm">
+                  Subname label
+                  <input
+                    className={field}
+                    value={buyLabel}
+                    onChange={(e) => setBuyLabel(e.target.value)}
+                    placeholder="alice"
+                  />
+                </label>
+                <label className="text-sm">
+                  Recipient address
+                  <input
+                    className={field}
+                    value={buyRecipient}
+                    onChange={(e) => setBuyRecipient(e.target.value)}
+                    placeholder="0x..."
+                  />
+                </label>
+              </div>
+            </details>
+          )}
         {notice && (
           <p className="break-all rounded-lg border border-primary/30 p-4 text-sm text-primary">
             {notice}
@@ -546,6 +616,24 @@ export function OperatorConsole({
                       </p>
                       <p className="mt-2 break-all font-mono text-xs">
                         {service.payment.payTo}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">
+                        Description
+                      </p>
+                      <p className="mt-2 text-sm">
+                        {service.description || "No description published"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">
+                        Published fixed price
+                      </p>
+                      <p className="mt-2 text-sm">
+                        {service.payment.version === 2
+                          ? `${usdc(service.payment.pricing.amount)} USDC / request`
+                          : "Legacy record: only buyer amount limits apply"}
                       </p>
                     </div>
                     <details className="sm:col-span-2">
@@ -1089,7 +1177,11 @@ export function OperatorConsole({
                             ? JSON.stringify(service?.payment ?? {}, null, 2)
                             : e.target.value === "ens402.status"
                               ? "active"
-                              : (service?.endpoint ?? ""),
+                              : e.target.value === "description"
+                                ? (service?.description ?? "")
+                                : e.target.value === "avatar"
+                                  ? (service?.picture ?? "")
+                                  : (service?.endpoint ?? ""),
                         );
                       }}
                     >
@@ -1097,13 +1189,19 @@ export function OperatorConsole({
                         "agent-endpoint[x402]",
                         "ens402.payment",
                         "ens402.status",
+                        "description",
+                        "avatar",
                       ].map((key) => (
                         <option key={key} value={key}>
                           {key === "agent-endpoint[x402]"
                             ? "API URL"
                             : key === "ens402.payment"
                               ? "Payment settings"
-                              : "Availability"}
+                              : key === "description"
+                                ? "Description"
+                                : key === "avatar"
+                                  ? "Picture URL"
+                                  : "Availability"}
                         </option>
                       ))}
                     </select>
@@ -1111,33 +1209,70 @@ export function OperatorConsole({
                 </div>
                 {operation === "set" ? (
                   record === "ens402.payment" ? (
-                    <label className="mt-4 block text-sm">
-                      USDC recipient · Base Sepolia
-                      <input
-                        className={field}
-                        value={(() => {
-                          try {
-                            return JSON.parse(value).payTo ?? "";
-                          } catch {
-                            return "";
-                          }
-                        })()}
-                        onChange={(e) => {
-                          setValue(
-                            JSON.stringify({
-                              ...service?.payment,
-                              payTo: e.target.value,
-                            }),
-                          );
-                          setPlan(null);
-                        }}
-                        pattern="0x[0-9a-fA-F]{40}"
-                        required
-                      />
-                      <span className="mt-2 block text-xs text-muted-foreground">
-                        Changing the recipient requires buyers to approve again.
-                      </span>
-                    </label>
+                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                      <label className="text-sm">
+                        USDC recipient
+                        <input
+                          className={field}
+                          value={(() => {
+                            try {
+                              return JSON.parse(value).payTo ?? "";
+                            } catch {
+                              return "";
+                            }
+                          })()}
+                          onChange={(e) => {
+                            try {
+                              setValue(
+                                JSON.stringify({
+                                  ...JSON.parse(value),
+                                  payTo: e.target.value,
+                                }),
+                              );
+                              setPlan(null);
+                            } catch {}
+                          }}
+                          pattern="0x[0-9a-fA-F]{40}"
+                          required
+                        />
+                      </label>
+                      <label className="text-sm">
+                        Fixed price (atomic USDC units)
+                        <input
+                          className={field}
+                          inputMode="numeric"
+                          value={(() => {
+                            try {
+                              return JSON.parse(value).pricing?.amount ?? "";
+                            } catch {
+                              return "";
+                            }
+                          })()}
+                          onChange={(e) => {
+                            try {
+                              setValue(
+                                JSON.stringify({
+                                  ...JSON.parse(value),
+                                  version: 2,
+                                  pricing: {
+                                    model: "fixed",
+                                    amount: e.target.value,
+                                    unit: "request",
+                                  },
+                                }),
+                              );
+                              setPlan(null);
+                            } catch {}
+                          }}
+                          pattern="[1-9][0-9]*"
+                          required
+                        />
+                        <span className="mt-2 block text-xs text-muted-foreground">
+                          10,000 units = 0.01 USDC. Price or recipient changes
+                          require renewed fixed-price approval.
+                        </span>
+                      </label>
+                    </div>
                   ) : record === "ens402.status" ? (
                     <label className="mt-4 block text-sm">
                       Service availability
@@ -1155,7 +1290,11 @@ export function OperatorConsole({
                     </label>
                   ) : (
                     <label className="mt-4 block text-sm">
-                      API URL
+                      {record === "description"
+                        ? "Service description"
+                        : record === "avatar"
+                          ? "Picture URL (HTTPS, optional)"
+                          : "API URL"}
                       <textarea
                         className={`${field} min-h-24 font-mono text-xs`}
                         value={value}

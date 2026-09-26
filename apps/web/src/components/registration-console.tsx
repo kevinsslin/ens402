@@ -3,6 +3,7 @@ import { selectedWallet } from "./wallet-session";
 import { useState } from "react";
 import {
   bytesToHex,
+  parseUnits,
   createPublicClient,
   createWalletClient,
   custom,
@@ -27,6 +28,9 @@ type Pending = {
     payTo: Address;
     endpointOperator: Address;
     treasury: Address;
+    description: string;
+    picture: string;
+    price: string;
   };
 };
 const field = "mt-2 w-full rounded-md border bg-background px-3 py-2.5 text-sm";
@@ -45,7 +49,10 @@ export function RegistrationConsole({
     [endpoint, setEndpoint] = useState(""),
     [payTo, setPayTo] = useState(""),
     [operator, setOperator] = useState(""),
-    [treasury, setTreasury] = useState("");
+    [treasury, setTreasury] = useState(""),
+    [description, setDescription] = useState(""),
+    [picture, setPicture] = useState(""),
+    [price, setPrice] = useState("0.01");
   const [pending, setPending] = useState<Pending | null>(null),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
@@ -110,19 +117,42 @@ export function RegistrationConsole({
           throw new Error(
             "Ops must differ from the service Admin and Treasury.",
           );
+        if (
+          !description.trim() ||
+          new TextEncoder().encode(description.trim()).length > 1024
+        )
+          throw new Error("Provide a description of at most 1024 bytes.");
+        if (
+          !/^(0|[1-9][0-9]*)(\.[0-9]{1,6})?$/.test(price) ||
+          parseUnits(price, 6) <= 0n
+        )
+          throw new Error(
+            "Use a positive USDC price with at most six decimals.",
+          );
+        if (
+          picture &&
+          (new URL(picture).protocol !== "https:" ||
+            new URL(picture).username ||
+            new URL(picture).password ||
+            new URL(picture).hash)
+        )
+          throw new Error("Use an HTTPS picture URL.");
         const service = {
           label,
           endpoint: url.href,
           payTo: payTo as Address,
           endpointOperator: operator as Address,
           treasury: treasury as Address,
+          description: description.trim(),
+          picture,
+          price: parseUnits(price, 6).toString(),
         };
         const secret = bytesToHex(crypto.getRandomValues(new Uint8Array(32)));
         const commitment = await client.readContract({
           address,
           abi: serviceRegistrarAbi,
           functionName: "makeCommitment",
-          args: [service, owner, secret],
+          args: [{ ...service, price: BigInt(service.price) }, owner, secret],
         });
         const draft = { owner, secret, commitment, service };
         sessionStorage.setItem(storageKey, JSON.stringify(draft));
@@ -166,7 +196,10 @@ export function RegistrationConsole({
           address,
           abi: serviceRegistrarAbi,
           functionName: "register",
-          args: [draft.service, draft.secret],
+          args: [
+            { ...draft.service, price: BigInt(draft.service.price) },
+            draft.secret,
+          ],
         });
         const hash = await wallet.writeContract(simulation.request);
         const receipt = await client.waitForTransactionReceipt({ hash });
@@ -244,6 +277,36 @@ export function RegistrationConsole({
                 value={endpoint}
                 onChange={(e) => setEndpoint(e.target.value)}
                 type="url"
+                required
+              />
+            </label>
+            <label className="text-sm sm:col-span-2">
+              Service description
+              <textarea
+                className={field}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                maxLength={1024}
+                required
+              />
+            </label>
+            <label className="text-sm">
+              Picture URL (optional)
+              <input
+                className={field}
+                type="url"
+                value={picture}
+                onChange={(e) => setPicture(e.target.value)}
+                maxLength={2048}
+              />
+            </label>
+            <label className="text-sm">
+              Fixed price per request (USDC)
+              <input
+                className={field}
+                inputMode="decimal"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
                 required
               />
             </label>

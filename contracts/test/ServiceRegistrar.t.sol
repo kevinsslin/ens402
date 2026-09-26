@@ -17,7 +17,16 @@ contract ServiceRegistrarTest is NativeENSTest {
     }
 
     function _service(string memory label) internal pure returns (ServiceRegistrar.Service memory) {
-        return ServiceRegistrar.Service(label, "https://weather.example/forecast", address(0x4004), operator, treasury);
+        return ServiceRegistrar.Service(
+            label,
+            "https://weather.example/forecast",
+            address(0x4004),
+            operator,
+            treasury,
+            "Weather forecast",
+            "",
+            10000
+        );
     }
 
     function _register(string memory label) internal returns (INativeResolver result) {

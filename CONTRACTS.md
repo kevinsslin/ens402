@@ -2,7 +2,7 @@
 
 ## Native ENS remains the permission system
 
-`ServiceRegistrar` is onboarding glue. It is granted only `ROLE_REGISTRAR` on a dedicated native ENS UserRegistry. Its registration transaction deploys a native PermissionedResolver, publishes the three application records, grants native delegates, gives the registering wallet text administration, removes its own bootstrap privileges, then registers the name. Every step reverts together on failure.
+`ServiceRegistrar` is onboarding glue. It is granted only `ROLE_REGISTRAR` on a dedicated native ENS UserRegistry. Its registration transaction deploys a native PermissionedResolver, publishes endpoint, schema-v2 payment, status, description and optional picture records, grants native delegates, gives the registering wallet text administration, removes its own bootstrap privileges, then registers the name. Every step reverts together on failure.
 
 ```mermaid
 flowchart TD
@@ -22,7 +22,7 @@ Role and scope are separate. `ROLE_SET_TEXT = 16` is the same action for Ops and
 
 | Wallet | Contract / resource | Native roles | Effect |
 | --- | --- | --- | --- |
-| Ops | Dedicated resolver / `keccak256("agent-endpoint[x402]")` | `ROLE_SET_TEXT` | Update API URL only |
+| Ops | Dedicated resolver / `keccak256("agent-endpoint[x402]")` | `ROLE_SET_TEXT` | Update the separately granted endpoint, description or picture key |
 | Treasury writer | Dedicated resolver / `keccak256("ens402.payment")` | `ROLE_SET_TEXT` | Update payment record only |
 | Service Admin | Dedicated resolver / root `0` | `ROLE_SET_TEXT`, `ROLE_SET_TEXT_ADMIN` | Write every text key, grant/revoke writers |
 | Service Admin | UserRegistry / service name | `ROLE_SET_RESOLVER`, `ROLE_SET_RESOLVER_ADMIN`, `ROLE_CAN_TRANSFER_ADMIN` | Manage resolver pointer and native name transfer |
@@ -66,3 +66,7 @@ Revoking ServiceRegistrar's native registrar role stops future registrations. It
 Run `pnpm ens:namespace:plan` after obtaining the testnet parent. It generates unsigned transactions and refuses to overwrite an existing child registry. Deployment needs the actual parent owner and Sepolia ETH. No public-network deployment has been performed by the tests.
 
 `pnpm test:contracts` runs native forks, including atomic registration, per-key rights, bootstrap privilege removal, commitment tampering/delay/expiry/replay, namespace expiry, native registrar revocation and isolated resolvers. `pnpm test:ens:current` validates current SDK resolution and permission calldata. `pnpm test:anvil` additionally settles against actual Base Sepolia USDC bytecode in a second disposable fork.
+
+## Paid subname service
+
+The x402 purchase endpoint calls native UserRegistry.register directly from a dedicated worker with ROLE_REGISTRAR. It registers to the recipient with no resolver, avoiding a separate transfer and retained resolver administration. This path needs no ServiceRegistrar deployment. ServiceRegistrar remains useful for atomic full-service onboarding. See [AUDIT.md](AUDIT.md) for the full deployment inventory and recovery model.

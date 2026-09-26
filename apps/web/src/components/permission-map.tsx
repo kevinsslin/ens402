@@ -1,10 +1,10 @@
 const permissions = [
   {
     wallet: "Ops wallet",
-    scope: "Endpoint key",
-    resource: 'keccak256("agent-endpoint[x402]")',
+    scope: "Three separate text-key grants",
+    resource: "keccak256(key): agent-endpoint[x402], description, avatar",
     role: "ROLE_SET_TEXT",
-    can: "Update the API URL.",
+    can: "Update the API URL, description and optional picture with their respective grants.",
     cannot:
       "Cannot change payment settings, service status or delegate permissions with this grant.",
   },
@@ -13,7 +13,7 @@ const permissions = [
     scope: "Payment key",
     resource: 'keccak256("ens402.payment")',
     role: "ROLE_SET_TEXT",
-    can: "Update the recipient, network and token configuration.",
+    can: "Update fixed price, recipient, network and token configuration.",
     cannot:
       "Cannot change the API URL with this grant. The receiving wallet is a separate setting.",
   },

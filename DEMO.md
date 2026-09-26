@@ -1,41 +1,47 @@
-# ENS402 demo: one service, three outcomes
+# ENS402 demo: discover, govern, guard, buy a name
 
-## What the audience should learn
+## Primary demonstration
 
-A service name keeps its public API and payment configuration in ENS. Native ENSv2 permissions let Ops update the API URL while Treasury controls payment settings. A buyer compares the actual HTTP 402 request with this independent configuration before signing.
+The paid API registers `<label>.ens402.eth` directly to a recipient on ENSv2 Sepolia. Base Sepolia USDC pays for the request. This is subname issuance, not an arbitrary `.eth` purchase or a subsequent transfer. The recipient receives the native name and its configuration rights; no resolver is attached to the purchased name.
 
-A receipt records the decision and, when paid, the transaction. The pre-payment comparison is **HTTP 402 payment requirement vs ENS**, not receipt vs payTo.
+### Prepare
 
-## Prepare before the presentation
+1. Complete the native namespace setup in `AUDIT.md`. Run `pnpm ens:namespace:plan --native-only` for the unsigned parent-owner transactions. Fund and grant the dedicated worker only `ROLE_REGISTRAR`.
+2. Publish a service such as `buy.ens402.eth` with its own native resolver, description, active status, registration endpoint and schema-v2 fixed USDC price. Use `pnpm ens:plan` for existing-service records and grants. The paid-name flow does not require the optional custom ServiceRegistrar.
+3. Configure the production variables listed in `USER-TODO.md`. Keep the worker private key server-only. Check expiry and gas before presenting.
+4. Sign in to Console, resolve the service, review the fixed price and approve the exact endpoint and buyer limits. Fund the displayed payer with Base Sepolia USDC.
+5. Choose a fresh 3-32 character lowercase label and a recipient. Contract recipients must accept native ERC1155 transfers.
 
-1. Deploy the x402 endpoints. The included Search service returns clearly labeled sample data, not a real search product.
-2. Complete the Sepolia namespace and ServiceRegistrar setup using `scripts/ens/README.md`. Registration stays unavailable until the deployed registrar and parent are configured.
-3. Register `search.ens402.eth` with its dedicated native resolver, active status, API URL, Base Sepolia USDC and the merchant's recipient. This is a proposed demo name, not a claim of registration. The company hierarchy on the architecture page remains a separate proposal.
-4. Use separate Admin, Ops and Treasury wallets. Admin controls resolver text and delegation; Ops gets `ROLE_SET_TEXT` on the endpoint key; Treasury gets that role on the payment key. Fund their Sepolia gas before the presentation.
-5. Sign in to Console as the buyer. Resolve the service, approve a maximum payment of 0.01 USDC and a daily limit of 1 USDC, assuming the deployed endpoint is configured to charge 10000 atomic units. These are buyer limits, not a price quote.
-6. For this controlled demo, explicitly approve all three exact endpoint URLs in Allowed API URLs. This lets later scenes demonstrate recipient verification rather than stopping earlier at an unapproved endpoint. For normal users, approve only endpoints they trust.
-7. Use a managed wallet or an external signer. Fund the payer with Base Sepolia USDC; an external wallet also needs any network requirements for its chosen flow. Check its live balance. Confirm Intercepta and the facilitator work before presenting.
+### Present
+
+1. Show the service's public ENS description, endpoint and payment settings, plus the separate Admin, Ops and Treasury roles.
+2. Select a label and recipient in Console. The reference app uses the same SDK available to other agents.
+3. Explain the pre-signing check: compare HTTP 402 with ENS, check consent and screening evidence, then sign the exact request-bound payment.
+4. Pay once. Show the Base Sepolia USDC receipt and the separate Sepolia name-registration receipt. Verify the recipient through the native registry.
+5. Show the order status at `/api/merchant/registration-orders/<orderId>`. If delivery is pending, recover the existing order; do not create another payment.
+
+An order contains a fresh UUID v4. ENS402 binds the endpoint and exact JSON body to the EIP-3009 nonce, so changing the recipient invalidates the signed order. This is an application convention that ordinary x402 clients must implement for this endpoint.
+
+## Supporting governance and guarding scenes
+
+The existing Search endpoints return clearly labeled sample data. Configure a separate service and approve the exact URLs used in the demonstration.
 
 | Route | Behavior |
 | --- | --- |
 | `/api/merchant/search` | Normal 402 challenge, payment and sample response |
-| `/api/merchant/search-v2` | Same recipient and price at an updated API URL |
-| `/api/merchant/search-mismatch` | Deliberately different recipient; refuses every signed payment and never settles |
+| `/api/merchant/search-v2` | Same recipient and price at an updated URL |
+| `/api/merchant/search-mismatch` | Deliberately different recipient; never accepts or settles payments |
 
-The routes derive their canonical origin from `MERCHANT_RESOURCE_URL`. Use those exact canonical URLs when registering and approving. The mismatch route derives a different recipient from `MERCHANT_PAY_TO`; ENS must retain the normal merchant recipient for this demonstration.
+1. Ops changes the endpoint to `search-v2`. A fresh ENS resolution reaches the updated URL within the buyer's explicitly approved URL scope.
+2. Ops attempts to change the payment record. Native EAC rejects the unauthorized edit.
+3. Point to `search-mismatch`. The SDK rejects the HTTP recipient mismatch before signing.
+4. Change the published fixed price using Treasury. Existing fixed-price consent requires renewed approval.
+5. Restore the expected configuration.
 
-## Present in this order
+Ops has individually scoped `ROLE_SET_TEXT` grants for endpoint, description and avatar. Treasury has the payment-key grant. Admin retains text administration. Scope grants to each service's own resolver; do not give Ops root text rights.
 
-1. **Merchant setup:** show the registered service and three wallet responsibilities. Deployment and funding are preparation, not live stage work.
-2. **Normal purchase:** Buyer selects the name and buys once. Payment activity shows requested price, matching ENS/402 recipients, checks and confirmed transaction.
-3. **Endpoint maintenance:** Ops changes only the endpoint to `search-v2`. Buyer resolves the same name and buys successfully within the prior explicit endpoint approval. The recipient is unchanged.
-4. **Permission boundary:** use the Ops wallet to prepare a payment-recipient edit. Native resolver simulation must reject it. Do not give Ops root text rights.
-5. **Tampered API:** Ops changes only the endpoint to `search-mismatch`. Buyer tries the same service. Activity shows the two different recipients and Blocked; no signature or settlement occurs.
-6. Restore the normal endpoint after the demo.
+## Evidence and limits
 
-## Verification boundaries
+Unit, PostgreSQL integration, native Solidity forks and the dual-Anvil paid-name flow pass. Live Intercepta and Privy policy checks pass. Browser checks cover public docs and setup-pending registration; an authenticated public purchase remains pending namespace activation and testnet funding. See `AUDIT.md` for exact coverage.
 
-- Unit tests cover exact USDC conversion, expiry and recipient mismatch without signing.
-- Integration tests exercise hosted and external-signer decisions with local PostgreSQL and provider doubles.
-- Browser fixture checks verify layout and user-facing states; they do not prove a live Privy payment.
-- A live stage run additionally requires deployed ENS permissions, funded wallets, real provider responses and a confirmed Base Sepolia transaction. Do not present local fixtures as those receipts.
+Payment and delivery are on separate chains. An unavailable name or reverted registration after settlement requires recovery or manual refund review. Public funded receipts are required before claiming a complete live deployment. Index reconstruction and version aliases remain planned.

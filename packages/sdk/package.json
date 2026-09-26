@@ -9,6 +9,7 @@
     "./privy": "./src/privy.ts",
     "./x402": "./src/x402.ts",
     "./ens": "./src/ens/index.ts",
+    "./request": "./src/request.ts",
     "./http": "./src/http.ts",
     "./settlement": "./src/settlement.ts",
     "./platform": "./src/platform.ts",

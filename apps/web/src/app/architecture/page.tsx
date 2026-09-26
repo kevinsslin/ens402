@@ -20,14 +20,16 @@ export default function Architecture() {
         <h1 className="mt-4 text-4xl font-medium tracking-tight sm:text-5xl">
           Public x402 configuration.
           <br />
-          <span className="text-primary">Governed updates. Checked payments.</span>
+          <span className="text-primary">
+            Governed updates. Checked payments.
+          </span>
         </h1>
         <p className="mt-6 text-base leading-8 text-muted-foreground">
           ENS is the public configuration and discovery foundation. Native EAC
           governs record updates. The ENS402 SDK guards purchases by comparing
-          offchain HTTP 402 requests with current ENS records and buyer approval.
-          Our Console uses this same core through its backend. Open indexing
-          and advertised-price checks are planned.
+          offchain HTTP 402 requests with current ENS records and buyer
+          approval. Our Console uses this same core through its backend. Open
+          indexing is planned; fixed-price comparison is implemented.
         </p>
       </div>
       <NamespaceArchitecture />
@@ -92,8 +94,8 @@ export default function Architecture() {
             <tbody className="divide-y">
               {[
                 [
-                  "description / ens402.service",
-                  "Service description and call format (publishing and schema planned)",
+                  "description / avatar",
+                  "Service description and optional HTTPS picture URL",
                   "Ops, with separate key grants",
                 ],
                 [
@@ -103,7 +105,7 @@ export default function Architecture() {
                 ],
                 [
                   "ens402.payment",
-                  "Scheme, network, token, recipient and version; fixed price per request planned",
+                  "Scheme, network, token, recipient and schema version; v2 includes fixed price per request",
                   "Treasury",
                 ],
                 [
@@ -129,9 +131,10 @@ export default function Architecture() {
         <p className={prose}>
           These actor labels describe their jobs, not invented native role
           names. The pinned resolver exposes grantSetterRoles(...) for a
-          setter-key resource within that resolver contract. Its broader ROLE_SET_TEXT permission can
-          override narrow grants. Production setup must inspect administrators,
-          root permissions, upgrades and resolver-pointer control.
+          setter-key resource within that resolver contract. Its broader
+          ROLE_SET_TEXT permission can override narrow grants. Production setup
+          must inspect administrators, root permissions, upgrades and
+          resolver-pointer control.
         </p>
         <details className="mt-5 rounded-lg border p-5">
           <summary className="cursor-pointer text-sm font-medium">
@@ -359,7 +362,7 @@ export default function Architecture() {
             ],
             [
               "Who should change prices?",
-              "Treasury controls price together with the payment tuple. Ops edits descriptions, call formats and endpoints with separately scoped text-key grants. Service Admin retains root authority and manages grants. Price publication and its client comparison are planned; a published price does not force an API to honor it.",
+              "Treasury controls price together with the payment tuple. Ops edits descriptions, pictures and endpoints with separately scoped text-key grants. Service Admin retains root authority and manages grants. Fixed-price publication and comparison are implemented; a published price does not force an API to honor it.",
             ],
             [
               "Why not just implement HTTP 402?",
@@ -400,7 +403,7 @@ export default function Architecture() {
           {[
             [
               "Planned discovery layer",
-              "Provider registry hierarchy, provider-owned namespace indexing, description and call-format publishing, and fixed-price publication/comparison are design scope. Independent catalog reconstruction has not yet been implemented or demonstrated.",
+              "Provider registry hierarchy, provider-owned namespace indexing and rich call-format schemas remain design scope. Description, optional picture and fixed-price publication/comparison are implemented. Independent catalog reconstruction has not yet been implemented or demonstrated.",
             ],
             [
               "Tested on an isolated fork",
@@ -438,9 +441,15 @@ export default function Architecture() {
               "ENSIP-26 agent text records (draft)",
               "https://docs.ens.domains/ensip/26",
             ],
-            ["ENSIP-27 node classification and metadata (draft)", "https://docs.ens.domains/ensip/27"],
+            [
+              "ENSIP-27 node classification and metadata (draft)",
+              "https://docs.ens.domains/ensip/27",
+            ],
             ["ENSv2 indexing guide", "https://docs.ens.domains/ensv2/indexing"],
-            ["Bazaar open extension specification", "https://github.com/coinbase/x402/blob/main/specs/extensions/bazaar.md"],
+            [
+              "Bazaar open extension specification",
+              "https://github.com/coinbase/x402/blob/main/specs/extensions/bazaar.md",
+            ],
             [
               "Intercepta Quick Scan Address schema",
               "https://docs.web3antivirus.io/reference/quick-scan-address",

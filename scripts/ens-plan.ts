@@ -38,11 +38,16 @@ if (
 const endpoint = validateEndpoint(required("MERCHANT_RESOURCE_URL"));
 const payment = parsePaymentRecord(
   JSON.stringify({
-    version: 1,
+    version: 2,
     scheme: "exact",
     network: NETWORK,
     asset: USDC,
     payTo: wallet("MERCHANT_PAY_TO"),
+    pricing: {
+      model: "fixed",
+      amount: required("MERCHANT_PRICE_UNITS"),
+      unit: "request",
+    },
   }),
 );
 const { client, block } = await setupClient();
@@ -122,6 +127,18 @@ await savePlan("ens-transactions.json", {
     prepareRecordUpdate(service, "agent-endpoint[x402]", endpoint),
     prepareRecordUpdate(service, "ens402.payment", JSON.stringify(payment)),
     prepareRecordUpdate(service, "ens402.status", "active"),
+    prepareRecordUpdate(
+      service,
+      "description",
+      required("SERVICE_DESCRIPTION"),
+    ),
+    prepareRecordUpdate(
+      service,
+      "avatar",
+      process.env.SERVICE_PICTURE_URL || "",
+    ),
+    prepareTextPermission(service, "description", ops, true),
+    prepareTextPermission(service, "avatar", ops, true),
     prepareTextPermission(service, "agent-endpoint[x402]", ops, true),
     prepareTextPermission(service, "ens402.payment", treasury, true),
     {

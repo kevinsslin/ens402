@@ -41,6 +41,9 @@ contract ServiceRegistrar {
         address payTo;
         address endpointOperator;
         address treasury;
+        string description;
+        string picture;
+        uint256 price;
     }
     event ServiceRegistered(
         bytes32 indexed node, address indexed owner, address indexed resolver, uint256 tokenId, string label
@@ -122,15 +125,25 @@ contract ServiceRegistrar {
         }
         resolverAddress = factory.deployProxy(resolverImplementation, uint256(commitment), initialization);
         string memory payment = string.concat(
-            '{"version":1,"scheme":"exact","network":"eip155:84532","asset":"0x036cbd53842c5426634e7929541ec2318f3dcf7e","payTo":"',
+            '{"version":2,"scheme":"exact","network":"eip155:84532","asset":"0x036cbd53842c5426634e7929541ec2318f3dcf7e","payTo":"',
             _address(service.payTo),
-            '"}'
+            '","pricing":{"model":"fixed","amount":"',
+            _uintString(service.price),
+            '","unit":"request"}}'
         );
         if (currentResolver) {
             ICurrentResolver resolver = ICurrentResolver(resolverAddress);
             resolver.setText(dns, "agent-endpoint[x402]", service.endpoint);
             resolver.setText(dns, "ens402.payment", payment);
             resolver.setText(dns, "ens402.status", "active");
+            resolver.setText(dns, "description", service.description);
+            resolver.setText(dns, "avatar", service.picture);
+            resolver.grantSetterRoles(
+                abi.encodeCall(ICurrentResolver.setText, (dns, "description", "")), service.endpointOperator
+            );
+            resolver.grantSetterRoles(
+                abi.encodeCall(ICurrentResolver.setText, (dns, "avatar", "")), service.endpointOperator
+            );
             resolver.grantSetterRoles(
                 abi.encodeCall(ICurrentResolver.setText, (dns, "agent-endpoint[x402]", "")), service.endpointOperator
             );
@@ -142,6 +155,10 @@ contract ServiceRegistrar {
             resolver.setText(node, "agent-endpoint[x402]", service.endpoint);
             resolver.setText(node, "ens402.payment", payment);
             resolver.setText(node, "ens402.status", "active");
+            resolver.setText(node, "description", service.description);
+            resolver.setText(node, "avatar", service.picture);
+            resolver.authorizeTextRoles(dns, "description", service.endpointOperator, true);
+            resolver.authorizeTextRoles(dns, "avatar", service.endpointOperator, true);
             resolver.authorizeTextRoles(dns, "agent-endpoint[x402]", service.endpointOperator, true);
             resolver.authorizeTextRoles(dns, "ens402.payment", service.treasury, true);
         }
@@ -163,7 +180,10 @@ contract ServiceRegistrar {
             endpoint.length < 9 || endpoint.length > 2048 || bytes8(endpoint) != bytes8("https://")
                 || service.payTo == address(0) || service.endpointOperator == address(0)
                 || service.treasury == address(0) || service.endpointOperator == service.treasury
-                || service.endpointOperator == admin
+                || service.endpointOperator == admin || service.price == 0 || bytes(service.description).length == 0
+                || bytes(service.description).length > 1024 || bytes(service.picture).length > 2048
+                || (bytes(service.picture).length > 0
+                    && (bytes(service.picture).length < 9 || bytes8(bytes(service.picture)) != bytes8("https://")))
         ) revert InvalidRecord();
         // URL syntax, DNS, HTTP and payment semantics are independently checked by consuming clients.
     }
@@ -179,6 +199,21 @@ contract ServiceRegistrar {
         bytes32 label;
         assembly ("memory-safe") { label := keccak256(add(add(dns, 33), offset), length) }
         return keccak256(abi.encodePacked(_namehash(dns, offset + length + 1), label));
+    }
+
+    function _uintString(uint256 value) private pure returns (string memory) {
+        uint256 digits;
+        uint256 remaining = value;
+        do {
+            ++digits;
+            remaining /= 10;
+        } while (remaining != 0);
+        bytes memory output = new bytes(digits);
+        do {
+            output[--digits] = bytes1(uint8(48 + value % 10));
+            value /= 10;
+        } while (digits != 0);
+        return string(output);
     }
 
     function _address(address account) private pure returns (string memory) {

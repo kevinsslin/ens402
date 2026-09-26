@@ -12,6 +12,11 @@ import {
 } from "../src/interfaces/INativeENS.sol";
 import {Vm} from "./NativeENS.t.sol";
 
+interface IPurchaseRegistry {
+    function getResolver(string calldata label) external view returns (address);
+    function setResolver(uint256 id, address resolver) external;
+}
+
 interface INativeTransfer {
     function safeTransferFrom(address from, address to, uint256 id, uint256 amount, bytes calldata data) external;
 }
@@ -48,9 +53,74 @@ contract CurrentRegistrarTest {
             .register("ens402fork", owner, address(registry), address(0), 1 << 20, uint64(block.timestamp + 30 days));
     }
 
+    function _text(bytes memory dns, bytes32 node, string memory key) internal view returns (string memory) {
+        (bytes memory result,) = IUniversalResolverV2(0x5d25C1D6aCBb71B7a28AA7899618a3412a8303e3)
+            .resolve(dns, abi.encodeWithSignature("text(bytes32,string)", node, key));
+        return abi.decode(result, (string));
+    }
+
+    function testNativePurchaseRegistersDirectlyToRecipient() public {
+        address recipient = address(0xBEEF);
+        uint256 roles = (1 << 20) | (1 << 24) | ((uint256(1 << 20) | (1 << 24) | (1 << 28)) << 128);
+        registry.grantRootRoles(1, ops);
+        vm.prank(ops);
+        registry.register("gift", recipient, address(0), address(0), roles, uint64(block.timestamp + 20 days));
+        require(registry.findOwner("gift") == recipient, "recipient did not receive name");
+        require(IPurchaseRegistry(address(registry)).getResolver("gift") == address(0), "unexpected retained resolver");
+        vm.expectPartialRevert(bytes4(0x4b27a133));
+        vm.prank(ops);
+        IPurchaseRegistry(address(registry)).setResolver(uint256(keccak256("gift")), address(0x1234));
+        vm.prank(recipient);
+        IPurchaseRegistry(address(registry)).setResolver(uint256(keccak256("gift")), address(0x1234));
+        require(
+            IPurchaseRegistry(address(registry)).getResolver("gift") == address(0x1234),
+            "recipient cannot configure name"
+        );
+    }
+
+    function testDescriptionPictureAndFixedPricePublication() public {
+        ServiceRegistrar.Service memory s = ServiceRegistrar.Service(
+            "priced",
+            "https://weather.example/api",
+            treasury,
+            ops,
+            treasury,
+            "Weather forecast",
+            "https://weather.example/icon.png",
+            10000
+        );
+        bytes32 secret = bytes32(uint256(77));
+        registrar.commit(registrar.makeCommitment(s, owner, secret));
+        vm.warp(block.timestamp + 60);
+        vm.prank(owner);
+        (address resolver,) = registrar.register(s, secret);
+        bytes memory dns = hex"067072696365640a656e73343032666f726b00";
+        (, bytes32 node,) = IUniversalResolverV2(0x5d25C1D6aCBb71B7a28AA7899618a3412a8303e3).findResolver(dns);
+        require(
+            keccak256(bytes(_text(dns, node, "description"))) == keccak256("Weather forecast"), "missing description"
+        );
+        require(
+            keccak256(bytes(_text(dns, node, "ens402.payment")))
+                == keccak256(
+                    bytes(
+                        '{"version":2,"scheme":"exact","network":"eip155:84532","asset":"0x036cbd53842c5426634e7929541ec2318f3dcf7e","payTo":"0x0000000000000000000000000000000000001003","pricing":{"model":"fixed","amount":"10000","unit":"request"}}'
+                    )
+                ),
+            "missing fixed price"
+        );
+        vm.prank(ops);
+        ICurrentResolver(resolver).setText(dns, "description", "Updated listing");
+        vm.prank(ops);
+        ICurrentResolver(resolver).setText(dns, "avatar", "https://weather.example/new.png");
+        vm.expectPartialRevert(bytes4(0x4b27a133));
+        vm.prank(treasury);
+        ICurrentResolver(resolver).setText(dns, "description", "Not treasury scope");
+    }
+
     function testOpsCannotAlsoBeServiceAdmin() public {
-        ServiceRegistrar.Service memory service =
-            ServiceRegistrar.Service("weather", "https://weather.example/api", treasury, owner, treasury);
+        ServiceRegistrar.Service memory service = ServiceRegistrar.Service(
+            "weather", "https://weather.example/api", treasury, owner, treasury, "Weather forecast", "", 10000
+        );
         registrar.commit(registrar.makeCommitment(service, owner, bytes32(uint256(2))));
         vm.warp(block.timestamp + 60);
         vm.expectPartialRevert(ServiceRegistrar.InvalidRecord.selector);
@@ -59,8 +129,9 @@ contract CurrentRegistrarTest {
     }
 
     function testCurrentNativeRegistrationAndSetterRoles() public {
-        ServiceRegistrar.Service memory s =
-            ServiceRegistrar.Service("weather", "https://weather.example/api", treasury, ops, treasury);
+        ServiceRegistrar.Service memory s = ServiceRegistrar.Service(
+            "weather", "https://weather.example/api", treasury, ops, treasury, "Weather forecast", "", 10000
+        );
         registrar.commit(registrar.makeCommitment(s, owner, bytes32(uint256(1))));
         vm.warp(block.timestamp + 60);
         vm.prank(owner);

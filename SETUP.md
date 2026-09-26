@@ -168,3 +168,7 @@ Optional local `PRODUCTION_DATABASE_URL` / `PRODUCTION_DATABASE_URL_UNPOOLED` se
 See [USER-TODO.md](USER-TODO.md). The official current ENSv2 testnet app is https://app.ens.dev. The current SDK defaults to the official deployment pinned at source `71a3b733`; the older deployment remains an explicit `legacy` option for historical tests. Current key grants apply within a resolver, so use one resolver per service.
 
 After registering the parent, run `pnpm ens:namespace:plan`. It produces an unsigned plan and refuses to replace an existing subregistry. `SERVICE_REGISTRAR_ADDRESS` and `ENS_PARENT_NAME` enable `/register`. The contract uses native EAC; it does not implement a competing permission system. Parent administrators and fixed expiry remain trust boundaries. No public-network deployment is performed by tests.
+
+## Fixed-price subname purchase
+
+Start with the ordered checklist in [AUDIT.md](AUDIT.md). `pnpm ens:namespace:plan --native-only` prepares the minimum official ENS namespace without a custom registrar. The worker needs its own server-only Sepolia key and native ROLE_REGISTRAR. It must never use the parent Admin key. The endpoint is POST `/api/merchant/register`; order status is GET `/api/merchant/registration-orders/<orderId>`. Publish payment schema v2 and the same `MERCHANT_PRICE_UNITS` in ENS before approval. The production additive database migration must run before enabling this route.

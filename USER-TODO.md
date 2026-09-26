@@ -2,6 +2,10 @@
 
 Updated September 26, 2026. All development and demo payments use testnets.
 
+## Latest audit
+
+See [AUDIT.md](AUDIT.md) for the current minimum native-only setup and paid registration endpoint. A fresh read at Sepolia block 11785763 still shows no child registry. The paid endpoint can use a dedicated native registrar worker without deploying ServiceRegistrar; the latter is only needed for the full-service `/register` page. Production fixed-price, service-name and worker settings remain pending.
+
 ## 1. Parent ownership verified
 
 `ens402.eth` is registered on the supported ENSv2 Sepolia deployment. At block `11784285`, native `findOwner("ens402")` returned `0x0D2FDDee5b84540A9766c025ad26dCaFb9FeF380`. The earlier zero-owner observation has been superseded by this confirmed read.
@@ -10,9 +14,13 @@ The parent currently has no child registry. `pnpm ens:namespace:plan` successful
 
 ## 2. Enable the namespace
 
-After the parent exists, set `ENS_PARENT_NAME` and `ENS_OWNER_ADDRESS` locally, run `pnpm ens:namespace:plan`, and review `docs/setup/namespace-transactions.json`. The planner prepares native UserRegistry and ServiceRegistrar deployment transactions without sending them. The registrar must be granted only native `ROLE_REGISTRAR` on that child registry. The parent must point to that registry. Set `ENS_PARENT_NAME` and `SERVICE_REGISTRAR_ADDRESS` in Vercel after verifying the transactions.
+For the paid-name demo, set `ENS_PARENT_NAME` and `ENS_OWNER_ADDRESS` locally and run `pnpm ens:namespace:plan --native-only`. Review `docs/setup/namespace-transactions.json`: the owner creates an official UserRegistry instance, points the parent to it, then grants only `ROLE_REGISTRAR` to a dedicated worker. No transaction has been sent. Fund the worker with Sepolia ETH.
 
-The `/register` page stays explicitly disabled until these settings exist. Each successful registration creates a dedicated native resolver, configures x402 records, separates endpoint and Treasury delegates, transfers resolver administration to the registering wallet, and removes the registrar's resolver privileges. Names expire at the configured namespace expiry. A later name transfer does not automatically transfer the separate resolver administration. Parent control and expiry remain visible trust assumptions.
+Configure `ENS_PURCHASE_REGISTRY`, `ENS_PURCHASE_EXPIRY`, server-only `ENS_REGISTRATION_PRIVATE_KEY`, and `ENS_REGISTRATION_RESOURCE_URL` in Vercel. The worker wallet is separate from Admin, Ops, Treasury and the buyer.
+
+Use the namespace owner's registrar authority to register `buy` directly to the service Admin in the native UserRegistry, initially without a resolver. Give the Admin the native set-resolver and associated administration rights. Then `pnpm ens:plan` prepares its dedicated resolver, records and scoped Ops/Treasury grants. Set `SERVICE_ENS_NAME`, `MERCHANT_PAY_TO`, `MERCHANT_PRICE_UNITS`, and `SERVICE_DESCRIPTION`; the registration URL must be the configured service endpoint. See `AUDIT.md` for the full inventory.
+
+For optional full-service self-registration through `/register`, use the non-native-only plan and deploy our `ServiceRegistrar`, then grant it `ROLE_REGISTRAR` and set `SERVICE_REGISTRAR_ADDRESS`. This is separate from the paid-name merchant. `/register` stays disabled until configured. A service registration creates a native resolver and delegates its records; a paid-name purchase simply issues a name directly to its recipient without a resolver. A later name transfer does not automatically transfer an existing resolver's administration.
 
 ## 3. Privy browser login
 

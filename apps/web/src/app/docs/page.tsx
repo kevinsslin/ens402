@@ -72,8 +72,11 @@ export default function DocsPage() {
           A key cannot create wallets, raise limits or approve a different
           service. A new service or recipient needs human approval. Endpoint
           updates continue only if the new exact URL was already approved. The
-          initial resource API supports GET requests at the ENS-published URL,
-          with no arbitrary request body or forwarded authentication headers.
+          resource API supports GET and bounded JSON POST requests at the
+          ENS-published URL. POST orders require a UUID v4 orderId and a
+          merchant supporting ENS402 request binding: the signed USDC nonce
+          commits to the endpoint and exact body. Authentication headers are
+          never forwarded.
         </p>
       </section>
       <section className="mt-12">
@@ -119,6 +122,36 @@ Content-Type: application/json
           payment retains its budget until an actual USDC transfer and nonce are
           reconciled. A valid signature can still be submitted by someone who
           already possesses it after an app-level revocation.
+        </p>
+      </section>
+      <section className="mt-12" id="buy-name">
+        <h2 className="text-2xl font-medium">
+          Example: buy a subname for a recipient
+        </h2>
+        <p className="mt-4 text-sm leading-7">
+          Approve the ENS service pointing to /api/merchant/register. Purchase
+          with a JSON POST order. The merchant settles Base Sepolia USDC and
+          registers the native Sepolia subname directly to the recipient. No
+          resolver is included, so the merchant retains no resolver
+          administrator role.
+        </p>
+        <pre className="mt-5 overflow-x-auto rounded-xl border bg-muted/30 p-5 text-xs leading-6">
+          <code>{`await client.purchase({
+  id: crypto.randomUUID(), approvalId,
+  request: { method: "POST", body: JSON.stringify({
+    orderId: crypto.randomUUID(),
+    label: "alice", recipient: "0x..."
+  }) }
+});`}</code>
+        </pre>
+        <p className="mt-4 text-sm leading-7">
+          Keep both IDs when recovering. Check GET
+          /api/merchant/registration-orders/&lt;orderId&gt; for payment and
+          registration transactions. A paid but incomplete order requires
+          operator recovery, never another payment. Setup needs an enabled
+          parent registry, a funded Sepolia worker with ROLE_REGISTRAR, a
+          published service and a Base Sepolia USDC payer. This is a subname
+          purchase, not arbitrary .eth registration.
         </p>
       </section>
       <section className="mt-12">

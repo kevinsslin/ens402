@@ -20,6 +20,7 @@ import {
   savePlan,
 } from "./ens/shared";
 
+const nativeOnly = process.argv.includes("--native-only");
 const name = ensName("ENS_PARENT_NAME");
 const owner = wallet("ENS_OWNER_ADDRESS");
 const { client, block } = await setupClient();
@@ -112,7 +113,9 @@ await savePlan("namespace-transactions.json", {
       effect: "Issue names and manage registrar grants",
     },
     {
-      wallet: "DEPLOYED_SERVICE_REGISTRAR",
+      wallet: nativeOnly
+        ? "DEDICATED_REGISTRATION_WORKER"
+        : "DEPLOYED_SERVICE_REGISTRAR",
       contract: childRegistry,
       resource: "root (0)",
       roles: ["ROLE_REGISTRAR"],
@@ -121,7 +124,9 @@ await savePlan("namespace-transactions.json", {
   ],
   notes: [
     "Unsigned plan. Only native registry deployment is simulated. Parent owner signs steps in order.",
-    "After step 3, copy contractAddress from the creation receipt into the final grant template.",
+    nativeOnly
+      ? "Native-only purchase setup: grant ROLE_REGISTRAR to a dedicated worker. No custom registrar deployment is needed."
+      : "After step 3, copy contractAddress from the creation receipt into the final grant template.",
     "Parent owner has namespace powers. Each service registrant separately receives resolver text administration.",
     "Never run service configuration on the parent just to enable subdomain registration.",
   ],
@@ -149,22 +154,36 @@ await savePlan("namespace-transactions.json", {
       }),
       description: "Point the parent name to the new child registry",
     },
-    {
-      step: 3,
-      value: "0x0",
-      data: registrarDeployment,
-      description: "Deploy ENS402 ServiceRegistrar; record its contractAddress",
-    },
+    ...(!nativeOnly
+      ? [
+          {
+            step: 3,
+            value: "0x0",
+            data: registrarDeployment,
+            description:
+              "Deploy ENS402 ServiceRegistrar; record its contractAddress",
+          },
+        ]
+      : []),
   ],
   finalGrant: {
-    step: 4,
+    step: nativeOnly ? 3 : 4,
     to: childRegistry,
     function: "grantRootRoles(uint256,address)",
     roleBitmap: String(roles.ROLE_REGISTRAR),
-    account: "REPLACE_WITH_DEPLOYED_SERVICE_REGISTRAR",
+    account: nativeOnly
+      ? "REPLACE_WITH_DEDICATED_REGISTRATION_WORKER"
+      : "REPLACE_WITH_DEPLOYED_SERVICE_REGISTRAR",
   },
   env: {
     ENS_PARENT_NAME: name,
-    SERVICE_REGISTRAR_ADDRESS: "REPLACE_WITH_DEPLOYED_SERVICE_REGISTRAR",
+    ...(nativeOnly
+      ? {
+          ENS_PURCHASE_REGISTRY: childRegistry,
+          ENS_PURCHASE_EXPIRY: String(expiry),
+        }
+      : {
+          SERVICE_REGISTRAR_ADDRESS: "REPLACE_WITH_DEPLOYED_SERVICE_REGISTRAR",
+        }),
   },
 });

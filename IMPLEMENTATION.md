@@ -1,6 +1,6 @@
 # ENS402 implementation and evidence
 
-Updated September 26, 2026. The application is implemented; a funded live demonstration is still gated by an ENS name, human login and wallet funding.
+Updated September 26, 2026. The SDK, hosted application, fixed-price metadata and paid-subname endpoint are implemented. A funded public demonstration still requires namespace/service configuration, a worker grant, human login and testnet funding. See AUDIT.md for the latest review; counts below are historical snapshots.
 
 | Layer | Implemented and checked | Remaining live gate |
 | --- | --- | --- |

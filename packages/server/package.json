@@ -7,6 +7,8 @@
     ".": "./src/index.ts",
     "./store": "./src/store.ts",
     "./transport": "./src/transport.ts",
+    "./registration": "./src/registration.ts",
+    "./registration-merchant": "./src/registration-merchant.ts",
     "./merchant": "./src/merchant.ts",
     "./platform": "./src/platform.ts",
     "./external": "./src/external.ts"

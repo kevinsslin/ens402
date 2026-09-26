@@ -58,29 +58,103 @@ export default function Home() {
       </section>
       <section id="discovery" className="section-shell py-12 sm:py-16">
         <div className="grid gap-6 md:grid-cols-[1fr_1.1fr] md:gap-14">
-          <div><p className="eyebrow">Discover. Govern. Guard.</p><h2 className="mt-4 font-heading text-4xl tracking-tight sm:text-5xl">One public configuration. Three connected layers.</h2></div>
-          <p className="text-base leading-8 text-muted-foreground">Publish what a service does, where it runs and how it gets paid under an ENS name. The same records support independent discovery, accountable updates and payment checks. The SDK brings these checks into an agent’s existing purchase flow.</p>
+          <div>
+            <p className="eyebrow">Discover. Govern. Guard.</p>
+            <h2 className="mt-4 font-heading text-4xl tracking-tight sm:text-5xl">
+              One public configuration. Three connected layers.
+            </h2>
+          </div>
+          <p className="text-base leading-8 text-muted-foreground">
+            Publish what a service does, where it runs and how it gets paid
+            under an ENS name. The same records support independent discovery,
+            accountable updates and payment checks. The SDK brings these checks
+            into an agent’s existing purchase flow.
+          </p>
         </div>
         <ol className="mt-9 grid gap-6 md:grid-cols-3">
           {[
-            ["01 / ENS", "Discovery layer", "Public service records let independent indexers reconstruct a catalog from supported namespaces. Agents can choose an index, then resolve the selected name directly.", "Open indexing and description publishing planned"],
-            ["02 / NATIVE EAC", "Governance layer", "Ops maintains the API and description. Treasury manages payment terms. Admin grants and revokes access. ENS records and events make configuration changes traceable.", "Native key-scoped permissions tested on forks"],
-            ["03 / ENS402 SDK", "Guard layer", "Compare the offchain HTTP 402 with current onchain settings and buyer approval. Check the recipient, token, network and permitted amount before calling the signer.", "Verification core implemented; published-price comparison planned"],
-          ].map(([number, title, body, status]) => <li key={number} className="border-t pt-5"><p className="font-mono text-sm text-primary">{number}</p><h3 className="mt-3 text-xl font-medium">{title}</h3><p className="mt-3 text-sm leading-7 text-muted-foreground">{body}</p><p className="mt-4 text-xs leading-5 text-muted-foreground">{status}</p></li>)}
+            [
+              "01 / ENS",
+              "Discovery layer",
+              "Public service records let independent indexers reconstruct a catalog from supported namespaces. Agents can choose an index, then resolve the selected name directly.",
+              "Open indexing planned; description publishing implemented",
+            ],
+            [
+              "02 / NATIVE EAC",
+              "Governance layer",
+              "Ops maintains the API and description. Treasury manages payment terms. Admin grants and revokes access. ENS records and events make configuration changes traceable.",
+              "Native key-scoped permissions tested on forks",
+            ],
+            [
+              "03 / ENS402 SDK",
+              "Guard layer",
+              "Compare the offchain HTTP 402 with current onchain settings and buyer approval. Check the recipient, token, network and permitted amount before calling the signer.",
+              "Verification and fixed-price comparison implemented",
+            ],
+          ].map(([number, title, body, status]) => (
+            <li key={number} className="border-t pt-5">
+              <p className="font-mono text-sm text-primary">{number}</p>
+              <h3 className="mt-3 text-xl font-medium">{title}</h3>
+              <p className="mt-3 text-sm leading-7 text-muted-foreground">
+                {body}
+              </p>
+              <p className="mt-4 text-xs leading-5 text-muted-foreground">
+                {status}
+              </p>
+            </li>
+          ))}
         </ol>
-        <p className="mt-8 max-w-4xl text-sm leading-7 text-muted-foreground">An indexer can filter its results; another can still reconstruct the published catalog for the same supported namespaces and block. Public records do not guarantee search completeness, service quality or delivery.</p>
-        <Link href="/architecture#reputation" className="mt-4 inline-block text-sm text-primary underline underline-offset-4">Built on ENS discovery foundations. See what ENS402 adds →</Link>
+        <p className="mt-8 max-w-4xl text-sm leading-7 text-muted-foreground">
+          An indexer can filter its results; another can still reconstruct the
+          published catalog for the same supported namespaces and block. Public
+          records do not guarantee search completeness, service quality or
+          delivery.
+        </p>
+        <Link
+          href="/architecture#reputation"
+          className="mt-4 inline-block text-sm text-primary underline underline-offset-4"
+        >
+          Built on ENS discovery foundations. See what ENS402 adds →
+        </Link>
       </section>
       <section id="use-cases" className="section-shell pb-14 sm:pb-20">
         <p className="eyebrow">What this changes</p>
-        <h2 className="mt-4 font-heading text-4xl tracking-tight sm:text-5xl">A directory you can rebuild. A request you can check.</h2>
+        <h2 className="mt-4 font-heading text-4xl tracking-tight sm:text-5xl">
+          A directory you can rebuild. A request you can check.
+        </h2>
         <div className="mt-8 grid gap-5 md:grid-cols-2">
           {[
-            ["A directory drops a listing", "Another indexer can reconstruct the published catalog from the same supported ENS roots and history. Providers can use their own namespace.", "Planned indexer demonstration"],
-            ["An API moves to a new URL", "Ops updates its endpoint record. An integrated client resolves the new URL and continues if it is within the buyer’s approved scope; otherwise it asks for approval.", "ENS resolution and scope checks implemented"],
-            ["An API asks for a different recipient", "The SDK detects that the HTTP 402 disagrees with the published payment settings and stops this purchase before requesting a signature.", "Implemented recipient comparison"],
-            ["A server silently raises the price", "For the proposed fixed-price model, the SDK will compare the requested amount with the published unit price. Extra fees or dynamic pricing require explicit rules and consent.", "Price publication and comparison planned; buyer amount limits exist"],
-          ].map(([title, body, status]) => <article key={title} className="rounded-xl border bg-card p-6"><h3 className="text-lg font-medium">{title}</h3><p className="mt-3 text-sm leading-7 text-muted-foreground">{body}</p><p className="mt-4 text-xs leading-5 text-muted-foreground">{status}</p></article>)}
+            [
+              "A directory drops a listing",
+              "Another indexer can reconstruct the published catalog from the same supported ENS roots and history. Providers can use their own namespace.",
+              "Planned indexer demonstration",
+            ],
+            [
+              "An API moves to a new URL",
+              "Ops updates its endpoint record. An integrated client resolves the new URL and continues if it is within the buyer’s approved scope; otherwise it asks for approval.",
+              "ENS resolution and scope checks implemented",
+            ],
+            [
+              "An API asks for a different recipient",
+              "The SDK detects that the HTTP 402 disagrees with the published payment settings and stops this purchase before requesting a signature.",
+              "Implemented recipient comparison",
+            ],
+            [
+              "A server silently raises the price",
+              "For payment schema v2, the SDK compares the requested amount with the published unit price. Extra fees or dynamic pricing require explicit rules and consent.",
+              "Fixed-price publication, comparison and buyer amount limits implemented",
+            ],
+          ].map(([title, body, status]) => (
+            <article key={title} className="rounded-xl border bg-card p-6">
+              <h3 className="text-lg font-medium">{title}</h3>
+              <p className="mt-3 text-sm leading-7 text-muted-foreground">
+                {body}
+              </p>
+              <p className="mt-4 text-xs leading-5 text-muted-foreground">
+                {status}
+              </p>
+            </article>
+          ))}
         </div>
       </section>
       <section id="stack" className="section-shell pb-16 sm:pb-24">
@@ -92,8 +166,8 @@ export default function Home() {
             </h2>
           </div>
           <p className="max-w-xs text-sm leading-6 text-muted-foreground">
-            Explore the current verification flow. Discovery and advertised-price
-            comparison are the next layer.
+            Explore the current verification flow. Discovery and
+            advertised-price comparison are the next layer.
           </p>
         </div>
         <ServicePreview />
@@ -125,12 +199,42 @@ export default function Home() {
       </section>
       <section id="integration" className="section-shell py-14 sm:py-20">
         <p className="eyebrow">Reference app + reusable SDK</p>
-        <h2 className="mt-4 font-heading text-4xl tracking-tight sm:text-5xl">Our Console uses the same verification core.</h2>
+        <h2 className="mt-4 font-heading text-4xl tracking-tight sm:text-5xl">
+          Our Console uses the same verification core.
+        </h2>
         <div className="mt-7 grid gap-5 md:grid-cols-2">
-          <div className="rounded-xl border p-6"><h3 className="text-lg font-medium">ENS402 Console</h3><p className="mt-3 text-sm leading-7 text-muted-foreground">The Console calls our backend, which imports the SDK to resolve ENS, check HTTP 402, screen risk and run the purchase flow. The backend adds user accounts, approvals and budget tracking; Privy is the managed demo signer.</p><p className="mt-4 font-mono text-xs leading-6 text-primary">Console → Backend → ENS402 SDK → Signer</p></div>
-          <div className="rounded-xl border p-6"><h3 className="text-lg font-medium">Your agent or app</h3><p className="mt-3 text-sm leading-7 text-muted-foreground">Use the SDK core in your runtime with your own resolver, screening and signer integrations. Our hosted service is optional. Client checks cannot constrain a wallet that signs outside that flow.</p><p className="mt-4 font-mono text-xs leading-6 text-primary">Your app → ENS402 SDK → Your signer</p></div>
+          <div className="rounded-xl border p-6">
+            <h3 className="text-lg font-medium">ENS402 Console</h3>
+            <p className="mt-3 text-sm leading-7 text-muted-foreground">
+              The Console calls our backend, which imports the SDK to resolve
+              ENS, check HTTP 402, screen risk and run the purchase flow. The
+              backend adds user accounts, approvals and budget tracking; Privy
+              is the managed demo signer.
+            </p>
+            <p className="mt-4 font-mono text-xs leading-6 text-primary">
+              Console → Backend → ENS402 SDK → Signer
+            </p>
+          </div>
+          <div className="rounded-xl border p-6">
+            <h3 className="text-lg font-medium">Your agent or app</h3>
+            <p className="mt-3 text-sm leading-7 text-muted-foreground">
+              Use the SDK core in your runtime with your own resolver, screening
+              and signer integrations. Our hosted service is optional. Client
+              checks cannot constrain a wallet that signs outside that flow.
+            </p>
+            <p className="mt-4 font-mono text-xs leading-6 text-primary">
+              Your app → ENS402 SDK → Your signer
+            </p>
+          </div>
         </div>
-        <div className="mt-5 flex flex-wrap gap-5 text-sm text-primary"><Link className="underline underline-offset-4" href="/console">Try the reference Console</Link><Link className="underline underline-offset-4" href="/docs">Read the SDK integration guide</Link></div>
+        <div className="mt-5 flex flex-wrap gap-5 text-sm text-primary">
+          <Link className="underline underline-offset-4" href="/console">
+            Try the reference Console
+          </Link>
+          <Link className="underline underline-offset-4" href="/docs">
+            Read the SDK integration guide
+          </Link>
+        </div>
       </section>
       <section className="section-shell py-14 sm:py-20">
         <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
@@ -139,8 +243,9 @@ export default function Home() {
               Public records. Your search. Your signer.
             </h2>
             <p className="mt-5 max-w-xl text-lg leading-7 text-muted-foreground">
-              Bring your own selection logic and wallet. The verification core works
-              independently of our proposed directory. Privy is the demo signer.
+              Bring your own selection logic and wallet. The verification core
+              works independently of our proposed directory. Privy is the demo
+              signer.
             </p>
           </div>
           <Button asChild variant="outline">

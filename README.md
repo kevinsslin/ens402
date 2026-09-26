@@ -16,7 +16,7 @@ An agent resolves a merchant's current API through ENS, compares the HTTP 402 bi
 
 Registration and management are the provider entry point. The Console is a reference application using the SDK through its backend; other applications can integrate the same core with their own signer.
 
-Open indexing, description publishing and published fixed-price comparison remain planned. Existing payment checks do not imply these features are implemented. EAC controls ENS writes, while integrated clients detect conflicting HTTP responses. ENS resolution does not proxy traffic, and endpoint changes remain subject to buyer approval.
+Description, optional picture and fixed-price publication/comparison are implemented. Open indexing remains planned. Existing payment checks do not imply these features are implemented. EAC controls ENS writes, while integrated clients detect conflicting HTTP responses. ENS resolution does not proxy traffic, and endpoint changes remain subject to buyer approval.
 
 ## Components
 
@@ -83,3 +83,7 @@ Intercepta returns address-risk evidence, not service quality. Its bounded one-h
 Vercel project `ens402` uses root `apps/web`. ENS uses Sepolia; payments use Base Sepolia only. Local research, decisions and validation receipts are under Git-ignored `docs/`.
 
 For the presentation sequence and prerequisites, see [DEMO.md](DEMO.md).
+
+## Current audit and first paid service
+
+See [AUDIT.md](AUDIT.md) for implementation findings, validation boundaries and the exact deployment inventory. The first paid service is a fixed-price native subname purchase for a specified recipient. It requires namespace setup and worker funding before public use. The audit distinguishes this from full-service registration through our optional ServiceRegistrar.

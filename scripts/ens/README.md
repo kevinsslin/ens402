@@ -6,13 +6,16 @@ These commands generate unsigned JSON. They do not deploy, sign or grant roles.
 
 | Goal | Command | Output |
 | --- | --- | --- |
-| Enable `ens402.eth` to issue subnames | `pnpm ens:namespace:plan` | `docs/setup/namespace-transactions.json` |
+| Enable native paid-name purchases only | `pnpm ens:namespace:plan --native-only` | `docs/setup/namespace-transactions.json` |
+| Enable `ens402.eth` to issue full services | `pnpm ens:namespace:plan` | `docs/setup/namespace-transactions.json` |
 | Configure an existing service name | `pnpm ens:plan` | `docs/setup/ens-transactions.json` |
 | Register a new service under the enabled parent | `/register` in the app | Native commit/reveal signed by the service Admin |
 
 Do not run both planners on the parent. The namespace parent is not automatically a paid service.
 
 ### Platform namespace
+
+For `--native-only`, replace steps 4-6 below with a `ROLE_REGISTRAR` grant to a dedicated worker and configure `ENS_PURCHASE_REGISTRY` / `ENS_PURCHASE_EXPIRY`. See `AUDIT.md` for the server-only worker and merchant settings.
 
 Set `SEPOLIA_RPC_URL`, `ENS_PARENT_NAME` and `ENS_OWNER_ADDRESS` in root `.env`.
 
@@ -27,7 +30,7 @@ The planner stops if the parent already has a child registry. It never silently 
 
 ### Existing service
 
-Set `SERVICE_ENS_NAME`, `ENS_OWNER_ADDRESS` (service Admin), `ENS_OPERATOR_ADDRESS` (Ops), `ENS_TREASURY_ADDRESS` (payment-record writer), `MERCHANT_RESOURCE_URL`, `MERCHANT_PAY_TO` (USDC receiver), and `SEPOLIA_RPC_URL`.
+Set `SERVICE_ENS_NAME`, `ENS_OWNER_ADDRESS` (service Admin), `ENS_OPERATOR_ADDRESS` (Ops), `ENS_TREASURY_ADDRESS` (payment-record writer), `MERCHANT_RESOURCE_URL`, `MERCHANT_PAY_TO` (USDC receiver), `MERCHANT_PRICE_UNITS`, `SERVICE_DESCRIPTION`, optional `SERVICE_PICTURE_URL`, and `SEPOLIA_RPC_URL`.
 
 The service Admin deploys a dedicated native resolver, writes records, grants Ops and Treasury their respective key-scoped `ROLE_SET_TEXT`, and publishes the resolver pointer last. Ops must differ from Admin and Treasury. Treasury may equal Admin but then retains Admin's broader permissions. The receiving address does not gain an ENS role simply because it receives money.
 
