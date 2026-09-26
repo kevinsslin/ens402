@@ -786,33 +786,60 @@ export function RegistrationConsole({
                   payments.
                 </span>
               </label>
-              {[
+              {shared ? (
+                <div className="rounded-lg border bg-muted/30 p-4 text-sm sm:col-span-2">
+                  <p className="font-medium">
+                    Uses your provider's existing permissions
+                  </p>
+                  <p className="mt-2 text-muted-foreground">
+                    Operations manages endpoint, description, image and call
+                    schema. Treasury Admin manages payment settings. These
+                    permissions apply to every service using this provider's
+                    shared resolver. Publishing does not grant or change roles.
+                  </p>
+                  <details className="mt-3">
+                    <summary className="cursor-pointer text-muted-foreground">
+                      Configured wallets
+                    </summary>
+                    <dl className="mt-3 space-y-2 text-xs">
+                      <div>
+                        <dt>Operations</dt>
+                        <dd className="break-all font-mono">{operator}</dd>
+                      </div>
+                      <div>
+                        <dt>Treasury Admin</dt>
+                        <dd className="break-all font-mono">{treasury}</dd>
+                      </div>
+                    </dl>
+                  </details>
+                </div>
+              ) : (
                 [
-                  "Ops wallet (endpoint, description, picture, call schema)",
-                  operator,
-                  setOperator,
-                ],
-                [
-                  shared
-                    ? "Treasury Admin (existing payment writer)"
-                    : "Treasury Admin (price and payment settings)",
-                  treasury,
-                  setTreasury,
-                ],
-              ].map(([title, value, setter]) => (
-                <label key={title as string} className="text-sm">
-                  {title as string}
-                  <input
-                    className={field}
-                    value={value as string}
-                    onChange={(e) =>
-                      (setter as (v: string) => void)(e.target.value)
-                    }
-                    pattern="0x[0-9a-fA-F]{40}"
-                    required
-                  />
-                </label>
-              ))}
+                  [
+                    "Ops wallet (endpoint, description, picture, call schema)",
+                    operator,
+                    setOperator,
+                  ],
+                  [
+                    "Treasury Admin (price and payment settings)",
+                    treasury,
+                    setTreasury,
+                  ],
+                ].map(([title, value, setter]) => (
+                  <label key={title as string} className="text-sm">
+                    {title as string}
+                    <input
+                      className={field}
+                      value={value as string}
+                      onChange={(e) =>
+                        (setter as (v: string) => void)(e.target.value)
+                      }
+                      pattern="0x[0-9a-fA-F]{40}"
+                      required
+                    />
+                  </label>
+                ))
+              )}
               <div className="sm:col-span-2">
                 <p className="text-sm leading-7 text-muted-foreground">
                   Publishing a service through this form costs Sepolia gas. Its

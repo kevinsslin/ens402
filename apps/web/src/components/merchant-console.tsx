@@ -290,6 +290,13 @@ export function MerchantConsole({
                           <p className="mt-2 break-all text-xs">
                             Payment recipient: {row.service.payment.payTo}
                           </p>
+                          {row.textAdmin && row.resolverMode === "shared" && (
+                            <p className="mt-4 rounded-lg border border-amber-200 p-3 text-sm">
+                              Provider-wide permissions: changing these wallets
+                              affects every service using this shared resolver,
+                              not only this service.
+                            </p>
+                          )}
                           {row.textAdmin && (
                             <MerchantPermissions
                               name={row.name}
