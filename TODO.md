@@ -55,3 +55,5 @@ Local tests do not complete these steps. No mainnet transactions.
 - Global ENS discovery beyond configured supported roots, unbounded/ANN search and fully permissionless platform admission.
 
 Public discovery metadata is reconstructible; our hosted search/ranking remains one replaceable provider. Bazaar and x402scan have open discovery capabilities too. Compare shared source reconstruction, not invented exclusivity.
+
+- [ ] Integrate verified provider Registry/Resolver enrollment into hosted Guard onboarding; current hosted verification requires explicit operator pins, independently of search publication.

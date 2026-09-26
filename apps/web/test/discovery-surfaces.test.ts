@@ -66,3 +66,12 @@ describe("callable x402 fixtures", () => {
     expect(merchant).not.toHaveBeenCalled();
   });
 });
+
+it("distinguishes missing hosted provider setup from a payment mismatch", async () => {
+  inspect.mockRejectedValueOnce(Error("Configure this provider's registry and resolver before hosted verification"));
+  const result = await (await rpc("tools/call", { name: "resolve_service", arguments: { name: "bounty-info.ethglobal.ens402.eth" } })).json();
+  expect(result.result.isError).toBe(true);
+  expect(result.result.content[0].text).toContain("hosted payment verification is not configured");
+  expect(result.result.content[0].text).toContain("No mismatch was established");
+  expect(merchant).not.toHaveBeenCalled();
+});

@@ -822,7 +822,7 @@ export function OperatorConsole({
                             ? "Wallet setup pending"
                             : approvalStatus(row, now) === "active"
                               ? "Ready to pay"
-                              : "Checkout closed"}
+                              : approvalStatus(row, now) === "expired" ? "Checkout expired" : "Checkout closed"}
                         </Badge>
                       </CardTitle>
                     </CardHeader>
@@ -839,7 +839,7 @@ export function OperatorConsole({
                           : "Managed by ENS402"}
                       </p>
                       <p className="mt-2 text-xs text-muted-foreground">
-                        Complete checkout before{" "}
+                        {approvalStatus(row, now) === "expired" ? "Expired at " : "Complete checkout before "}
                         {new Date(
                           row.approval.expiresAt * 1000,
                         ).toLocaleString()}
@@ -946,6 +946,19 @@ export function OperatorConsole({
                         >
                           Check balance
                         </Button>
+                        {["expired", "revoked"].includes(approvalStatus(row, now)) && (
+                          <div className="w-full rounded-lg border bg-muted/40 p-4">
+                            <p className="mb-3 text-sm">This checkout is closed. Recheck the current service and review its price to open a new checkout. Your wallet balance is unchanged by expiry.</p>
+                            <Button disabled={!!busy || !!attempt || pending} onClick={async () => {
+                              setCheckoutId("");
+                              sessionStorage.removeItem(`${storageKey}:checkout`);
+                              setMode(row.mode);
+                              await inspect(row.approval.name);
+                              setNotice("Review the current payment terms above, then confirm a new checkout. No payment was sent.");
+                            }}>Review new checkout</Button>
+                            {(!!attempt || pending) && <p className="mt-2 text-xs text-muted-foreground">Resolve the existing payment attempt in Activity first.</p>}
+                          </div>
+                        )}
                         <Button
                           disabled={
                             !!busy ||

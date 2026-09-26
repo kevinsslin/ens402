@@ -63,7 +63,12 @@ export async function POST(request: Request) {
       result = await response.json();
     } else return fail(-32602, "Unknown tool");
     return reply({ content: [{ type: "text", text: JSON.stringify(result, (_, value) => typeof value === "bigint" ? value.toString() : value) }], isError: false });
-  } catch { return reply({ content: [{ type: "text", text: "Service data unavailable. No payment or approval was performed." }], isError: true }); }
+  } catch (error) {
+    const missingProvider = error instanceof Error && error.message === "Configure this provider's registry and resolver before hosted verification";
+    return reply({ content: [{ type: "text", text: missingProvider
+      ? "This provider is discoverable, but hosted payment verification is not configured for its Registry and Resolver. The ENS402 operator must configure this provider before checkout. No mismatch was established and no payment was performed."
+      : "Service data unavailable. No payment or approval was performed." }], isError: true });
+  }
 }
 export async function GET() { return new Response(null, { status: 405, headers: { ...headers, Allow: "POST" } }); }
 export async function DELETE() { return new Response(null, { status: 405, headers: { ...headers, Allow: "POST" } }); }
