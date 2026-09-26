@@ -20,6 +20,20 @@ export default function PermissionsPage() {
         setup scripts. It is not a live audit of your wallet. Existing grants
         and parent administrators can add authority.
       </p>
+      <section className="mt-8 rounded-xl border p-6">
+        <h2 className="text-2xl font-medium">Platform → Provider → Service</h2>
+        <p className="mt-3 text-sm leading-7">
+          Platform Owner manages provider registration. Each Provider Admin
+          manages a dedicated native UserRegistry. Each Service Admin manages
+          its service name and resolver, with scoped Ops and Treasury delegates.
+          Permissions do not automatically inherit between these contracts.
+        </p>
+        <p className="mt-3 text-sm leading-7 text-muted-foreground">
+          The service grants below are implemented and fork-tested. Provider
+          onboarding and complete role handovers are core scope, still awaiting
+          implementation. Public setup remains pending.
+        </p>
+      </section>
       <PermissionMap />
       <section className="mt-10 rounded-xl border bg-primary/5 p-6">
         <h2 className="text-2xl font-medium">Verify the grants after setup.</h2>

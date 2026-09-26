@@ -24,7 +24,7 @@ This is the single current scope and status overview. Updated September 26, 2026
 | Agent Skill | Payment instructions exist | `integrations/agent-skill/SKILL.md`; discovery instructions/tools are not implemented |
 | Merchant onboarding and service dashboard | Incomplete | Registration form exists; post-registration listing sync, controlled-service inventory and merchant analytics are not implemented |
 | Address-level merchant analytics | Not implemented | First release groups observed supported settlements by chain/token/payTo; exact endpoint attribution is deferred |
-| Provider registry tree | Planned | Direct subnames are implemented; platform/provider/service onboarding is not |
+| Provider registry tree | Core scope; implementation pending | Platform -> Provider -> Service is the target hierarchy. Direct subnames work in fork tests; provider onboarding and role handovers do not yet |
 | Buy an arbitrary `.eth` | Not implemented | Requires official ETHRegistrar availability, rent, funding and commit/reveal integration |
 | Rich call schema, version aliases | Planned | Description alone does not tell an agent every input needed to call an API |
 | World, ERC-8004, session keys | Deferred | Not mandatory runtime dependencies |
@@ -35,7 +35,9 @@ This is the single current scope and status overview. Updated September 26, 2026
 - **Govern / native EAC:** ENS contracts check permission when a wallet changes a record. Chain transactions and events make changes traceable. This does not validate an HTTP bill.
 - **Guard / SDK:** before requesting a signature, compare HTTP 402 with current ENS terms and buyer approval, then apply screening. Unrestricted keys can bypass this flow.
 
-These are functional layers, not three levels of domain names. The optional platform/provider/service tree is a separate future organization model. Services need not use our parent namespace.
+These are functional layers. The core namespace architecture is **Platform Registry -> Provider Registry -> Service**, with a dedicated native PermissionedResolver per service. Platform and Provider registries are native ENS UserRegistry instances, not custom RBAC replacements. Provider onboarding is required scope; support for additional provider-owned roots remains a later extension.
+
+Provider Admin manages its registry and service registration authority. Service Admin manages its name and resolver; Ops edits endpoint/description/avatar and Treasury edits the payment record. Roles are scoped to specific contracts/resources and do not automatically inherit down the tree. Existing ServiceRegistrar registration initializes service roles atomically, but full provider onboarding, role replacement and Admin handover are still pending. The website must show the complete target tree and label implementation status separately.
 
 ## Agreed discovery direction
 

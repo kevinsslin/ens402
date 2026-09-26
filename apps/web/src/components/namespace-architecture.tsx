@@ -57,14 +57,14 @@ export function NamespaceArchitecture() {
     >
       <header className={styles.header}>
         <div>
-          <p className={styles.eyebrow}>The public configuration layer</p>
+          <p className={styles.eyebrow}>Platform → Provider → Service</p>
           <h3>
             Every service has a home.
             <br />
             Every wallet has a defined job.
           </h3>
         </div>
-        <span className={styles.status}>Planned provider layer</span>
+        <span className={styles.status}>Target architecture · Provider setup pending</span>
       </header>
       <div className={styles.canvas}>
         <p className={styles.namespaceNote}>
@@ -84,7 +84,7 @@ export function NamespaceArchitecture() {
                 <Layers3 size={18} aria-hidden="true" />
               </span>
               <div>
-                <p className={styles.kind}>Platform Registry</p>
+                <p className={styles.kind}>1 · Platform Registry</p>
                 <h4>ens402.eth</h4>
               </div>
               <span className={styles.nodeId}>A</span>
@@ -113,7 +113,7 @@ export function NamespaceArchitecture() {
                 <Layers3 size={18} aria-hidden="true" />
               </span>
               <div>
-                <p className={styles.kind}>Provider Registry</p>
+                <p className={styles.kind}>2 · Provider Registry</p>
                 <h4>provider.ens402.eth</h4>
               </div>
               <span className={styles.nodeId}>B</span>
@@ -170,7 +170,7 @@ export function NamespaceArchitecture() {
                   <Database size={18} aria-hidden="true" />
                 </span>
                 <div>
-                  <p className={styles.kind}>PermissionedResolver</p>
+                  <p className={styles.kind}>3 · Service / PermissionedResolver</p>
                   <h4>Resolver 1</h4>
                 </div>
                 <span className={styles.nodeId}>C1</span>

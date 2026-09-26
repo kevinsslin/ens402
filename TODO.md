@@ -22,7 +22,22 @@ Single actionable backlog. Current implementation and evidence: [README.md](READ
 - [ ] Provider onboarding collects description, optional image, endpoint, fixed price, payout and Ops/Treasury delegates, then checks endpoint/call metadata before commit/reveal.
 - [ ] After confirmed service registration, return to a merchant dashboard with states: draft, awaiting signature, registering, awaiting index, listed, suspended/expired or index error. Receipt confirmation alone does not mean searchable.
 - [ ] Merchant dashboard lists controlled services with their current ENS records and actual edit permissions. Authenticate wallet control and check current onchain roles; a Privy login or payout address alone is not merchant administration.
-- [ ] Keep store-to-service membership explicit and verifiable. For the first release, group names by their verified controlling account; do not infer company ownership or revenue attribution merely from a shared payTo. Provider registry hierarchy remains separate future work.
+- [ ] Keep store-to-service membership explicit and verifiable through the provider registry hierarchy below. Show service ownership separately from provider administration; do not infer company ownership or revenue attribution merely from a shared payTo.
+
+### Core scope: provider hierarchy and native EAC management
+
+The target hierarchy is Platform Registry -> Provider Registry -> service names with dedicated resolvers. Both registries use native ENS UserRegistry implementations. This is separate from the Discover/Govern/Guard functional layers. Provider onboarding is now core scope, not deferred work.
+
+Existing baseline: ServiceRegistrar registration already makes the caller the service name owner and resolver text Admin, grants the supplied Ops address endpoint/description/avatar writes, grants the supplied Treasury address payment-record writes, and removes its own resolver bootstrap rights in the same reverting registration transaction. Delegate addresses are supplied, not automatically generated wallets. This is implemented/fork-tested, not publicly enabled. Paid bare-subname issuance does not configure a service resolver or these delegates.
+
+- [ ] Complete platform initialization with an unsigned, ordered setup plan: deploy native Platform Registry, attach it to the parent name, configure the registration entry point and verify actual grants/pointers after owner-signed transactions.
+- [ ] Implement provider onboarding: register the provider name, create its native Provider Registry, attach the subregistry pointer and configure Provider Admin name-control and registry registrar/administration rights. Determine exact minimal native grants against the pinned deployment. Handle partial setup safely and verify confirmed state before presenting the provider as ready.
+- [ ] Extend service onboarding to the selected Provider Registry. Validate the registrar's authority there, create the dedicated resolver and reuse atomic initial record/delegate configuration. Make caller-as-Service-Admin explicit; a separate Admin recipient requires a deliberately implemented and tested handoff. Keep provider and service administration distinct.
+- [ ] Build a Permissions view showing Platform Owner, Provider Admin, Service Admin, Ops, Treasury delegate and payTo separately, with contract/resource scope, effective native roles and observed block. Flag broader grants; role labels are not proof of permissions and grants do not automatically inherit through the name tree.
+- [ ] Implement Replace Ops and Replace Treasury: read current effective grants, grant the new address the required key-scoped writes, revoke the old delegate's intended grants, and re-read confirmed permissions. Check native batching support for atomic replacement; otherwise show each transaction and any incomplete handover. Detect root/admin rights that would keep the old address authorized. Treasury replacement must not silently change payTo.
+- [ ] Implement explicit Provider Admin and Service Admin handovers, including incoming-wallet acceptance and verified authority before removing outgoing rights. Cover both name control and the corresponding registry/resolver administration. Name transfer alone does not transfer resolver administration; replacing Provider Admin must not silently replace service Admins. Verify a safe native transaction sequence, with visible recovery for partial completion.
+- [ ] Keep grant/revoke actions wallet-signed and enforced by native ENS EAC. The backend prepares/simulates transactions; it does not substitute login state or a custom role table for onchain authorization. Document retained parent, root and upgrade powers.
+- [ ] Add unit and native ENS fork/integration coverage for the full hierarchy: initial grants, provider isolation, service resolver isolation, unauthorized grants/edits, delegate replacement, lingering broad permissions, Admin handover, revocation and failed/partial setup. Confirm scoped Ops cannot modify payment records or grant roles, and scoped Treasury cannot modify endpoint records. Repeat allowed/denied writes on the public testnet after setup and record receipts.
 
 ## 3. Address-level merchant analytics
 
@@ -67,10 +82,19 @@ These require the real owner/configuration/funding. Local fork tests do not comp
 - [ ] Complete Privy browser login, approve scope and fund the displayed payer with Base Sepolia USDC.
 - [ ] Run a public purchase; verify both payment receipt and recipient name ownership, then rehearse recovery and presentation.
 
-## 6. Deferred or separately scoped
+## 6. Contract quality and maintainability
+
+- [ ] Define an explicit `IServiceRegistrar` interface for the public registration API, shared structs, events and custom errors; have the implementation conform to it. Keep native ENS interfaces aligned with the pinned official deployment ABI.
+- [ ] Review contract, interface, library, function, variable, event and error names for consistent Solidity conventions and clear domain meaning. Distinguish namespace owner, service Admin, Ops, Treasury delegate and payment recipient; document atomic price units and expiry timestamps.
+- [ ] Add complete NatSpec to public interfaces and implementation-specific behavior: `@notice`, `@dev`, `@param`, `@return` and `@inheritdoc` where applicable. Document commit/reveal timing, permission scopes, initialization and revocation, revert conditions, trust boundaries and name-transfer versus resolver-administration behavior.
+- [ ] Review source organization, visibility, mutability, custom errors, emitted lifecycle events and external-call/reentrancy handling. Preserve native ENS EAC enforcement; avoid introducing duplicate custom role management or unnecessary upgradeability.
+- [ ] Make setup scripts readable and reproducible: explicit chain/deployment checks, named transaction steps, required signer/role, post-transaction verification and clear distinction between unsigned plans and broadcasting. Keep keys out of generated artifacts.
+- [ ] Validate the refactor with formatting/build checks, relevant unit and native ENS fork/integration tests, and ABI/SDK compatibility checks. Cover unauthorized calls, role isolation/revocation, commitment boundaries and atomic rollback; record actual results in AUDIT.md.
+
+## 7. Deferred or separately scoped
 
 - [ ] Arbitrary `.eth` purchase merchant: official registrar rent/duration, funding, commit/reveal and recovery. Current merchant only issues subnames.
-- [ ] Provider-to-service registry onboarding and multi-namespace lifecycle support beyond the initial supported roots.
+- [ ] Multi-namespace lifecycle support beyond the initial supported roots. Provider-to-service registry onboarding is core scope above.
 - [ ] Service version aliases and dynamic pricing.
 - [ ] World, ERC-8004 and session-key integrations, if selected later.
 

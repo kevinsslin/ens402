@@ -2,7 +2,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ServiceLayers, ServiceStructure } from "@/components/service-layers";
+import { ServiceLayers } from "@/components/service-layers";
+import { NamespaceArchitecture } from "@/components/namespace-architecture";
 import { ServicePreview } from "@/components/service-preview";
 
 export default function Home() {
@@ -138,12 +139,12 @@ export default function Home() {
               <span>Keep each edit accountable.</span>
             </h2>
             <p className="mt-6 text-lg leading-7 text-muted-foreground">
-              Ops maintains the description and API. Treasury owns pricing and
-              payment settings. Admin manages their grants. The diagram shows
-              the current service model. Public setup is still pending.
+              Platform → Provider → Service. Each provider manages its service
+              directory. Each service has a dedicated resolver, with separate
+              Admin, Ops and Treasury permissions enforced by native ENS EAC.
             </p>
           </div>
-          <ServiceStructure />
+          <NamespaceArchitecture />
           <Link
             href="/permissions"
             className="mt-6 inline-flex items-center gap-2 text-sm text-primary underline underline-offset-4"

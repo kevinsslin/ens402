@@ -34,18 +34,18 @@ export default function Architecture() {
         </p>
       </div>
       <ServiceLayers />
-      <ServiceStructure />
+      <NamespaceArchitecture />
       <details className="rounded-xl border p-5">
         <summary className="cursor-pointer font-medium">
-          Future: provider → services directory tree (not implemented)
+          Implementation today: direct service registration
         </summary>
         <p className="mt-4 text-sm leading-7 text-muted-foreground">
-          The three product layers above are responsibilities. A three-level
-          namespace is a separate organizational option. Today our registrar
-          creates direct subnames; provider registries and a catalog indexer are
-          still planned.
+          Platform → Provider → Service is the core target hierarchy. The current
+          registrar configures direct subnames and their dedicated resolvers.
+          Provider onboarding, role replacement and Admin handovers still need
+          implementation. Public namespace setup and indexing are also pending.
         </p>
-        <NamespaceArchitecture />
+        <ServiceStructure />
       </details>
       <section className={section}>
         <p className="eyebrow">01 / A concrete example</p>
