@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DiscoveryComparison } from "@/components/discovery-comparison";
 import { LandingLayers } from "@/components/landing-layers";
 import { NamespaceArchitecture } from "@/components/namespace-architecture";
 
@@ -54,6 +55,9 @@ export default function Home() {
           </span>
         </div>
       </section>
+      <div className="section-shell pb-12 sm:pb-20">
+        <DiscoveryComparison />
+      </div>
       <section id="architecture" className="border-y bg-card/40">
         <div className="section-shell py-10 sm:py-14">
           <div className="max-w-2xl">

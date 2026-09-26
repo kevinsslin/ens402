@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { AgentDiscoveryFlow } from "./agent-discovery-flow";
-import { DiscoveryComparison } from "./discovery-comparison";
 import { PaymentVerificationFlow } from "./payment-verification-flow";
 import { ArrowRight, Check, LockKeyhole, Search, ShieldCheck, X } from "lucide-react";
 
@@ -22,7 +21,6 @@ export function LandingLayers() {
       </div>
       <AgentDiscoveryFlow />
       </div>
-      <DiscoveryComparison />
     </section>
     <section id="govern" className="grid items-center gap-10 py-16 lg:grid-cols-2 lg:gap-20 sm:py-24">
       <div>

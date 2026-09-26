@@ -32,11 +32,11 @@ const capabilities = [
 /** Compare publication and governance guarantees, not overall search quality or openness. */
 export function DiscoveryComparison() {
   return (
-    <section aria-labelledby="comparison-title" className="mt-9 sm:mt-12">
+    <section aria-labelledby="comparison-title">
       <div className="mb-5">
-        <h3 id="comparison-title" className="text-xl font-medium">
+        <h2 id="comparison-title" className="text-xl font-medium">
           Who controls the service configuration?
-        </h3>
+        </h2>
         <p className="mt-2 text-sm text-muted-foreground">
           Where it lives. Who can edit it. What agents can verify.
         </p>

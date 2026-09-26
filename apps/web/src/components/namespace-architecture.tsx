@@ -31,17 +31,6 @@ export function NamespaceArchitecture() {
       className={styles.figure}
       aria-label="Platform, provider and service namespace with shared resolver and native EAC wallet roles"
     >
-      <header className={styles.header}>
-        <div>
-          <p className={styles.eyebrow}>The ENS402 blueprint</p>
-          <h3>One provider. One resolver. Clear permissions.</h3>
-        </div>
-        <p>
-          Three name levels.
-          <br />
-          Separate service records.
-        </p>
-      </header>
       <div className={styles.blueprint}>
         <div className={styles.platformRow}>
           <section className={styles.contract} aria-label="Platform registry">
