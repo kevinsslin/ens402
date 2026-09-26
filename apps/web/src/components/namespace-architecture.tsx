@@ -25,21 +25,21 @@ export function NamespaceArchitecture() {
     <figure className={styles.figure} aria-label="ENS registry tree, service resolvers and wallet roles">
       <header className={styles.header}>
         <div><p className={styles.eyebrow}>The public configuration layer</p><h3>Every service has a home.<br />Every wallet has a defined job.</h3></div>
-        <span className={styles.status}>Proposed company hierarchy</span>
+        <span className={styles.status}>Planned provider layer</span>
       </header>
       <div className={styles.canvas}>
         <div className={styles.laneLabels}><span>Names, contracts & records</span><span>Wallets & native EAC roles</span></div>
         <div className={styles.row}>
           <div className={styles.contract}>
-            <div className={styles.nodeHeading}><span className={styles.icon}><Layers3 size={18} aria-hidden="true" /></span><div><p className={styles.kind}>Platform UserRegistry</p><h4>ens402.eth</h4></div><span className={styles.nodeId}>A</span></div>
-            <div className={styles.nameEntry}><span>Name entry</span><code>company</code><span className={styles.entryNote}>→ Company registry</span></div>
+            <div className={styles.nodeHeading}><span className={styles.icon}><Layers3 size={18} aria-hidden="true" /></span><div><p className={styles.kind}>Platform Registry</p><h4>ens402.eth</h4></div><span className={styles.nodeId}>A</span></div>
+            <div className={styles.nameEntry}><span>Name entry</span><code>provider</code><span className={styles.entryNote}>→ Provider registry</span></div>
           </div>
-          <WalletGrant name="Platform owner"><Roles scope="A · Registry root" roles={["ROLE_REGISTRAR", "ROLE_REGISTRAR_ADMIN"]} /><p className={styles.job}>Register companies and manage registrar grants.</p></WalletGrant>
+          <WalletGrant name="Platform owner"><Roles scope="A · Registry root" roles={["ROLE_REGISTRAR", "ROLE_REGISTRAR_ADMIN"]} /><p className={styles.job}>Register providers and manage registrar grants.</p></WalletGrant>
         </div>
-        <Pointer>Company name’s subregistry pointer</Pointer>
+        <Pointer>Subregistry pointer</Pointer>
         <div className={styles.row}>
           <div className={styles.contract}>
-            <div className={styles.nodeHeading}><span className={styles.icon}><Layers3 size={18} aria-hidden="true" /></span><div><p className={styles.kind}>Company UserRegistry</p><h4>company.ens402.eth</h4></div><span className={styles.nodeId}>B</span></div>
+            <div className={styles.nodeHeading}><span className={styles.icon}><Layers3 size={18} aria-hidden="true" /></span><div><p className={styles.kind}>Provider Registry</p><h4>provider.ens402.eth</h4></div><span className={styles.nodeId}>B</span></div>
             <p className={styles.nodeDescription}>Three service names. Three independent resolvers.</p>
             <div className={styles.services}>
               {[1, 2, 3].map(number => <div key={number} className={number === 1 ? styles.selectedService : styles.service}>
@@ -47,10 +47,10 @@ export function NamespaceArchitecture() {
               </div>)}
             </div>
           </div>
-          <WalletGrant name="Company Admin">
-            <Roles scope="A · company name" roles={["ROLE_SET_SUBREGISTRY"]} />
+          <WalletGrant name="Provider Admin">
+            <Roles scope="A · provider name" roles={["ROLE_SET_SUBREGISTRY"]} />
             <Roles scope="B · Registry root" roles={["ROLE_REGISTRAR", "ROLE_REGISTRAR_ADMIN"]} />
-            <p className={styles.job}>Choose the company registry and create services.</p>
+            <p className={styles.job}>Choose the provider registry and create services.</p>
           </WalletGrant>
         </div>
         <div className={styles.focusLink}><span /><p><Database size={13} aria-hidden="true" /> Inside Resolver 1</p></div>
@@ -58,8 +58,8 @@ export function NamespaceArchitecture() {
           <div className={`${styles.row} ${styles.resolverHeader}`}>
             <div>
               <div className={styles.nodeHeading}><span className={styles.resolverIcon}><Database size={18} aria-hidden="true" /></span><div><p className={styles.kind}>PermissionedResolver</p><h4>Resolver 1</h4></div><span className={styles.nodeId}>C1</span></div>
-              <code className={styles.fullName}>service1.company.ens402.eth</code>
-              <p className={styles.nodeDescription}>One contract holds this service’s public configuration. Native EAC checks who may write each record.</p>
+              <code className={styles.fullName}>service1.provider.ens402.eth</code>
+              <p className={styles.nodeDescription}>Public service configuration, with native EAC enforcing each writer’s scope.</p>
               <span className={styles.rootNote}><KeyRound size={13} aria-hidden="true" /> Admin retains full text control</span>
             </div>
             <WalletGrant name="Service Admin">
@@ -86,8 +86,8 @@ export function NamespaceArchitecture() {
         <div className={styles.legend}><span><i /> Name / contract relationship</span><span><i /> Scoped write or administration grant</span></div>
       </div>
       <figcaption className={styles.caption}>
-        <p>Roles apply to a contract and resource, not automatically to its children. Ops and Treasury grants use the hash of their text key. Resolver 2 and 3 need their own grants. Company Admin and Service Admin may share a wallet; Ops and Treasury are separate.</p>
-        <p>Intended grants, not live permissions. The company layer is planned. Buyer payment signing is separate from these configuration wallets.</p>
+        <p>Platform and Provider Registry represent ENSv2 UserRegistry contracts. Roles apply to a contract and resource, not automatically to its children. Ops and Treasury grants use the hash of their text key. Resolver 2 and 3 need their own grants. Provider Admin and Service Admin may share a wallet; Ops and Treasury are separate.</p>
+        <p>Intended grants, not live permissions. The provider layer is planned. Buyer payment signing is separate from these configuration wallets.</p>
         <a href="/diagrams/ens402-contracts.mmd" download>Download the Mermaid structure reference ↓</a>
       </figcaption>
     </figure>

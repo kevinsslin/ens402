@@ -21,11 +21,11 @@ config:
 ---
 flowchart TB
   accTitle: ENS402 namespace and contract tree
-  accDescr: ens402.eth points to Platform Registry A. Its company name points to Company Registry B. Three service names each point to a separate resolver C1, C2 or C3. Each resolver stores an API URL, payment settings and status. Wallet permissions are listed separately below the diagram.
+  accDescr: ens402.eth points to Platform Registry A. Its provider name points to Provider Registry B. Three service names each point to a separate resolver C1, C2 or C3. Each resolver stores an API URL, payment settings and status. Wallet permissions are listed separately below the diagram.
   parent["ens402.eth"]
   platform["A · Platform Registry"]
-  company["company.ens402.eth"]
-  registry["B · Company Registry"]
+  provider["provider.ens402.eth"]
+  registry["B · Provider Registry"]
   s1["service1"]
   s2["service2"]
   s3["service3"]
@@ -33,8 +33,8 @@ flowchart TB
   r2["C2<br/>Resolver 2"]
   r3["C3<br/>Resolver 3"]
   parent -->|subregistry| platform
-  platform -.->|name entry| company
-  company -->|subregistry| registry
+  platform -.->|name entry| provider
+  provider -->|subregistry| registry
   registry -.->|name entry| s1 & s2 & s3
   s1 -->|resolver| r1
   s2 -->|resolver| r2
